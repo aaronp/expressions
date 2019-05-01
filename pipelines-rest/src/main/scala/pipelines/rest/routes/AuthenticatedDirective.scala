@@ -1,13 +1,16 @@
 package pipelines.rest.routes
 import java.time.{ZoneId, ZonedDateTime}
 
+import akka.http.scaladsl.server._
 import akka.http.scaladsl.model.{headers, _}
 import akka.http.scaladsl.model.headers.{Authorization, HttpChallenges, OAuth2BearerToken, RawHeader}
 import akka.http.scaladsl.server.Directives.respondWithHeader
 import akka.http.scaladsl.server._
+import com.typesafe.scalalogging.StrictLogging
 import pipelines.rest.jwt.JsonWebToken.JwtError
 import pipelines.rest.jwt.{Claims, JsonWebToken}
 import javax.crypto.spec.SecretKeySpec
+import pipelines.core.Redirection
 
 /**
   * Mixing in this trait will offer an 'authenticated' directive to allow routes to require authentication.
@@ -19,21 +22,31 @@ import javax.crypto.spec.SecretKeySpec
   *
   * @see endpoints.akkahttp.server.BasicAuthentication
   */
-trait AuthenticatedDirective {
+trait AuthenticatedDirective extends StrictLogging {
 
   /**
     * Extracts the credentials from the request headers.
     * In case of absence of credentials rejects request
     */
-  lazy val authenticated: Directive1[Claims] = {
+  lazy val authenticatedEither: Directive1[Either[HttpResponse, Claims]] = {
+
     Directives.optionalHeaderValue(extractCredentials).flatMap {
       case Some(jwtTokenString) =>
-        JsonWebToken.forToken(jwtTokenString, secret) match {
+        val jwt: Either[JwtError, JsonWebToken] = JsonWebToken.forToken(jwtTokenString, secret)
+        jwt match {
           case Right(jwt) if !isExpired(jwt) => onValidToken(jwtTokenString, jwt)
           case Right(jwt)                    => onExpiredToken(jwt)
           case Left(err)                     => onInvalidToken(err)
         }
-      case None => onMissingToken()
+      case None =>
+        onMissingToken
+    }
+
+  }
+
+  def authenticated: Directive[Tuple1[Claims]] = {
+    authenticatedEither.collect {
+      case Right(claims: Claims) => claims
     }
   }
 
@@ -69,43 +82,81 @@ trait AuthenticatedDirective {
   }
 
   // continue to return the token
-  protected def onValidToken(jwtTokenString: String, jwt: JsonWebToken): Directive[Tuple1[Claims]] = {
+  protected def onValidToken(jwtTokenString: String, jwt: JsonWebToken) = {
     val newToken = updateTokenOnAccess(jwtTokenString, jwt, secret)
-    respondWithHeader(RawHeader("X-Access-Token", newToken)).tflatMap { _ =>
+    val withCreds: Directive[Tuple1[Claims]] = respondWithHeader(RawHeader("X-Access-Token", newToken)).tflatMap { _ =>
       Directives.provide(jwt.claims)
     }
-  }
-
-  protected def onMissingToken(): Directive[Tuple1[Claims]] = {
-    Directive[Tuple1[Claims]] { _ =>
-      Directives.complete(
-        HttpResponse(
-          StatusCodes.Unauthorized,
-          scala.collection.immutable.Seq[HttpHeader](headers.`WWW-Authenticate`(HttpChallenges.oAuth2(realm)))
-        ))
+    withCreds.map { claims =>
+      val either: Either[HttpResponse, Claims] = Right(claims)
+      either
     }
   }
 
-  protected def onInvalidToken(err: JwtError): Directive[Tuple1[Claims]] = {
-    Directives.complete(
+  /**
+    * https://stackoverflow.com/questions/8389253/correct-http-status-code-for-resource-which-requires-authorization
+    *
+    * @return
+    */
+  protected def onMissingToken(): Directive[Tuple1[Either[HttpResponse, Claims]]] = {
+    unauthorizedDirectiveAsEither
+  }
+
+//  protected def redirectDirective(explanation: String) = {
+//    val direct: Route = Directives.extractUri { uri =>
+//      logger.info(s"$explanation, redirecting for ${uri}")
+//      Directives.redirect(loginUri(uri), StatusCodes.TemporaryRedirect)
+//    }
+//  }
+
+  protected def onInvalidToken(err: JwtError) = {
+    unauthorizedDirectiveAsEither
+  }
+
+  protected def unauthorizedDirectiveAsEither: Directive[Tuple1[Either[HttpResponse, Claims]]] = {
+    unauthorizedDirective.map { resp: HttpResponse =>
+      val either: Either[HttpResponse, Claims] = Left(resp)
+      either
+    }
+  }
+
+  protected def unauthorizedDirective = {
+//    Directives.complete(
+//      HttpResponse(
+//        StatusCodes.Unauthorized,
+//        scala.collection.immutable.Seq[HttpHeader](headers.`WWW-Authenticate`(HttpChallenges.oAuth2(realm)))
+//      ))
+
+    Directives.extractUri.map { uri =>
+      val loginPage: Uri = loginUri(uri)
+
+      //ContentTypes.`application/json`,
+      val redirectBody = HttpEntity(Redirection(loginPage.toString).toString)
       HttpResponse(
         StatusCodes.Unauthorized,
-        scala.collection.immutable.Seq[HttpHeader](headers.`WWW-Authenticate`(HttpChallenges.oAuth2(realm)))
-      ))
+        scala.collection.immutable.Seq[HttpHeader](headers.`WWW-Authenticate`(HttpChallenges.oAuth2(realm))),
+        entity = redirectBody
+      )
+    }
   }
 
   // it's valid, but expired. We redirect to login
-  protected def onExpiredToken(jwt: JsonWebToken): Directive[Tuple1[Claims]] = {
-    Directive[Tuple1[Claims]] { _ => //inner is ignored
-      Directives.extractUri { uri =>
-        Directives.redirect(loginUri(uri), StatusCodes.TemporaryRedirect)
-      }
-    }
+  protected def onExpiredToken(jwt: JsonWebToken) = {
+//    unauthorizedDirectiveIgnoreClaims
+//    redirectDirective(s"onExpiredToken($jwt)")
+    unauthorizedDirectiveAsEither
   }
 
-  private def extractCredentials: HttpHeader => Option[String] = {
-    case Authorization(OAuth2BearerToken(jwt)) => Some(jwt)
-    case _                                     => None
+  private def extractCredentials(header: HttpHeader): Option[String] = {
+    header match {
+      case Authorization(OAuth2BearerToken(jwt)) => Some(jwt)
+      case _ =>
+        header.name.toLowerCase match {
+          case "x-access-token" => Some(header.value)
+          case _                => None
+        }
+
+    }
   }
 
 }

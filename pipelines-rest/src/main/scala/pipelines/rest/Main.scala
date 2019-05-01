@@ -5,8 +5,10 @@ import java.nio.file.Path
 import args4c.ConfigApp
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.ssl.GenCerts
-import pipelines.ssl.SSLConfig
+import pipelines.socket.SocketRoutesSettings
+import pipelines.ssl.{GenCerts, SSLConfig}
+
+import scala.util.Try
 
 /**
   * The main entry point for the REST service
@@ -20,30 +22,34 @@ object Main extends ConfigApp with StrictLogging {
   override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
 
   def run(config: Config): RunningServer = {
-
     import eie.io._
     val certPath = config.getString("pipelines.tls.certificate")
     val preparedConf = if (!certPath.asPath.isFile && config.hasPath("generateMissingCerts")) {
-      ensureCert(certPath)
-      config.set("pipelines.tls.password", "password")
+      val password = Try(config.getString("pipelines.tls.password")).getOrElse("password")
+      ensureCert(certPath, password)
+      config.set("pipelines.tls.password", password)
     } else {
       config
     }
 
-    val sslConf: SSLConfig = SSLConfig.fromRootConfig(preparedConf)
-    RunningServer(Settings(preparedConf), sslConf)
+    val sslConf: SSLConfig = SSLConfig(preparedConf)
+
+    val settings       = Settings(preparedConf)
+    val socketSettings = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
+    RunningServer(settings, sslConf, socketSettings.routes)
   }
 
   /**
     * Create our own self-signed cert (if required) for local development
     */
-  def ensureCert(pathToCert: String): Path = {
+  def ensureCert(pathToCert: String, password: String = "password"): Path = {
     import eie.io._
     val certFile = pathToCert.asPath
     if (!certFile.isFile) {
       logger.info(s"${certFile} doesn't exist, creating it")
-      val pwd                          = "password"
-      val (resValue, buffer, certPath) = GenCerts.genCert(certFile.getParent, certFile.fileName, "localhost", pwd, pwd, pwd)
+      val dir = Option(certFile.getParent).getOrElse(".".asPath)
+
+      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, "localhost", password, password, password)
       logger.info(s"created ${certPath}:\n\n${buffer.allOutput}\n\n")
       require(resValue == 0, s"Gen cert script exited w/ non-zero value $resValue")
     } else {

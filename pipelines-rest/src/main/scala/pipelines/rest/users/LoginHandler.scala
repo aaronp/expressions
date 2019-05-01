@@ -8,8 +8,17 @@ import pipelines.users.LoginRequest
 
 import scala.concurrent.Future
 
+/**
+  * A class which can return some user claims for a login request
+  */
 trait LoginHandler {
 
+  /**
+    * Handle a login
+    *
+    * @param request
+    * @return
+    */
   def login(request: LoginRequest): Future[Option[Claims]]
 }
 
@@ -27,9 +36,10 @@ object LoginHandler {
     val c1assName   = usersConfig.getString("loginHandler")
     val c1ass       = Class.forName(c1assName).asInstanceOf[Class[LoginHandler]]
 
-    c1ass.getConstructors.find(_.getParameterCount == 1) match {
-      case Some(ctr: Constructor[LoginHandler]) => ctr.newInstance(usersConfig)
-      case None                                 => c1ass.newInstance()
+    val configConstructorArgs = List(classOf[Config])
+    c1ass.getConstructors.find(_.getParameterTypes.toList == configConstructorArgs) match {
+      case Some(ctr: Constructor[_]) => ctr.asInstanceOf[Constructor[LoginHandler]].newInstance(usersConfig)
+      case None                      => c1ass.newInstance()
     }
 
   }

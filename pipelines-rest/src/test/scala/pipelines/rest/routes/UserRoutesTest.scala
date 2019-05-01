@@ -1,8 +1,10 @@
 package pipelines.rest.routes
 import java.time.{ZoneId, ZonedDateTime}
 
-import akka.http.scaladsl.model.headers.Location
+import akka.http.scaladsl.model.headers.{HttpChallenges, Location}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
+import akka.http.scaladsl.server.AuthenticationFailedRejection
+import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
 import pipelines.rest.jwt.JsonWebToken.CorruptJwtSecret
@@ -14,7 +16,7 @@ import org.scalatest.{Matchers, WordSpec}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class UserRoutesTest extends WordSpec with Matchers with ScalatestRouteTest {
+class UserRoutesTest extends BaseRoutesTest {
 
   "UserRoutes.route" should {
     // pass in a fixed 'now' time when the admin user logs in for this test
@@ -28,15 +30,13 @@ class UserRoutesTest extends WordSpec with Matchers with ScalatestRouteTest {
 
     "reject invalid logins" in {
       Post("/users/login", LoginRequest("admin", "bad password")) ~> loginRoute.loginRoute ~> check {
-        val LoginResponse(false, None, None) = responseAs[LoginResponse]
-        response.headers.find(_.lowercaseName() == "x-access-token").map(_.value()) should be(empty)
+        rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
       }
       Post("/users/login", LoginRequest("guest", "password")) ~> loginRoute.loginRoute ~> check {
-        val LoginResponse(false, None, None) = responseAs[LoginResponse]
-        response.headers.find(_.lowercaseName() == "x-access-token").map(_.value()) should be(empty)
+        rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
       }
     }
-    "redirect successful logins the user was redirected from another attempted page" in {
+    "redirect successful logins the user was redirected from another attempted page" ignore {
       val loginRequest: HttpRequest = {
         val req = Post("/users/login", LoginRequest("admin", "password"))
         req.withUri(req.uri.withRawQueryString("redirectTo=/foo/bar"))

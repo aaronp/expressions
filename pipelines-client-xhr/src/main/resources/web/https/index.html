@@ -19,12 +19,18 @@
 <script type="text/javascript" src="./target/scala-2.12/pipelines-client-xhr-opt.js"></script>
 <script type="text/javascript" src="js/pipelines-client-xhr-opt.js"></script>
 -->
-<script type="text/javascript" src="js/pipelines-client-xhr-jsdeps.js"></script>
+<script type="text/javascript" src="/js/pipelines-client-xhr-jsdeps.js"></script>
+
+<!--
 <script type="text/javascript" src="js/pipelines-client-xhr-fastopt.js"></script>
 <script type="text/javascript" src="js/pipelines-client-xhr-opt.js"></script>
+-->
+<script type="text/javascript" src="/js/pipelines.js"></script>
 
 <ul>
     <li><a href="openapi.json">openapi</a></li>
+    <li><a href="login.html">login</a></li>
+    <li><a href="/secure/secret.html">secure/secret.html</a></li>
     <li><a href="index.html">home</a></li>
     <li><a href="publish.html">publish</a></li>
     <li><a href="socket.html">query</a></li>
@@ -32,8 +38,8 @@
 
 <br/>
 
-<button class="btn" type="button" onclick="listTopics()">
-    List Topics
-</button>
+<button class="btn" type="button" onclick="listTypes()">List Types</button>
+<br/>
+<button class="btn" type="button" onclick="listSources('')">List Sources</button>
 </body>
 </html>

@@ -3,7 +3,6 @@ package pipelines.connect
 import java.util
 import java.util.Collections
 
-import args4c.RichConfig
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.Scheduler
@@ -11,8 +10,6 @@ import monix.reactive.{Observable, Observer, Pipe}
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.{PartitionInfo, TopicPartition}
-import pipelines.eval.DataSource
-import pipelines.kafka.{PartitionData, PullLatestResponse}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
@@ -26,9 +23,7 @@ import scala.util.Try
   * @tparam K
   * @tparam V
   */
-class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeout: FiniteDuration)(implicit scheduler: Scheduler)
-    extends DataSource[Observable[ConsumerRecord[K, V]]]
-    with StrictLogging {
+class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeout: FiniteDuration)(implicit scheduler: Scheduler) extends AutoCloseable with StrictLogging {
 
   private class Listener(initialTopics: Set[String], offset: String) extends ConsumerRebalanceListener {
     var processedTopics = initialTopics
@@ -54,7 +49,6 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
           case "latest" =>
             val ok = client.seekToEnd(filtered.asJava)
             logger.info(s"Seeking to latest for ${filtered} returned: $ok")
-            client.seekToEnd(filtered.asJava)
           case number =>
             val offsetTry = Try(number.toLong)
             logger.info(s"Seeking to $offsetTry for ${filtered}")
@@ -79,7 +73,7 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
     }
   }
 
-  def pullLatest(topic: String, limit: Long, pollTimeout: FiniteDuration, timeout: FiniteDuration, formatKey: K => String): PullLatestResponse = {
+  def pullLatest(topic: String, limit: Long, pollTimeout: FiniteDuration, timeout: FiniteDuration, formatKey: K => String) = {
     import scala.collection.JavaConverters._
     client.subscribe(List(topic).asJava)
 
@@ -104,17 +98,17 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
     val results = found.map { record =>
       formatKey(record.key)
     }
-    PullLatestResponse(topic, results)
+    (topic, results)
   }
-
-  def listTopics(): Map[String, List[PartitionData]] = {
-    import scala.collection.JavaConverters._
-    client.listTopics.asScala.mapValues { info: util.List[PartitionInfo] =>
-      info.asScala.map { pi =>
-        PartitionData(partition = pi.partition, leader = Option(pi.leader).fold("")(_.idString))
-      }.toList
-    }.toMap
-  }
+//
+//  def listTopics(): Map[String, List[PartitionData]] = {
+//    import scala.collection.JavaConverters._
+//    client.listTopics.asScala.mapValues { info: util.List[PartitionInfo] =>
+//      info.asScala.map { pi =>
+//        PartitionData(partition = pi.partition, leader = Option(pi.leader).fold("")(_.idString))
+//      }.toList
+//    }.toMap
+//  }
 
   def pull(pollTimeout: FiniteDuration = defaultPollTimeout): Iterator[ConsumerRecord[K, V]] = {
     val all: Iterator[Iterable[ConsumerRecord[K, V]]] = Iterator.continually(pullOrEmpty(pollTimeout))
@@ -193,8 +187,6 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
     }
     output
   }
-
-  final override lazy val data: Observable[ConsumerRecord[K, V]] = asObservable
 }
 
 object RichKafkaConsumer extends StrictLogging {
@@ -202,10 +194,7 @@ object RichKafkaConsumer extends StrictLogging {
   def apply[K, V](rootConfig: Config, keySerializer: Deserializer[K], valueSerializer: Deserializer[V])(implicit scheduler: Scheduler): RichKafkaConsumer[K, V] = {
 
     import args4c.implicits._
-    val consumerConf: Config = {
-      val config: RichConfig = rootConfig
-      config.pipelines.consumer.config
-    }
+    val consumerConf: Config = rootConfig.getConfig("pipelines.consumer")
     logger.debug(s"creating new kafka consumer client for:\n${consumerConf.summary()}\n")
     val pollFreq = consumerConf.asFiniteDuration("poll.interval")
     val props    = propertiesForConfig(consumerConf)

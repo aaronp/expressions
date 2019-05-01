@@ -7,6 +7,7 @@ import io.circe.Decoder.Result
 import io.circe._
 import io.circe.parser._
 import io.circe.syntax._
+import javax.crypto.spec.SecretKeySpec
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -25,6 +26,10 @@ case class Claims(
   def isExpired(now: ZonedDateTime) = {
     exp != 0 && exp <= Claims.asNumericDate(now)
   }
+
+  def asToken(secret: SecretKeySpec): String = JsonWebToken.asHmac256Token(this, secret)
+
+  def asJsonWebToken(secret: SecretKeySpec): JsonWebToken = JsonWebToken.parseToken(asToken(secret)).right.get
 
   def toJson: String = Claims.toJson(this)
 
@@ -55,7 +60,7 @@ object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.t
           exp = fld[Long]("exp", 0),
           nbf = fld[Long]("nbf", 0),
           iat = fld[Long]("iat", 0),
-          jti = fld[String]("jti", null),
+          jti = fld[String]("jti", null)
         ))
     }
   }

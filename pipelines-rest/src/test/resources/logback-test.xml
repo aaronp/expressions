@@ -6,7 +6,7 @@
     </appender>
 
     <logger name="pipelines" level="debug" />
-    <logger name="org.apache.kafka" level="warn" />
+    <logger name="pipelines.rest.routes.StaticFileRoutes" level="debug" />
 
     <root level="info">
         <appender-ref ref="STDOUT" />

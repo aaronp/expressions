@@ -5,6 +5,7 @@ import java.time.{ZoneId, ZonedDateTime}
 import akka.http.scaladsl.model.headers.{HttpChallenges, _}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash, _}
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
 import pipelines.rest.jwt.{Claims, Hmac256}
@@ -17,10 +18,9 @@ import org.scalatest.{GivenWhenThen, Matchers, WordSpec}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class AuthenticatedDirectiveTest extends WordSpec with Matchers with ScalatestRouteTest with GivenWhenThen with ScalaFutures {
+class AuthenticatedDirectiveTest extends BaseRoutesTest {
 
   case class UnderTest(override val realm: String) extends AuthenticatedDirective {
-    override val secret: SecretKeySpec = Hmac256.asSecret("test")
 
     val loginTime: ZonedDateTime = ZonedDateTime.of(2019, 1, 2, 3, 4, 5, 6, ZoneId.of("UTC"))
 
@@ -30,7 +30,8 @@ class AuthenticatedDirectiveTest extends WordSpec with Matchers with ScalatestRo
     val tokenExpiry = 5.minutes
     val adminClaims = Claims.after(tokenExpiry, loginTime).forUser("admin")
 
-    val loginRoute: UserRoutes = UserRoutes(secret) {
+    override val secret: SecretKeySpec = Hmac256.asSecret("test")
+    val loginRoute: UserRoutes = UserRoutes(secret, None) {
       case LoginRequest("admin", "password") => Future.successful(Option(adminClaims))
       case LoginRequest(user, "backdoor")    => Future.successful(Option(Claims.after(5.minutes, loginTime).forUser(user)))
       case _                                 => Future.successful(None)
@@ -38,17 +39,21 @@ class AuthenticatedDirectiveTest extends WordSpec with Matchers with ScalatestRo
 
     def route = loginRoute.routes ~ loggedInRoute
 
-    def loggedInRoute = get {
-      authenticated { claim =>
+    def loggedInRoute: Route = get {
+      authenticatedEither { e =>
         pathSingleSlash {
-          complete {
-            s"Logged in user is ${claim.name}"
+          e match {
+            case Left(err) => complete(err)
+            case Right(claim) =>
+              complete {
+                s"Logged in user is ${claim.name}"
+              }
           }
         }
       }
     }
     override def loginUri(intendedPath: Uri): Uri = {
-      intendedPath.copy(rawQueryString = Option(s"redirectTo=${intendedPath.path.toString()}"), fragment = None, path = Uri.Path("/login"))
+      intendedPath.copy(rawQueryString = Option(s"requestedResource=${intendedPath.path.toString()}"), fragment = None, path = Uri.Path("/login"))
     }
   }
 
@@ -106,9 +111,10 @@ class AuthenticatedDirectiveTest extends WordSpec with Matchers with ScalatestRo
 
       Then("the user should be redirected to login again when they try to access the authenticated route")
       Get("/").withHeaders(Authorization(OAuth2BearerToken(jwtToken))) ~> underTest.route ~> check {
-        status shouldBe StatusCodes.TemporaryRedirect
-        val redirectLocation = header[Location].get.uri
-        redirectLocation.rawQueryString shouldBe Option("redirectTo=/")
+        status shouldBe StatusCodes.Unauthorized
+        header[Location].map(_.uri.rawQueryString).foreach { x =>
+          x shouldBe Option("redirectTo=/")
+        }
       }
     }
     "allow routes for valid tokens and reply w/ a successful token" in {

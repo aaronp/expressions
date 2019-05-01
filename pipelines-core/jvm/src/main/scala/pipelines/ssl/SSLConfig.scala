@@ -7,6 +7,7 @@ import java.security.{KeyStore, SecureRandom}
 
 import com.typesafe.config.Config
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import pipelines.Using
 
 import scala.util.Try
 
@@ -27,15 +28,12 @@ class SSLConfig private (pathToCertificate: Path, val keystoreType: String, keys
   }
 
   def withP12Certificate[T](cert: (Array[Char], Array[Byte], InputStream) => T): Try[T] = {
-    val is = Files.newInputStream(pathToCertificate)
-    try {
+    Using(Files.newInputStream(pathToCertificate)) { is =>
       SSLConfig.withArray[Char, Try[T]](keystorePw.toCharArray(), ' ') { ksPassword =>
         SSLConfig.withArray[Byte, Try[T]](serverTlsSeed.getBytes(StandardCharsets.UTF_8), 0: Byte) { seed =>
           Try(cert(ksPassword, seed, is))
         }
       }
-    } finally {
-      is.close()
     }
   }
 }
@@ -43,9 +41,9 @@ class SSLConfig private (pathToCertificate: Path, val keystoreType: String, keys
 object SSLConfig {
   import eie.io._
 
-  def fromRootConfig(rootConfig: Config): SSLConfig = apply(rootConfig.getConfig("pipelines.tls"))
+  def apply(rootConfig: Config): SSLConfig = fromConfig(rootConfig.getConfig("pipelines.tls"))
 
-  def apply(config: Config): SSLConfig = {
+  def fromConfig(config: Config): SSLConfig = {
     apply(
       certPathOpt(config).getOrElse(throw new IllegalStateException(s"'certificate' set to '${certPathString(config)}' does not exist")),
       config.getString("password"),
@@ -66,8 +64,6 @@ object SSLConfig {
 
     val tmf = TrustManagerFactory.getInstance("SunX509")
     tmf.init(ks)
-
-
 
     val ctxt: SSLContext = SSLContext.getInstance("TLS")
     ctxt.init(keyManagerFactory.getKeyManagers, tmf.getTrustManagers, random)

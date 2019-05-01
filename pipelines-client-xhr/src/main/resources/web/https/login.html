@@ -18,10 +18,15 @@
 -->
 <script type="text/javascript" src="js/pipelines-client-xhr-fastopt.js"></script>
 
-Login Please...
+
+<form>
+    User:<br>
+    <input type="text" id="username"><br>
+    Password:<br>
+    <input type="password" id="pwd" onkeyup="loginOnKeyUp('username', 'pwd', event)" >
+</form>
 
 <br/>
-
-<button class="btn">Go...</button>
+<button class="btn" type="button" onclick="login('username', 'pwd')">Login</button>
 </body>
 </html>

@@ -2,11 +2,8 @@ package pipelines
 
 import java.awt.Desktop
 import java.net.URI
-import java.nio.file.Path
 
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.connect.DockerEnv
-import pipelines.rest.ssl.GenCerts
 
 import scala.io.StdIn
 
@@ -16,17 +13,22 @@ import scala.io.StdIn
   */
 object DevMain extends StrictLogging {
 
+  def devArgs: Array[String] =
+    Array("dev.conf", //
+          "pipelines.echoSocket=true", //
+          "generateMissingCerts=true", //
+          "pipelines.tls.certificate=target/certificates/cert.p12" //
+    )
+
   def main(a: Array[String]): Unit = {
 
-    DockerEnv("scripts/kafka").bracket {
-      val opt = rest.Main.runMain(a :+ "dev.conf" :+ "generateMissingCerts=true" :+ "pipelines.tls.certificate=target/certificates/cert.p12")
-      if (opt.nonEmpty) {
-        lazy val dt = Desktop.getDesktop
-        if (Desktop.isDesktopSupported && dt.isSupported(Desktop.Action.BROWSE)) {
-          dt.browse(new URI("https://localhost:80"))
-        }
-        StdIn.readLine("Running dev main - hit any key to stop...")
+    val opt = rest.Main.runMain(a ++: devArgs)
+    if (opt.nonEmpty) {
+      lazy val dt = Desktop.getDesktop
+      if (Desktop.isDesktopSupported && dt.isSupported(Desktop.Action.BROWSE)) {
+        dt.browse(new URI("https://localhost:80"))
       }
+      StdIn.readLine("Running dev main - hit any key to stop...")
     }
     println("Goodbye!")
     sys.exit(0)

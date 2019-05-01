@@ -1,9 +1,9 @@
 package pipelines.client
 
-import pipelines.kafka.{Heartbeat, StreamingFeedRequest}
 import org.scalajs.dom
 import org.scalajs.dom.raw.{MessageEvent, WebSocket}
-
+import pipelines.core.{Heartbeat, StreamingRequest}
+import io.circe.syntax._
 import scala.concurrent.duration._
 
 object KafkaWSClient {
@@ -26,8 +26,7 @@ object KafkaWSClient {
 
     var heartbeatHandle = Option.empty[Int]
     def startHeartbeat() = {
-      import io.circe.syntax._
-      val heartbeat = (Heartbeat: StreamingFeedRequest).asJson.noSpaces
+      val heartbeat = (Heartbeat: StreamingRequest).asJson.noSpaces
       dom.window.setInterval(() => socket.send(heartbeat), hbFrequency.toMillis)
     }
     def stopHeartbeat() = {

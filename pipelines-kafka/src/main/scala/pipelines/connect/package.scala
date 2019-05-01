@@ -5,13 +5,8 @@ import java.util.concurrent.{Executors, ScheduledExecutorService, ThreadFactory}
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
-import monix.reactive.Observable
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import pipelines.eval.EvalReactive.ReaderLookup
-import pipelines.expressions.Expressions
-import pipelines.kafka.QueryRequest
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 package object connect extends LazyLogging {
 
@@ -62,52 +57,4 @@ package object connect extends LazyLogging {
     })
   }
 
-  def formatStream(readerForTopic: ReaderLookup, throttled: Observable[(QueryRequest, ConsumerRecord[String, Bytes])]): Observable[String] = {
-    import io.circe.syntax._
-    throttled
-      .flatMap {
-        case (query, record) =>
-          readerForTopic(query.topic) match {
-            case None => Observable(RecordJson(record, record.key.toString, s"${record.value.length} bytes"))
-            case Some(reader) =>
-              reader.read(record.value) match {
-                case Success(avro: DynamicAvroRecord) =>
-                  val predicate = Expressions.cache(query.filterExpression)
-                  if (predicate(avro.underlyingRecord) == query.filterExpressionIncludeMatches) {
-                    Observable(RecordJson(record, record.key, avro.toString))
-                  } else {
-                    logger.debug(s"Skipping ${record}")
-                    Observable.empty
-                  }
-                case Failure(err) =>
-                  logger.debug(s"Error reading ${record.key} at offset ${record.offset()} : ${err}")
-                  Observable.empty
-              }
-          }
-      }
-      .map(_.asJson.noSpaces)
-  }
-
-  def formatBinaryStream(readerForTopic: ReaderLookup, throttled: Observable[(QueryRequest, ConsumerRecord[String, Bytes])]): Observable[Bytes] = {
-    throttled.flatMap {
-      case (query, record) =>
-        readerForTopic(query.topic) match {
-          case None => Observable(record.value())
-          case Some(reader) =>
-            reader.read(record.value) match {
-              case Success(avro: DynamicAvroRecord) =>
-                val predicate = Expressions.cache(query.filterExpression)
-                if (predicate(avro.underlyingRecord) == query.filterExpressionIncludeMatches) {
-                  Observable(record.value())
-                } else {
-                  logger.debug(s"Skipping ${record}")
-                  Observable.empty
-                }
-              case Failure(err) =>
-                logger.debug(s"Error reading ${record.key} at offset ${record.offset()} : ${err}")
-                Observable.empty
-            }
-        }
-    }
-  }
 }

@@ -1,37 +1,43 @@
 package pipelines.rest.routes
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
+
 import akka.http.scaladsl.server.directives.BasicDirectives.extractUnmatchedPath
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.Main
 
 object StaticFileRoutes {
 
-  def dev(): StaticFileRoutes = {
-    import args4c.implicits._
-    fromRootConfig(Array("dev.conf").asConfig(Main.defaultConfig()).resolve())
-  }
-
-  /** @param topLevelConfig the top-level config, e.g. the result of calling 'ConfigFactory.load()'
+  /** @param rootConfig the top-level config, e.g. the result of calling 'ConfigFactory.load()'
     * @return the StaticFileRoutes
     */
-  def fromRootConfig(topLevelConfig: Config): StaticFileRoutes = {
-    apply(topLevelConfig.getConfig("pipelines.www"))
+  def fromRootConfig(rootConfig: Config): StaticFileRoutes = {
+    val secureSettings = SecureRouteSettings.fromRoot(rootConfig)
+    apply(rootConfig.getConfig("pipelines.www"), secureSettings)
   }
 
   /**
     * @param wwwConfig the relative config which contains the static file route entries
     * @return the StaticFileRoutes
     */
-  def apply(wwwConfig: Config): StaticFileRoutes = {
+  def apply(wwwConfig: Config, secureSettings: SecureRouteSettings): StaticFileRoutes = {
+    import args4c.implicits._
+
+    val resourceMapping: Map[String, Option[String]] = wwwConfig.getConfig("resourceMapping").collectAsMap().map {
+      case (key, value) =>
+        args4c.unquote(key) -> Option(args4c.unquote(value.trim)).filterNot(_.isEmpty)
+    }
+
     new StaticFileRoutes(
       htmlRootDir = wwwConfig.getString("htmlDir"),
       landingPage = wwwConfig.getString("landingPage"),
       jsRootDir = wwwConfig.getString("jsDir"),
-      cssRootDir = wwwConfig.getString("cssDir")
+      cssRootDir = wwwConfig.getString("cssDir"),
+      secureSettings = secureSettings,
+      secureDirs = wwwConfig.asList("securePaths"),
+      resourceMap = resourceMapping
     )
   }
 }
@@ -47,7 +53,14 @@ object StaticFileRoutes {
   * @param jsRootDir   the directory which will serve the /js artifacts
   * @param cssRootDir  the directory which will serve the /css artifacts
   */
-case class StaticFileRoutes(htmlRootDir: String, landingPage: String, jsRootDir: String, cssRootDir: String) extends StrictLogging {
+case class StaticFileRoutes(htmlRootDir: String,
+                            landingPage: String,
+                            jsRootDir: String,
+                            cssRootDir: String,
+                            secureSettings: SecureRouteSettings,
+                            secureDirs: Seq[String],
+                            resourceMap: Map[String, Option[String]])
+    extends StrictLogging {
   require(!htmlRootDir.endsWith("/"), s"htmlRootDir '$htmlRootDir' shouldn't end w/ a forward slash")
   require(!jsRootDir.endsWith("/"), s"jsRootDir '$jsRootDir' shouldn't end w/ a forward slash")
   require(!cssRootDir.endsWith("/"), s"cssRootDir '$cssRootDir' shouldn't end w/ a forward slash")
@@ -56,7 +69,7 @@ case class StaticFileRoutes(htmlRootDir: String, landingPage: String, jsRootDir:
     jsResource ~ cssResource ~ htmlResource
   }
 
-  private def htmlResource = {
+  def htmlResource = {
     get {
       (pathEndOrSingleSlash & redirectToTrailingSlashIfMissing(StatusCodes.TemporaryRedirect)) {
         getFromFile(htmlRootDir + landingPage)
@@ -68,10 +81,17 @@ case class StaticFileRoutes(htmlRootDir: String, landingPage: String, jsRootDir:
 
   private def jsResource: Route = {
     (get & pathPrefix("js")) {
-      extractUnmatchedPath { unmatchedPath =>
-        // TODO - match the unmatchedPath on either pipelines-client-fastopt.js or pipelines-client-xhr-opt.js and
-        logger.debug(s"Serving $unmatchedPath under JS dir ${jsRootDir}")
-        getFromDirectory(jsRootDir)
+      extractUnmatchedPath { unmatchedPath: Uri.Path =>
+        val key: String = unmatchedPath.toString
+        logger.trace(s"Serving '$key' under JS dir ${jsRootDir}")
+        val opt = resourceMap.get(key)
+        opt match {
+          case Some(Some(differentName)) =>
+            logger.trace(s"Mapping $unmatchedPath to '${differentName}' under JS dir ${jsRootDir}")
+            getFromFile(jsRootDir + differentName)
+          case Some(None) => reject
+          case None       => getFromDirectory(jsRootDir)
+        }
       }
     }
   }
@@ -79,7 +99,7 @@ case class StaticFileRoutes(htmlRootDir: String, landingPage: String, jsRootDir:
   private def cssResource = {
     (get & pathPrefix("css")) {
       extractUnmatchedPath { unmatchedPath =>
-        logger.debug(s"Serving $unmatchedPath under CSS dir ${cssRootDir}")
+        logger.trace(s"Serving $unmatchedPath under CSS dir ${cssRootDir}")
         getFromDirectory(cssRootDir)
       }
     }

@@ -4,8 +4,8 @@ import java.nio.file.Path
 
 import eie.io._
 import example._
-import pipelines.DynamicAvroRecord
 import org.scalatest.{Matchers, WordSpec}
+import pipelines.DynamicAvroRecord
 
 import scala.language.dynamics
 import scala.util.{Properties, Success, Try}

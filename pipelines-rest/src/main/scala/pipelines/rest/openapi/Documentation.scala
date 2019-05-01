@@ -2,10 +2,11 @@ package pipelines.rest.openapi
 
 import endpoints.openapi
 import endpoints.openapi.model.{Info, OpenApi}
+import io.circe.Json
 import pipelines.admin._
 import pipelines.core.GenericMessageResult
-import pipelines.kafka.{KafkaEndpoints, KafkaSupportEndpoints, ListTopicsResponse, PartitionData, PublishMessage}
-import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse, UserEndpoints}
+import pipelines.reactive.ContentType
+import pipelines.reactive.repo.{ListRepoSourcesRequest, ListRepoSourcesResponse, ListedDataSource, SourceRepoEndpoints}
 
 object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoints.circe.JsonSchemas {
   implicit def requestSchema: JsonSchema[GenerateServerCertRequest] = JsonSchema(implicitly, implicitly)
@@ -16,29 +17,15 @@ object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoi
   */
 object Documentation //
     extends openapi.Endpoints //
-    with CirceAdapter          //
-    with UserEndpoints         //
-    with KafkaEndpoints        //
-    with KafkaSupportEndpoints //
-    with AdminEndpoints        //
+    with CirceAdapter        //
+    with SourceRepoEndpoints //
+    with AdminEndpoints      //
     with openapi.JsonSchemaEntities {
 
   import OpenApiEncoder.JsonSchema._
 
   val genericResp: Documentation.DocumentedJsonSchema = document(GenericMessageResult("a response message"))
 
-  def userEndpointDocs = {
-    List(
-      loginEndpoint( //
-                    document(LoginRequest("username", "password")), //
-                    document(LoginResponse(true, Option("jwtToken"), Option("redirectTo"))) //
-      ), //
-      createUserEndpoint(
-        document(CreateUserRequest("username", "em@ail.com", "password")), //
-        document(CreateUserResponse(true, Option("jwtToken"))) //
-      )
-    )
-  }
   def adminEndpointDocs: List[Documentation.DocumentedEndpoint] = {
     List(
       generate.generateEndpoint( //
@@ -52,20 +39,18 @@ object Documentation //
     )
   }
 
-  def kafkaEndpointsDocs: List[Documentation.DocumentedEndpoint] = List(
-    listTopics.listTopicsEndpoint(document(ListTopicsResponse(Map("/some/topic" -> Seq(PartitionData(1, "leader")))))),
-    query.pullEndpoint(document(("topic", 1, 2))),
-    stream.streamEndpoint
-  )
-  def kafkaSupportEndpointsDocs: List[Documentation.DocumentedEndpoint] = {
+  def repoEndpoints: List[Documentation.DocumentedEndpoint] = {
+    val optionalType = Option(ContentType.of[Option[Int]])
     List(
-      publish.publishEndpoint(document(PublishMessage("topic", "key", "data")), genericResp),
-      config.configEndpoint(genericResp)
+      sources.list(document(ListRepoSourcesRequest(optionalType))),
+      transforms.list(document(Option("type"))),
+      types.list(document(Seq("a", "b"))),
+      repo.repoEndpoint(document(ListRepoSourcesRequest(optionalType)), document(ListRepoSourcesResponse(Seq(ListedDataSource("source", optionalType)))))
     )
   }
 
-  def documentedEndpoints = {
-    kafkaSupportEndpointsDocs ++ kafkaEndpointsDocs ++ userEndpointDocs ++ adminEndpointDocs
+  def documentedEndpoints: List[Documentation.DocumentedEndpoint] = {
+    repoEndpoints ++ adminEndpointDocs
   }
 
   lazy val api: OpenApi = openApi(

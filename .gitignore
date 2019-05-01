@@ -10,3 +10,5 @@ out
 shared-src
 .vertx/
 *.bak
+.users
+.srl
