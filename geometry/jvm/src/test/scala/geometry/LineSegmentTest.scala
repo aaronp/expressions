@@ -15,7 +15,6 @@ class LineSegmentTest extends WordSpec with Matchers {
       if (actual != expected) {
         expected.foreach { e =>
           val hint = line.ascii('a').merge(e.ascii('e')).toString
-          println(hint)
           withClue(hint) {
             actual shouldBe expected
           }

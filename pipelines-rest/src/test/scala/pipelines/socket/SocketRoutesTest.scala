@@ -3,7 +3,7 @@ package pipelines.socket
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.server.ExpectedWebSocketRequestRejection
 import monix.execution.Scheduler
-import monix.reactive.{Observable, Observer}
+import monix.reactive.Observable
 import pipelines.rest.DevConfig
 import pipelines.rest.jwt.Claims
 import pipelines.rest.routes.BaseRoutesTest
@@ -27,35 +27,25 @@ class SocketRoutesTest extends BaseRoutesTest {
 
       val clientMessages = ListBuffer[AddressedMessage]()
       client.toClientOutput.foreach {
-
-        case am @ AddressedTextMessage(to, msg) =>
-          if (msg.startsWith("echo:")) {
-            println("!!!!!!!!!!!!!client got: " + msg)
-            clientMessages += am
-          } else {
-            println("client got: " + msg)
-          }
-        case msg: AddressedMessage =>
-          println("client ???? got: " + msg)
+        case am @ AddressedTextMessage(_, msg) if msg.startsWith("echo:") =>
+          clientMessages += am
       }(env.ioScheduler)
 
       WS("/sockets/connect", client.akkaFlow) ~> underTest.connectAnySocket(user) ~> check {
         isWebSocketUpgrade shouldEqual true
-        println("checking...")
+
         Observable
-          .interval(500.millis)
-          .foreach { i =>
-            println(s"sending $i")
+          .interval(100.millis)
+          .foreach { _ =>
             client.toServerInput.onNext(AddressedMessage("hello", "there"))
           }(env.ioScheduler)
-        println("ok...")
         eventually {
           clientMessages.size should be > 1
         }
       }
     }
   }
-  "SocketRoutes" ignore {
+  "SocketRoutes" should {
     val socketConnectionRequest = Get("/sockets/connect").withHeaders(Authorization(OAuth2BearerToken(jwt)))
 
     "upgrade a GET request to a WS request for new users" in {

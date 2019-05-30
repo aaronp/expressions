@@ -1,5 +1,6 @@
 package pipelines
 
+import args4c.implicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.client.jvm.PipelinesClient
@@ -9,7 +10,6 @@ import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.concurrent.duration._
 import scala.util.Success
-import args4c.implicits._
 
 class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures {
 
@@ -52,9 +52,6 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
         wsClient.toServerInput.onNext(AddressedMessage("hello", "world"))
 
         implicit val sched = clientEnv.computeScheduler
-        wsClient.toServerOutput.dump("toServerOutput").foreach { x =>
-          println(s"toServerOutput:: $x")
-        }
 
         echoReply.futureValue shouldBe Some("echo: world")
       }
