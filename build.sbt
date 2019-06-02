@@ -185,6 +185,7 @@ lazy val root = (project in file("."))
     pipelinesClientJvm,
     pipelinesDeploy,
     pipelinesEval,
+    pipelinesJson,
     pipelinesKafka,
     expressions,
     expressionsAst,
@@ -387,6 +388,14 @@ lazy val pipelinesKafka = project
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
   .dependsOn(pipelinesEval % "compile->compile;test->test")
 
+lazy val pipelinesJson = project
+  .in(file("pipelines-json"))
+  .settings(name := s"${repo}-json")
+  .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= typesafeConfig :: logging)
+  .settings(libraryDependencies ++= List("com.github.aaronp" %% "donovan" % "0.0.5"))
+  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
+
 lazy val pipelinesEval = project
   .in(file("pipelines-eval"))
   .settings(name := s"${repo}-eval")
@@ -402,6 +411,7 @@ lazy val pipelinesRest = project
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
   .dependsOn(pipelinesClientJvm % "compile->compile;test->test")
   .dependsOn(pipelinesEval % "compile->compile;test->test")
+  .dependsOn(pipelinesJson % "compile->compile;test->test")
   .settings(name := s"${repo}-rest")
   .settings(commonSettings: _*)
   .settings(mainClass in (Compile, run) := Some(Build.MainRestClass))

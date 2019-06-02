@@ -25,17 +25,6 @@ trait RepoTestData extends TestWideScheduler {
   val jsonToStr: Transform  = Transform.jsonToString
   val strToBytes: Transform = Transform.stringToUtf8
 
-  def repo: SourceRepository =
-    SourceRepository("ints" -> ints, "strings" -> strings) //
-      .withTransform("strToBytes", strToBytes) //
-      .withTransform("jsonToStr", jsonToStr) //
-      .withTransform("TestData to json", asJson) //
-      .withTransform("int to TestData", asData) //
-      .withTransform("evens", even) //
-      .withTransform("odds", odd) //
-      .withConfigurableTransform("modFilter", modFilter) //
-      .withTransform("stringToJson", Transform.jsonEncoder[String]) //
-
 }
 
 object RepoTestData {

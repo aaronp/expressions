@@ -4,35 +4,87 @@ import monix.reactive.Observable
 import pipelines.BaseCoreTest
 
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 class TransformTest extends BaseCoreTest with RepoTestData {
 
-  "Transform._1.outputFor" should {
+  "Transform.tries" should {
+    "Transform any Try[T] to a [T]" in {
+      Transform.tries.get.outputFor(ContentType.of[Try[Int]]) shouldBe Some(ContentType.of[Int])
+      Transform.tries.get.outputFor(ContentType.of[Try[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.get.outputFor(ContentType.of[Failure[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.get.outputFor(ContentType.of[Success[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.get.outputFor(ContentType.of[String]) shouldBe None
+      Transform.tries.get.outputFor(ContentType.of[List[String]]) shouldBe None
+
+      import implicits._
+      val data: Observable[Try[Int]] = Observable(Success(1), Success(2), Failure(new Exception("Bang")), Success(4))
+      val Some(getSource)            = Transform.tries.get.applyTo(data.asDataSource())
+      getSource.contentType shouldBe ContentType.of[Int]
+      getSource.asObservable.take(2).toListL.runSyncUnsafe(testTimeout) shouldBe List(1, 2)
+      val err = intercept[Exception] {
+        getSource.asObservable.take(3).toListL.runSyncUnsafe(testTimeout)
+      }
+      err.getMessage shouldBe "Bang"
+    }
+  }
+  "Transform.tries.successes" should {
+    "Transform any Failure[T] to T" in {
+      Transform.tries.successes.outputFor(ContentType.of[Try[Try[Int]]]) shouldBe Some(ContentType.of[Try[Int]])
+      Transform.tries.successes.outputFor(ContentType.of[Try[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.successes.outputFor(ContentType.of[Failure[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.successes.outputFor(ContentType.of[Success[String]]) shouldBe Some(ContentType.of[String])
+      Transform.tries.successes.outputFor(ContentType.of[String]) shouldBe None
+
+      import implicits._
+      val expected                   = new Exception("Bang")
+      val data: Observable[Try[Int]] = Observable(Success(1), Success(2), Failure(expected), Success(4))
+      val Some(getSource)            = Transform.tries.successes.applyTo(data.asDataSource())
+      getSource.contentType shouldBe ContentType.of[Int]
+      getSource.asObservable.take(3).toListL.runSyncUnsafe(testTimeout) shouldBe List(1, 2, 4)
+    }
+  }
+  "Transform.tries.failures" should {
+    "Transform any Failure[T] to an [Exception]" in {
+      Transform.tries.failures.outputFor(ContentType.of[Try[String]]) shouldBe Some(ContentType.of[Throwable])
+      Transform.tries.failures.outputFor(ContentType.of[Failure[String]]) shouldBe Some(ContentType.of[Throwable])
+      Transform.tries.failures.outputFor(ContentType.of[Success[String]]) shouldBe Some(ContentType.of[Throwable])
+      Transform.tries.failures.outputFor(ContentType.of[String]) shouldBe None
+
+      import implicits._
+      val expected                   = new Exception("Bang")
+      val data: Observable[Try[Int]] = Observable(Success(1), Success(2), Failure(expected), Success(4))
+      val Some(getSource)            = Transform.tries.failures.applyTo(data.asDataSource())
+      getSource.contentType shouldBe ContentType.of[Throwable]
+      getSource.asObservable.take(1).toListL.runSyncUnsafe(testTimeout) shouldBe List(expected)
+    }
+  }
+  "Transform.tuples._1.outputFor" should {
     "produce the type of the first tuple element" in {
-      Transform._1.outputFor(ContentType.of[Int]) shouldBe None
-      Transform._1.outputFor(ContentType.of[String]) shouldBe None
-      Transform._1.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[String])
-      Transform._1.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
-      Transform._1.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Double])
+      Transform.tuples._1.outputFor(ContentType.of[Int]) shouldBe None
+      Transform.tuples._1.outputFor(ContentType.of[String]) shouldBe None
+      Transform.tuples._1.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[String])
+      Transform.tuples._1.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
+      Transform.tuples._1.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Double])
     }
   }
-  "Transform._2.outputFor" should {
+  "Transform.tuples._2.outputFor" should {
     "produce the type of the second tuple element" in {
-      Transform._2.outputFor(ContentType.of[Int]) shouldBe None
-      Transform._2.outputFor(ContentType.of[String]) shouldBe None
-      Transform._2.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[Array[Byte]])
-      Transform._2.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
-      Transform._2.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
+      Transform.tuples._2.outputFor(ContentType.of[Int]) shouldBe None
+      Transform.tuples._2.outputFor(ContentType.of[String]) shouldBe None
+      Transform.tuples._2.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[Array[Byte]])
+      Transform.tuples._2.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
+      Transform.tuples._2.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
     }
   }
-  "Transform._3.outputFor" should {
+  "Transform.tuples._3.outputFor" should {
     "produce the type of the third tuple element" in {
-      Transform._3.outputFor(ContentType.of[Int]) shouldBe None
-      Transform._3.outputFor(ContentType.of[String]) shouldBe None
-      Transform._3.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe None
-      Transform._3.outputFor(ContentType.of[(String, Array[Byte], Int)]) shouldBe Some(ContentType.of[Int])
-      Transform._3.outputFor(ContentType.of[(Int, String, BigDecimal)]) shouldBe Some(ContentType.of[BigDecimal])
-      Transform._3.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
+      Transform.tuples._3.outputFor(ContentType.of[Int]) shouldBe None
+      Transform.tuples._3.outputFor(ContentType.of[String]) shouldBe None
+      Transform.tuples._3.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe None
+      Transform.tuples._3.outputFor(ContentType.of[(String, Array[Byte], Int)]) shouldBe Some(ContentType.of[Int])
+      Transform.tuples._3.outputFor(ContentType.of[(Int, String, BigDecimal)]) shouldBe Some(ContentType.of[BigDecimal])
+      Transform.tuples._3.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
     }
   }
   "Transform.map" should {
@@ -57,10 +109,10 @@ class TransformTest extends BaseCoreTest with RepoTestData {
 
       val Some(stringAndByteArrayData) = stringToTuple.applyTo(strings)
 
-      val Some(stringsAgain) = Transform._1.applyTo(stringAndByteArrayData)
+      val Some(stringsAgain) = Transform.tuples._1.applyTo(stringAndByteArrayData)
       stringToTuple.appliesTo(stringsAgain) shouldBe true
 
-      val Some(bytes) = Transform._2.applyTo(stringAndByteArrayData)
+      val Some(bytes) = Transform.tuples._2.applyTo(stringAndByteArrayData)
       stringToTuple.appliesTo(bytes) shouldBe false
     }
   }

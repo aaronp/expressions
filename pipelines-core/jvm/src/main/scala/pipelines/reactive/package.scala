@@ -3,6 +3,15 @@ package pipelines
 import monix.execution.Scheduler
 
 package object reactive {
+
+  /** The metadata key to identify a unique source id
+    */
+  val UniqueSourceId = "sourceId"
+
+  /** The metadata key to identify a unique sink id
+    */
+  val UniqueSinkId = "sinkId"
+
   type NewSource = Scheduler => DataSource
   def NewSource(data: DataSource): NewSource                = (_: Scheduler) => data
   def NewSource(create: Scheduler => DataSource): NewSource = create

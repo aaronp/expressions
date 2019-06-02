@@ -34,7 +34,7 @@ object Transform {
   def defaultTransforms(): Map[String, Transform] = {
     Map[String, Transform]("Json to String"             -> jsonToString, //
                            "String to UTF-8 byte array" -> stringToUtf8, //
-                           "parse String as Try[Json]"  -> stringToJson //
+                           "parse String as Try[Json]"  -> stringToJson  //
     )
   }
 
@@ -53,6 +53,7 @@ object Transform {
   import scala.reflect.runtime.universe.TypeTag
 
   case class FixedTransform[A, B](fromType: ContentType, toType: ContentType, apply: (Observable[A] => Observable[B])) extends Transform {
+    override def toString: String = s"$fromType -> $toType"
     override def applyTo(obs: DataSource): Option[DataSource] = {
       obs.data(fromType).map { obs =>
         val changed = apply(obs.asInstanceOf[Observable[A]])
@@ -70,6 +71,7 @@ object Transform {
   }
 
   case class FunctionTransform(calcOutput: ContentType => Option[ContentType], apply: DataSource => Option[DataSource]) extends Transform {
+    override def toString: String                                   = "partial transform"
     override def outputFor(input: ContentType): Option[ContentType] = calcOutput(input)
     override def applyTo(d8a: DataSource): Option[DataSource] = {
       apply(d8a)
@@ -135,10 +137,70 @@ object Transform {
     case Failure(x) => Observable.raiseError(x)
   }
 
+  object tries {
+    object TryType {
+      def unapply(contentType: ContentType) = {
+        contentType match {
+          case ClassType("Try", t1 +: _)     => Some(t1)
+          case ClassType("Success", t1 +: _) => Some(t1)
+          case ClassType("Failure", t1 +: _) => Some(t1)
+          case _                             => None
+        }
+      }
+    }
+    def get: Transform = {
+      partial {
+        case tries.TryType(t1) => t1
+      }.using { d8a =>
+        d8a.contentType match {
+          case tries.TryType(t1) =>
+            d8a.data(d8a.contentType).map { obs =>
+              t1 -> obs.map {
+                case Success(ok)  => ok
+                case Failure(err) => throw err
+              }
+            }
+          case _ => None
+        }
+      }
+    }
+    def successes: Transform = {
+      partial {
+        case tries.TryType(t1) => t1
+      }.using { d8a =>
+        d8a.contentType match {
+          case tries.TryType(t1) =>
+            d8a.data(d8a.contentType).map { obs =>
+              t1 -> obs.collect {
+                case Success(ok) => ok
+              }
+            }
+          case _ => None
+        }
+      }
+    }
+    def failures: Transform = {
+      val errType = ContentType.of[Throwable]
+      partial {
+        case tries.TryType(_) => errType
+      }.using { d8a =>
+        d8a.contentType match {
+          case tries.TryType(_) =>
+            d8a.data(d8a.contentType).map { obs =>
+              errType -> obs.collect {
+                case Failure(err) => err
+              }
+            }
+          case _ => None
+        }
+      }
+    }
+  }
+
   object tuples {
     private val TupleR = "Tuple(\\d+)".r
 
-    object Tuple1Type {
+    private object Tuple1Type {
       def unapply(contentType: ContentType) = {
         contentType match {
           case ClassType(TupleR(_), t1 +: _) => Some(t1)
@@ -146,7 +208,7 @@ object Transform {
         }
       }
     }
-    object Tuple2Type {
+    private object Tuple2Type {
       def unapply(contentType: ContentType) = {
         contentType match {
           case ClassType(TupleR(_), _ +: t2 +: _) => Some(t2)
@@ -154,7 +216,7 @@ object Transform {
         }
       }
     }
-    object Tuple3Type {
+    private object Tuple3Type {
       def unapply(contentType: ContentType) = {
         contentType match {
           case ClassType(TupleR(_), _ +: _ +: t3 +: _) => Some(t3)
@@ -162,7 +224,7 @@ object Transform {
         }
       }
     }
-    object Tuple4Type {
+    private object Tuple4Type {
       def unapply(contentType: ContentType) = {
         contentType match {
           case ClassType(TupleR(_), _ +: _ +: _ +: t4 +: _) => Some(t4)
@@ -178,48 +240,49 @@ object Transform {
         }
       }
     }
-  }
-  def _1: Transform = {
-    partial {
-      case tuples.Tuple1Type(t1) => t1
-    }.using { d8a =>
-      d8a.contentType match {
-        case tuples.Tuple1Type(t1) => d8a.data(t1).map(t1 -> _)
-        case _                     => None
-      }
-    }
-  }
-  def _2: Transform = {
-    partial {
-      case tuples.Tuple2Type(t2) => t2
-    }.using { d8a =>
-      d8a.contentType match {
-        case tuples.Tuple2Type(t2) => d8a.data(t2).map(t2 -> _)
-        case _                     => None
-      }
-    }
-  }
 
-  def _3: Transform = {
-    partial {
-      case tuples.Tuple3Type(t3) => t3
-    }.using {
-      case d8a =>
+    def _1: Transform = {
+      partial {
+        case tuples.Tuple1Type(t1) => t1
+      }.using { d8a =>
         d8a.contentType match {
-          case tuples.Tuple3Type(t3) => d8a.data(t3).map(t3 -> _)
+          case tuples.Tuple1Type(t1) => d8a.data(t1).map(t1 -> _)
           case _                     => None
         }
+      }
     }
-  }
-  def _4: Transform = {
-    partial {
-      case tuples.Tuple4Type(t4) => t4
-    }.using {
-      case d8a =>
+    def _2: Transform = {
+      partial {
+        case tuples.Tuple2Type(t2) => t2
+      }.using { d8a =>
         d8a.contentType match {
-          case tuples.Tuple4Type(t4) => d8a.data(t4).map(t4 -> _)
+          case tuples.Tuple2Type(t2) => d8a.data(t2).map(t2 -> _)
           case _                     => None
         }
+      }
+    }
+
+    def _3: Transform = {
+      partial {
+        case tuples.Tuple3Type(t3) => t3
+      }.using {
+        case d8a =>
+          d8a.contentType match {
+            case tuples.Tuple3Type(t3) => d8a.data(t3).map(t3 -> _)
+            case _                     => None
+          }
+      }
+    }
+    def _4: Transform = {
+      partial {
+        case tuples.Tuple4Type(t4) => t4
+      }.using {
+        case d8a =>
+          d8a.contentType match {
+            case tuples.Tuple4Type(t4) => d8a.data(t4).map(t4 -> _)
+            case _                     => None
+          }
+      }
     }
   }
 }
