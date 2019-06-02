@@ -1,8 +1,11 @@
 package pipelines.client.jvm
 
+import java.net.InetAddress
+
 import com.softwaremill.sttp
 import com.softwaremill.sttp.{SttpBackend, TryHttpURLConnectionBackend}
 import com.typesafe.config.Config
+import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.{HttpsURLConnection, SSLContext}
 import pipelines.admin.LoginEndpoints
 import pipelines.reactive.repo.SourceRepoEndpoints
@@ -46,11 +49,20 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
 
 }
 
-object PipelinesClient {
+object PipelinesClient extends StrictLogging {
 
   def apply(rootConfig: Config): Try[PipelinesClient[Try]] = {
     SSLConfig(rootConfig).newContext.map { ctxt: SSLContext =>
-      val hostPort = rootConfig.getString("pipelines.client.hostport")
+      val hostPort = {
+        val value = rootConfig.getString("pipelines.client.hostport")
+        if (value.contains("localhost")) {
+          val replaced = value.replaceAllLiterally("localhost", InetAddress.getLocalHost.getHostAddress)
+          replaced
+        } else {
+          value
+        }
+      }
+
       forHost(s"https://$hostPort", Option(ctxt))
     }
   }
@@ -63,6 +75,9 @@ object PipelinesClient {
         }
       case _ =>
     })
+
+    logger.info(s"Connecting to $host")
+
     apply[Try](host, sslContext)(backend)
   }
 

@@ -106,6 +106,9 @@ subjectAltName = @alt_names
 DNS.1 = ${DNS_NAME}
 DNS.2 = localhost
 EOF
+
+       echo "CRT_DETAILS_FILE '$CRT_DETAILS_FILE' is"
+       cat "${CRT_DETAILS_FILE}"
 	else
         echo "$INFO CRT_DETAILS_FILE ${CRT_DETAILS_FILE} already exists"
 	fi

@@ -48,16 +48,4 @@ trait SourceRepoEndpoints extends BaseEndpoint {
     def list(resp: JsonResponse[ListTransformationResponse]): Endpoint[Option[String], ListTransformationResponse] = endpoint(request, response(resp))
   }
 
-  /** handle a generic repo request
-    * POST /repo
-    */
-  object repo {
-    def request(implicit jsonRepoRequest: JsonRequest[RepoRequest]): Request[RepoRequest] =
-      post(path / "repo", jsonRequest[RepoRequest](Option("Handles a repo request"))(jsonRepoRequest))
-
-    def response(implicit resp: JsonResponse[RepoResponse]): Response[RepoResponse] =
-      jsonResponse[RepoResponse](Option("the repo response"))(resp)
-
-    def repoEndpoint(implicit req: JsonRequest[RepoRequest], resp: JsonResponse[RepoResponse]): Endpoint[RepoRequest, RepoResponse] = endpoint(request(req), response)
-  }
 }

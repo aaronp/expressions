@@ -18,7 +18,7 @@ final class WrappedPublisher[A](prefix: String, publisher: Publisher[A]) extends
 
 object WrappedPublisher extends StrictLogging {
   private def info(msg: String) = {
-    logger.info(s"\n$msg\n")
+    logger.debug(s"\n$msg\n")
   }
   class WrappedSubscription(prefix: String, s: Subscription) extends Subscription {
     override def request(n: Long): Unit = {

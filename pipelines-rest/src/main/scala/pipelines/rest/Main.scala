@@ -1,5 +1,6 @@
 package pipelines.rest
 
+import java.net.InetAddress
 import java.nio.file.Path
 
 import args4c.ConfigApp
@@ -49,8 +50,11 @@ object Main extends ConfigApp with StrictLogging {
       logger.info(s"${certFile} doesn't exist, creating it")
       val dir = Option(certFile.getParent).getOrElse(".".asPath)
 
-      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, "localhost", password, password, password)
-      logger.info(s"created ${certPath}:\n\n${buffer.allOutput}\n\n")
+//      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, "localhost", password, password, password)
+      val localhost = InetAddress.getLocalHost.getHostAddress
+
+      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, localhost, password, password, password)
+      logger.info(s"created ${certPath} for $localhost:\n\n${buffer.allOutput}\n\n")
       require(resValue == 0, s"Gen cert script exited w/ non-zero value $resValue")
     } else {
       logger.info("dev cert exists, cracking on...")

@@ -28,7 +28,7 @@ ADD boot.sh /app/boot.sh
 # https://serverfault.com/questions/772227/chmod-not-working-correctly-in-docker
 # RUN chmod +x /app/scripts/*.sh
 
-ADD scripts/ /app/scripts
+#ADD scripts/ /app/scripts
 
 RUN chmod 700 /app/boot.sh
 WORKDIR /app

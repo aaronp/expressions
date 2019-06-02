@@ -23,7 +23,7 @@ trait ConfigurableTransform[A] {
     */
   def update(config: A): Transform
 
-  def updateFromJson(config: Json) = {
+  def updateFromJson(config: Json): Try[Transform] = {
     val tri: Try[A] = jsonDecoder.decodeJson(config).toTry
     tri.map { c =>
       update(c)

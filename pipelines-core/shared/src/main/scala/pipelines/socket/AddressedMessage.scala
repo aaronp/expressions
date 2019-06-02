@@ -36,12 +36,12 @@ object AddressedMessage {
   def apply(to: String, text: String)      = new AddressedTextMessage(to, text)
   def apply(to: String, data: Array[Byte]) = new AddressedBinaryMessage(to, data)
 
-  implicit val encodeEvent: Encoder[AddressedMessage] = Encoder.instance {
-    case enrichment @ AddressedTextMessage(_, _)   => enrichment.asJson
-    case enrichment @ AddressedBinaryMessage(_, _) => enrichment.asJson
+  implicit val encoder: Encoder[AddressedMessage] = Encoder.instance {
+    case msg @ AddressedTextMessage(_, _)   => msg.asJson
+    case msg @ AddressedBinaryMessage(_, _) => msg.asJson
   }
 
-  implicit val decodeEvent: Decoder[AddressedMessage] =
+  implicit val decoder: Decoder[AddressedMessage] =
     List[Decoder[AddressedMessage]](
       Decoder[AddressedBinaryMessage].widen,
       Decoder[AddressedTextMessage].widen

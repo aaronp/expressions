@@ -109,7 +109,6 @@ object ListTransformationResponse {
 /**
   *  LIST SINKS
   */
-//case class ListSinkRequest(inputContentType: Option[ContentType]) extends DataRequest
 case class ListSinkRequest() extends RepoRequest
 object ListSinkRequest {
   implicit val encoder: ObjectEncoder[ListSinkRequest] = deriveEncoder[ListSinkRequest]

@@ -13,16 +13,16 @@ case class SourceRepoRoutes(repository: SourceRepository, secureSettings: Secure
     with BaseCirceRoutes {
 
   def listSourcesRoute: Route = {
-    val wtfb = implicitly[JsonResponse[ListRepoSourcesResponse]]
-    sources.list(wtfb).implementedBy { contentTypeOpt =>
+    val wtf = implicitly[JsonResponse[ListRepoSourcesResponse]]
+    sources.list(wtf).implementedBy { contentTypeOpt =>
       val request = ListRepoSourcesRequest(contentTypeOpt.map(ContentType.apply))
       repository.listSources(request)
     }
   }
 
   def listTransformsRoute: Route = {
-    val wtfb = implicitly[JsonResponse[ListTransformationResponse]]
-    transforms.list(wtfb).implementedBy { contentTypeOpt =>
+    val wtf = implicitly[JsonResponse[ListTransformationResponse]]
+    transforms.list(wtf).implementedBy { contentTypeOpt =>
       val request = ListTransformationRequest(contentTypeOpt.map(ContentType.apply))
       repository.listTransforms(request)
     }
@@ -40,10 +40,8 @@ case class SourceRepoRoutes(repository: SourceRepository, secureSettings: Secure
     }
   }
 
-  def handleRepoRequestRoute: Route = repo.repoEndpoint.implementedBy(repository.handle)
-
   def routes: Route = {
 
-    handleRepoRequestRoute ~ listSourcesRoute ~ listTransformsRoute ~ listTypesRoute
+    listSourcesRoute ~ listTransformsRoute ~ listTypesRoute
   }
 }

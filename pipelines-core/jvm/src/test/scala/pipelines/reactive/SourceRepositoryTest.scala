@@ -1,7 +1,6 @@
 package pipelines.reactive
 
 import pipelines.BaseCoreTest
-import pipelines.reactive.chain.CreateChainRequest
 import pipelines.reactive.repo.{DataTransform, ListRepoSourcesRequest, ListSinkRequest, ListedDataSource, ListedSink}
 
 class SourceRepositoryTest extends BaseCoreTest with RepoTestData {

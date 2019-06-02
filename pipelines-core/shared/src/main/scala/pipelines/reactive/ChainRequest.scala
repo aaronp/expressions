@@ -1,4 +1,4 @@
-package pipelines.reactive.chain
+package pipelines.reactive
 
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, ObjectEncoder}

@@ -2,36 +2,40 @@ package pipelines.reactive
 
 import monix.execution.Scheduler
 import pipelines.reactive.Transform.{FixedTransform, FunctionTransform}
-import pipelines.reactive.chain.CreateChainRequest
-import pipelines.reactive.repo.{
-  CreateRepoSourceRequest,
-  DataTransform,
-  ListRepoSourcesRequest,
-  ListRepoSourcesResponse,
-  ListSinkRequest,
-  ListSinkResponse,
-  ListTransformationRequest,
-  ListTransformationResponse,
-  ListedDataSource,
-  ListedSink,
-  ListedTransformation,
-  RepoRequest,
-  RepoResponse
-}
+import pipelines.reactive.repo._
 
-import scala.collection.GenTraversableOnce
 import scala.util.{Failure, Success, Try}
 
 /**
   * Represents a repository of sources, sinks, and data transformations which can be used to construct
   * data pipelines by reference
   */
-case class SourceRepository(sourcesByName: Map[String, NewSource], //
-                            sinksByName: Map[String, Kitchen], //
+case class SourceRepository(sourcesByName: Map[String, NewSource],                               //
+                            sinksByName: Map[String, DataSink],                                  //
                             configurableTransformsByName: Map[String, ConfigurableTransform[_]], //
                             transformsByName: Map[String, Transform])(implicit scheduler: Scheduler) {
+  def addSource(name: String, dataSource: DataSource): Option[SourceRepository] = {
+    addSource(name, NewSource(dataSource))
+  }
 
-  lazy val sourceTypes = listSources(ListRepoSourcesRequest(None)).sources.flatMap(_.contentType).distinct
+  def addSource(name: String, dataSource: NewSource): Option[SourceRepository] = {
+    if (sourcesByName.contains(name)) {
+      Option(copy(sourcesByName = sourcesByName.updated(name, dataSource)))
+    } else {
+      None
+    }
+  }
+
+  def removeSource(name: String): Option[SourceRepository] = {
+    if (sourcesByName.contains(name)) {
+      val removed: Map[String, NewSource] = sourcesByName - name
+      Option(copy(sourcesByName = removed))
+    } else {
+      None
+    }
+  }
+
+  private lazy val sourceTypes = listSources(ListRepoSourcesRequest(None)).sources.flatMap(_.contentType).distinct
 
   def transformTypesForInput(inputType: ContentType): Iterable[ContentType] = {
     transformsByName.values.flatMap {
@@ -45,21 +49,13 @@ case class SourceRepository(sourcesByName: Map[String, NewSource], //
     (sourceTypes ++ transformTypes).distinct
   }
 
-  def handle(input: RepoRequest): RepoResponse = {
-    input match {
-      case request @ CreateRepoSourceRequest(_, _, _) => ???
-      case request @ ListRepoSourcesRequest(_)        => listSources(request)
-      case request @ ListTransformationRequest(_)     => listTransforms(request)
-      case request @ ListSinkRequest()                => listSinks(request)
-    }
-  }
   def withTransform(name: String, transform: Transform): SourceRepository = {
     copy(transformsByName = transformsByName.updated(name, transform))
   }
   def withConfigurableTransform(name: String, transform: ConfigurableTransform[_]): SourceRepository = {
     copy(configurableTransformsByName = configurableTransformsByName.updated(name, transform))
   }
-  def withSink(name: String, sink: Kitchen): SourceRepository = {
+  def withSink(name: String, sink: DataSink): SourceRepository = {
     copy(sinksByName = sinksByName.updated(name, sink))
   }
 
@@ -190,6 +186,10 @@ case class SourceRepository(sourcesByName: Map[String, NewSource], //
     case (key, d8a) => ListedDataSource(key, Option(d8a(scheduler).contentType))
   }
 
+  final def listSources(ofType: Option[ContentType] = None): ListRepoSourcesResponse = {
+    listSources(ListRepoSourcesRequest(ofType))
+  }
+
   def listSources(request: ListRepoSourcesRequest): ListRepoSourcesResponse = {
     val sources = request.ofType.fold(allSources) { accepts =>
       sourcesByName.collect {
@@ -204,7 +204,7 @@ object SourceRepository {
 
   def apply(sourcesByName: (String, NewSource)*)(implicit scheduler: Scheduler): SourceRepository = {
     val sourceMap = sourcesByName.toMap.ensuring(_.size == sourcesByName.size)
-    val sinkMap   = Map("sink" -> Kitchen())
+    val sinkMap   = Map("sink" -> DataSink())
     apply(sourceMap, sinkMap, Map.empty[String, ConfigurableTransform[_]], Map.empty[String, Transform])
   }
 
@@ -214,5 +214,4 @@ object SourceRepository {
     }
     apply(newSources: _*)
   }
-
 }
