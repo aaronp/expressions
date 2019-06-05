@@ -7,11 +7,11 @@ import com.softwaremill.sttp.{SttpBackend, TryHttpURLConnectionBackend}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.{HttpsURLConnection, SSLContext}
-import pipelines.admin.LoginEndpoints
+import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.SourceRepoEndpoints
 import pipelines.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
-import pipelines.users.{LoginRequest, LoginResponse}
+import pipelines.users.{LoginEndpoints, LoginRequest, LoginResponse}
 
 import scala.util.{Failure, Success, Try}
 
@@ -22,6 +22,7 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with endpoints.sttp.client.JsonEntitiesFromCodec[R]
     with LoginEndpoints
     with SocketEndpoint
+    with PushEndpoints
     with SourceRepoEndpoints {
 
   implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)
@@ -55,12 +56,12 @@ object PipelinesClient extends StrictLogging {
     SSLConfig(rootConfig).newContext.map { ctxt: SSLContext =>
       val hostPort = {
         val value = rootConfig.getString("pipelines.client.hostport")
-        if (value.contains("localhost")) {
-          val replaced = value.replaceAllLiterally("localhost", InetAddress.getLocalHost.getHostAddress)
-          replaced
-        } else {
-          value
-        }
+//        if (value.contains("localhost")) {
+//          value.replaceAllLiterally("localhost", InetAddress.getLocalHost.getHostAddress)
+//        } else {
+//          value
+//        }
+        value
       }
 
       forHost(s"https://$hostPort", Option(ctxt))

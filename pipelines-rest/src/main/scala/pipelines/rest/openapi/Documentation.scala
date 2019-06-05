@@ -2,7 +2,6 @@ package pipelines.rest.openapi
 
 import endpoints.openapi
 import endpoints.openapi.model.{Info, OpenApi}
-import io.circe.Json
 import pipelines.admin._
 import pipelines.core.GenericMessageResult
 import pipelines.reactive.ContentType
@@ -44,8 +43,8 @@ object Documentation //
     List(
       sources.list(document(ListRepoSourcesRequest(optionalType))),
       transforms.list(document(Option("type"))),
-      types.list(document(Seq("a", "b"))),
-      repo.repoEndpoint(document(ListRepoSourcesRequest(optionalType)), document(ListRepoSourcesResponse(Seq(ListedDataSource("source", optionalType)))))
+      types.list(document(Seq("a", "b")))
+      //, repo.repoEndpoint(document(ListRepoSourcesRequest(optionalType)), document(ListRepoSourcesResponse(Seq(ListedDataSource("source", optionalType)))))
     )
   }
 

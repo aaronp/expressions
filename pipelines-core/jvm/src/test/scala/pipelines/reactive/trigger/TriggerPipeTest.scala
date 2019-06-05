@@ -1,6 +1,7 @@
 package pipelines.reactive.trigger
 
 import monix.execution.Ack
+import monix.reactive.subjects.Var
 import monix.reactive.{Consumer, Observable}
 import pipelines.reactive.DataSink.syntax._
 import pipelines.reactive.DataSource.syntax._
@@ -12,16 +13,53 @@ import scala.collection.mutable.ListBuffer
 class TriggerPipeTest extends BaseCoreTest {
 
   "TriggerPipe" should {
+    "match sources with sinks when a new trigger is added" in {
+      WithScheduler { implicit sched =>
+        val ignoredConsumer = Consumer
+          .foreach[Any] { _ =>
+            }
+          .asDataSink("user" -> "foo")
+
+        val (sources, sinks, pipe)                         = TriggerPipe.create(sched)
+        val ref: Var[Option[(TriggerState, TriggerEvent)]] = Var(Option.empty[(TriggerState, TriggerEvent)])
+        pipe.output.foreach { event: (TriggerState, TriggerEvent) =>
+          println(event)
+          ref := Option(event)
+        }
+
+        val (s1, _) = sources.add(Observable.fromIterable(List(1, 2, 3)).asDataSource("topic" -> "test"))
+        eventually {
+          ref() should not be (empty)
+        }
+        sinks.add(ignoredConsumer)
+
+        eventually {
+          val Some((state, _)) = ref()
+          state.sources should not be (empty)
+          state.sinks should not be (empty)
+        }
+
+        pipe.triggerMatch(sourceCriteria = MetadataCriteria("topic" -> "test"), sinkCriteria = MetadataCriteria("user" -> "foo"))
+
+        val matchEvent = eventually {
+          val Some((_, ok: PipelineMatch)) = ref()
+          ok
+        }
+        matchEvent.source shouldBe s1
+
+      }
+
+    }
     "match sources with sinks" in {
       WithScheduler { implicit sched =>
         Given("Two sources with different metadata")
-        val sources: Sources     = Sources(sched)
-        val (firstDataSouce, _)  = sources.add(Observable.fromIterable(List(1, 2, 3)).asDataSource("topic" -> "first"))
-        val (secondDataSouce, _) = sources.add(Observable.fromIterable(List(4, 5, 6)).asDataSource("topic" -> "second"))
+        val sources: Sources      = Sources(sched)
+        val (firstDataSource, _)  = sources.add(Observable.fromIterable(List(1, 2, 3)).asDataSource("topic" -> "first"))
+        val (secondDataSource, _) = sources.add(Observable.fromIterable(List(4, 5, 6)).asDataSource("topic" -> "second"))
 
-        firstDataSouce.metadata(UniqueSourceId) should not be (secondDataSouce.metadata(UniqueSourceId))
-        firstDataSouce.metadata("topic") shouldBe ("first")
-        secondDataSouce.metadata("topic") shouldBe ("second")
+        firstDataSource.metadata("id") should not be (secondDataSource.metadata("id"))
+        firstDataSource.metadata("topic") shouldBe ("first")
+        secondDataSource.metadata("topic") shouldBe ("second")
 
         When("We connect a trigger to the sources")
         val driver    = TriggerPipe()
@@ -35,7 +73,7 @@ class TriggerPipeTest extends BaseCoreTest {
         driver.output.foreach { next =>
           received2 += next
         }
-        driver.subscribeToSources(sources.sources)
+        driver.subscribeToSources(sources.events)
 
         Then("We should observe two UnmatchedSource events")
         eventually {
@@ -59,7 +97,7 @@ class TriggerPipeTest extends BaseCoreTest {
 
         When("A trigger is added which will match a source and sink with our transform")
         val trigger = Trigger(MetadataCriteria("topic" -> "first"), MetadataCriteria("sink" -> "match me!"), Seq("double"))
-        driver.addTrigger(trigger, false) shouldBe Ack.Continue
+        driver.addTrigger(trigger, true) shouldBe Ack.Continue
 
         Then("We should see a trigger added event")
         eventually {
@@ -73,7 +111,7 @@ class TriggerPipeTest extends BaseCoreTest {
         //
         When("We our trigger events listens to some sinks")
         val sinks = Sinks(sched)
-        driver.subscribeToSinks(sinks.sinks)
+        driver.subscribeToSinks(sinks.events)
 
         val unmatchedList = ListBuffer[Any]()
         val ignoredConsumer = Consumer.foreach[Any] { n =>

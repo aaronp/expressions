@@ -7,7 +7,6 @@ import pipelines.reactive.{MetadataCriteria, Transform}
 class PipelineMatchTest extends WordSpec with Matchers {
 
   "UniquePipelineMatch" should {
-    "compose" in {
-    }
+    "compose" in {}
   }
 }

@@ -12,7 +12,7 @@ abstract class BaseCoreTest extends WordSpec with Matchers with Eventually with 
 
   def withScheduler[A](f: Scheduler => A): A = WithScheduler(f)
 
-  def testTimeout: FiniteDuration = 2.seconds
+  def testTimeout: FiniteDuration = 3.seconds
 
   def asJson(id: Int): Json = Json.obj("id" -> Json.fromInt(id), "name" -> Json.fromString(s"name-$id"))
 

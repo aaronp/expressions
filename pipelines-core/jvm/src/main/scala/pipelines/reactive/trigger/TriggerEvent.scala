@@ -21,6 +21,16 @@ case class PipelineMatch(source: DataSource, transforms: Seq[Transform], sink: D
     chainedSourceOpt.exists(_.contentType.matches(sink.contentType))
   }
 }
+
+case object NoOpTriggerEvent extends TriggerEvent
+
+/**
+  * A new trigger matches multiple sources and sinks
+  *
+  * @param matches
+  */
+case class TriggerMatches(matches: Seq[PipelineMatch]) extends TriggerEvent
+
 case class MatchedSourceWithManySinks(dataSource: DataSource, transforms: Seq[Transform], sinks: Seq[DataSink]) extends TriggerEvent
 case class MatchedSinkWithManySources(dataSources: Seq[DataSource], transforms: Seq[Transform], sink: DataSink) extends TriggerEvent
 
@@ -33,6 +43,7 @@ case class TransformAlreadyExists(name: String, existing: Transform, attemptedTr
 sealed trait MismatchedMatch                                                                                               extends TriggerEvent
 case class UnmatchedSource(dataSource: DataSource, availableTriggers: Seq[Trigger])                                        extends MismatchedMatch
 case class UnmatchedSink(sink: DataSink, availableTriggers: Seq[Trigger])                                                  extends MismatchedMatch
+case class UnmatchedTrigger(trigger: Trigger, availableSources: Seq[DataSource], availableSinks: Seq[DataSink])            extends MismatchedMatch
 case class MatchedSourceWithNoSink(dataSource: DataSource, availableTriggers: Seq[Trigger], availableSinks: Seq[DataSink]) extends MismatchedMatch
 
 case class MatchedSourceWithMissingTransforms(dataSource: DataSource, sink: DataSink, availableTriggers: Seq[Trigger], missingTransform: String) extends MismatchedMatch

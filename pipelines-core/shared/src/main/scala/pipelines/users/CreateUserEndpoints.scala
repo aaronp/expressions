@@ -1,7 +1,6 @@
-package pipelines.admin
+package pipelines.users
 
 import pipelines.core.BaseEndpoint
-import pipelines.users.{CreateUserRequest, CreateUserResponse}
 
 trait CreateUserEndpoints extends BaseEndpoint {
 

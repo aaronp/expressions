@@ -13,7 +13,7 @@ import monix.reactive.{Consumer, Observable}
 sealed trait DataSink {
   type T <: DataSink
   type Input
-  type Result
+  type Output
 
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
@@ -22,10 +22,14 @@ sealed trait DataSink {
   def addMetadata(entries: Map[String, String]): T
 
   def metadata: Map[String, String]
-  def connect(observable: Observable[Input])(implicit scheduler: Scheduler): Result
+  def connect(observable: Observable[Input])(implicit scheduler: Scheduler): CancelableFuture[Output]
 }
 
 object DataSink {
+
+  type Aux[A] = DataSink {
+    type Output = A
+  }
 
   import scala.reflect.runtime.universe._
   object syntax extends LowPriorityDataSinkImplicits
@@ -33,7 +37,7 @@ object DataSink {
   case class Instance[In, Out](consumer: Consumer[In, Out], override val metadata: Map[String, String], override val contentType: ContentType) extends DataSink {
     override type T      = Instance[In, Out]
     override type Input  = In
-    override type Result = CancelableFuture[Out]
+    override type Output = Out
     override def connect(observable: Observable[Input])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
       val result: Task[Out] = consumer(observable)
       result.runToFuture(scheduler)

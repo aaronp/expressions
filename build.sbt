@@ -206,7 +206,7 @@ lazy val docker = taskKey[Unit]("Packages the app in a docker file").withRank(Ke
 
 // see https://docs.docker.com/engine/reference/builder
 docker := {
-  val pipelinesAssembly = (assembly in (pipelinesRest, Compile)).value
+  val pipelinesAssembly = (assembly in (pipelinesServer, Compile)).value
 
   // contains the docker resources
   val deployResourceDir = (resourceDirectory in (pipelinesDeploy, Compile)).value.toPath
@@ -385,6 +385,10 @@ lazy val pipelinesKafka = project
   .settings(libraryDependencies += "org.apache.kafka" % "kafka-clients" % "2.2.0")
   .settings(libraryDependencies += "org.apache.kafka" % "kafka-streams" % "2.2.0")
   .settings(libraryDependencies ++= typesafeConfig :: logging)
+  .settings(libraryDependencies ++= List(
+    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test",
+    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test" classifier ("tests")
+  ))
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
   .dependsOn(pipelinesEval % "compile->compile;test->test")
 
@@ -410,8 +414,6 @@ lazy val pipelinesRest = project
   .in(file("pipelines-rest"))
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
   .dependsOn(pipelinesClientJvm % "compile->compile;test->test")
-  .dependsOn(pipelinesEval % "compile->compile;test->test")
-  .dependsOn(pipelinesJson % "compile->compile;test->test")
   .settings(name := s"${repo}-rest")
   .settings(commonSettings: _*)
   .settings(mainClass in (Compile, run) := Some(Build.MainRestClass))
@@ -427,6 +429,18 @@ lazy val pipelinesRest = project
     "org.julienrf" %% "endpoints-algebra-circe"    % "0.9.0",
     "org.julienrf" %% "endpoints-openapi"          % "0.9.0"
   ))
+
+lazy val pipelinesServer = project
+  .in(file("pipelines-server"))
+  .settings(name := s"${repo}-server")
+  .dependsOn(pipelinesRest % "compile->compile;test->test")
+  .dependsOn(pipelinesEval % "compile->compile;test->test")
+  .dependsOn(pipelinesKafka % "compile->compile;test->test")
+  .dependsOn(pipelinesJson % "compile->compile;test->test")
+  .settings(commonSettings: _*)
+  .settings(mainClass in (Compile, run) := Some(Build.MainServerClass))
+  .settings(mainClass in (Compile, packageBin) := Some(Build.MainServerClass))
+  .settings(parallelExecution in Test := false)
 
 // see https://leonard.io/blog/2017/01/an-in-depth-guide-to-deploying-to-maven-central/
 pomIncludeRepository := (_ => false)

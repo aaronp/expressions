@@ -4,7 +4,6 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe._
 import io.circe.parser._
 import org.scalatest.{Matchers, WordSpec}
-import pipelines.rest.routes.DocumentationRoutes
 
 class DocumentationRoutesTest extends WordSpec with Matchers with ScalatestRouteTest {
 

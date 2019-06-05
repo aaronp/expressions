@@ -1,6 +1,4 @@
-package pipelines.admin
-
-import pipelines.users.{LoginRequest, LoginResponse}
+package pipelines.users
 
 trait UserSchemas extends endpoints.circe.JsonSchemas {
 

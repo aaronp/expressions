@@ -5,7 +5,7 @@ import java.util.Collections
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import monix.execution.Scheduler
+import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.serialization.Deserializer
@@ -19,11 +19,16 @@ import scala.util.Try
   * pimped KafkaConsumer
   *
   * @param client
-  * @param defaultPollTimeout
+  * @param defaultPollFrequency
   * @tparam K
   * @tparam V
   */
-class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeout: FiniteDuration)(implicit scheduler: Scheduler) extends AutoCloseable with StrictLogging {
+class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], val defaultPollFrequency: FiniteDuration)(implicit scheduler: Scheduler) extends AutoCloseable with StrictLogging {
+
+  def topics(): Map[String, List[PartitionInfo]] = {
+    import scala.collection.JavaConverters._
+    client.listTopics().asScala.toMap.mapValues(_.asScala.toList)
+  }
 
   private class Listener(initialTopics: Set[String], offset: String) extends ConsumerRebalanceListener {
     var processedTopics = initialTopics
@@ -110,12 +115,12 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
 //    }.toMap
 //  }
 
-  def pull(pollTimeout: FiniteDuration = defaultPollTimeout): Iterator[ConsumerRecord[K, V]] = {
+  def pull(pollTimeout: FiniteDuration = defaultPollFrequency): Iterator[ConsumerRecord[K, V]] = {
     val all: Iterator[Iterable[ConsumerRecord[K, V]]] = Iterator.continually(pullOrEmpty(pollTimeout))
     all.flatten
   }
 
-  def pullOrEmpty(pollTimeout: FiniteDuration = defaultPollTimeout): Iterable[ConsumerRecord[K, V]] = {
+  def pullOrEmpty(pollTimeout: FiniteDuration = defaultPollFrequency): Iterable[ConsumerRecord[K, V]] = {
     if (isClosed()) {
       Nil
     } else {
@@ -123,7 +128,7 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
     }
   }
 
-  private def doPullOrEmpty(pollTimeout: FiniteDuration = defaultPollTimeout): Iterable[ConsumerRecord[K, V]] = {
+  private def doPullOrEmpty(pollTimeout: FiniteDuration = defaultPollFrequency): Iterable[ConsumerRecord[K, V]] = {
     val records: ConsumerRecords[K, V] = client.poll(java.time.Duration.ofMillis(pollTimeout.toMillis))
 
     val partitions = records.partitions()
@@ -176,16 +181,13 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], defaultPollTimeou
     closed = true
   }
 
-  final def asObservable: Observable[ConsumerRecord[K, V]] = {
+  final def asObservable(pollTime: FiniteDuration = defaultPollFrequency): (Cancelable, Observable[ConsumerRecord[K, V]]) = {
     val (input: Observer[ConsumerRecord[K, V]], output) = Pipe.publish[ConsumerRecord[K, V]].multicast
-    scheduler.scheduleOnce(defaultPollTimeout) {
-      while (true) {
-        val iter = pullOrEmpty()
-        Observer.feed(input, iter)
-        Thread.`yield`()
-      }
+    val cancel = scheduler.scheduleAtFixedRate(0.millis, pollTime) {
+      val iter = pullOrEmpty(pollTime)
+      Observer.feed(input, iter)
     }
-    output
+    cancel -> output
   }
 }
 

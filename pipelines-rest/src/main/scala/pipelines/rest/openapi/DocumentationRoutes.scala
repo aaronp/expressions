@@ -1,12 +1,9 @@
-package pipelines.rest.routes
-import akka.http.scaladsl.server.Route
-import endpoints.openapi.model.{OpenApi, OpenApiSchemas}
-import pipelines.rest.openapi.Documentation
+package pipelines.rest.openapi
 
-import com.typesafe.scalalogging.StrictLogging
+import akka.http.scaladsl.server.Route
 import endpoints.akkahttp.server
 import endpoints.akkahttp.server.JsonSchemaEntities
-import pipelines.core.GenericMessageResult
+import endpoints.openapi.model.{OpenApi, OpenApiSchemas}
 
 //with endpoints.circe.JsonSchemas with StrictLogging
 object DocumentationRoutes extends OpenApiSchemas with server.Endpoints with JsonSchemaEntities {

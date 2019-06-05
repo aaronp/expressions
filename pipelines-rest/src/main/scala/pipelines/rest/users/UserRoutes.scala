@@ -1,17 +1,17 @@
-package pipelines.rest.routes
+package pipelines.rest.users
 
 import akka.http.scaladsl.model.Uri.Query
-import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.model.headers.{HttpChallenges, RawHeader}
+import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directives, Rejection, Route}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
 import javax.crypto.spec.SecretKeySpec
-import pipelines.admin.UserSchemas
 import pipelines.rest.jwt.{Claims, Hmac256, JsonWebToken}
-import pipelines.users._
+import pipelines.rest.routes.BaseCirceRoutes
+import pipelines.users.{UserSchemas, _}
 
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 object UserRoutes {
 

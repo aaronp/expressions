@@ -1,11 +1,39 @@
 package pipelines
 
+import monix.execution.{CancelableFuture, Scheduler}
+import monix.reactive.Observable
 import pipelines.reactive.{DataSink, DataSource, Transform}
 
-case class Pipeline private (source: DataSource, transforms: Seq[Transform], sink: DataSink) {}
+import scala.util.control.NonFatal
+
+case class Pipeline[A] private (root: DataSource,
+                                logicalSource: DataSource,
+                                transformsByIndex: Map[Int, Transform],
+                                sink: DataSink,
+                                scheduler: Scheduler,
+                                connection: CancelableFuture[A])
 
 object Pipeline {
-  def apply(source: DataSource, transforms: Seq[Transform], sink: DataSink) = {}
+  def apply(source: DataSource, transforms: Seq[Transform], sink: DataSink)(implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
+    connect(source, transforms) match {
+      case Right(logicalSource) =>
+        if (logicalSource.contentType.matches(sink.contentType)) {
+          try {
+            val obs: Observable[sink.Input]           = logicalSource.asObservable.asInstanceOf[Observable[sink.Input]]
+            val future: CancelableFuture[sink.Output] = sink.connect(obs)
+            val byIndex                               = transforms.zipWithIndex.map(_.swap).toMap
+            Right(new Pipeline[sink.Output](source, logicalSource, byIndex, sink, scheduler, future))
+          } catch {
+            case NonFatal(e) =>
+              Left(s"Error connecting $source with $sink: $e")
+          }
+        } else {
+          Left(s"Can't connect ${logicalSource.contentType} with ${sink.contentType}")
+        }
+
+      case Left(err) => Left(err)
+    }
+  }
 
   def typesMatch(source: DataSource, transforms: Seq[Transform], sink: DataSink): Boolean = {
     connect(source, transforms).exists { newDs =>

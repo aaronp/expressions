@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Push</title>
+    <link rel="stylesheet" type="text/css" href="css/pipelines.css">
+</head>
+<body>
+<!-- Include JavaScript dependencies -->
+<script type="text/javascript" src="js/pipelines-client-xhr-jsdeps.js"></script>
+<script type="text/javascript" src="js/pipelines-client-xhr-fastopt.js"></script>
+
+
+<form>
+    To:<br/>
+    <input type="text" id="to"/>
+    Data:<br/>
+    <textarea type="text" id="data" rows="120" cols="120"></textarea><br/>
+</form>
+
+<br/>
+<button class="btn" type="button" onclick="pipelines.client.PushSource.pushData('to', 'data')">Login</button>
+<br/>
+<button class="btn" type="button" onclick="pipelines.client.PushSource.cancelPush()">Cancel</button>
+<br/>
+<button class="btn" type="button" onclick="pipelines.client.PushSource.pushError('data')">Error</button>
+<br/>
+</body>
+</html>

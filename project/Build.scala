@@ -5,6 +5,7 @@ import sbt.IO
 
 object Build {
   val MainRestClass = "pipelines.rest.Main"
+  val MainServerClass = "pipelines.server.Main"
 
   def docker(deployResourceDir: Path, //
              scriptDir: Path,         //

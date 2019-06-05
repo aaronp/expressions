@@ -1,6 +1,6 @@
 package pipelines.reactive.trigger
 
-import pipelines.reactive.{DataSink, DataSource, Transform}
+import pipelines.reactive._
 
 /**
   *
@@ -21,12 +21,22 @@ case class TriggerState private[trigger] (
   }
 
   def onAddTrigger(trigger: Trigger, retainTriggerAfterMatch: Boolean): (TriggerState, TriggerEvent) = {
-    val newState = if (retainTriggerAfterMatch) {
-      copy(triggers = trigger +: triggers)
-    } else {
-      this
+    val newState = copy(triggers = trigger +: triggers)
+    newState.triggerMatch() match {
+      case Seq() if retainTriggerAfterMatch =>
+        newState -> TriggerAdded(trigger)
+      case Seq() =>
+        this -> UnmatchedTrigger(trigger, sources, sinks)
+      case Seq(only) if retainTriggerAfterMatch =>
+        newState -> only
+      case Seq(only) =>
+        this -> only
+      case matches if retainTriggerAfterMatch =>
+        newState -> TriggerMatches(matches)
+      case matches =>
+        this -> TriggerMatches(matches)
     }
-    newState -> TriggerAdded(trigger)
+
   }
 
   def onAddTransform(name: String, transform: Transform, replace: Boolean): (TriggerState, TriggerEvent) = {
@@ -40,7 +50,9 @@ case class TriggerState private[trigger] (
     }
   }
 
-  def onSink(dataSink: DataSink): (TriggerState, TriggerEvent) = {
+  def onSinkRemoved(dataSink: DataSink): TriggerState = copy(sinks = sinks.filterNot(_ == dataSink))
+
+  def onSinkAdded(dataSink: DataSink): (TriggerState, TriggerEvent) = {
     val allSinks = dataSink +: sinks
     val matchedSinks = triggers.flatMap { trigger =>
       allSinks.flatMap { sink =>
@@ -70,7 +82,9 @@ case class TriggerState private[trigger] (
 
     copy(sinks = allSinks) -> event
   }
-  def onSource(dataSource: DataSource): (TriggerState, TriggerEvent) = {
+  def onSourceRemoved(dataSource: DataSource) = copy(sources = sources.filterNot(_ == dataSource))
+
+  def onSourceAdded(dataSource: DataSource): (TriggerState, TriggerEvent) = {
     val allSources = dataSource +: sources
     val matchedSources: Seq[(DataSource, Trigger)] = triggers.flatMap { trigger =>
       allSources.flatMap { source =>
@@ -112,7 +126,7 @@ case class TriggerState private[trigger] (
             case sink if trigger.matchesSink(sink) =>
               resolveTransformations(source, sink, trigger) match {
                 case ok: PipelineMatch => Some(ok)
-                case _                       => None
+                case _                 => None
               }
           }
           nested.flatten
@@ -130,8 +144,7 @@ case class TriggerState private[trigger] (
     * or a multi-match
     *
     */
-  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, Trigger)], onError: => TriggerEvent)(
-      multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
+  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, Trigger)], onError: => TriggerEvent)(multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
     allMatches match {
       case Seq()                     => onError
       case Seq((src, sink, trigger)) => resolveTransformations(src, sink, trigger)
@@ -140,12 +153,12 @@ case class TriggerState private[trigger] (
           case (src, sink, trigger) =>
             resolveTransformations(src, sink, trigger) match {
               case unique: PipelineMatch => Option(unique)
-              case _                           => None
+              case _                     => None
             }
         }
         resolved match {
-          case Seq()            => resolveTransformations(firstSinkMatch._1, firstSinkMatch._2, firstSinkMatch._3)
-          case all @ first +: _ => multiMatchAsEvent(all)
+          case Seq() => resolveTransformations(firstSinkMatch._1, firstSinkMatch._2, firstSinkMatch._3)
+          case all   => multiMatchAsEvent(all)
         }
     }
   }
@@ -169,8 +182,10 @@ case class TriggerState private[trigger] (
 
   final def update(input: TriggerInput): (TriggerState, TriggerEvent) = {
     input match {
-      case OnNewSource(source)                            => onSource(source)
-      case OnNewSink(sink)                                => onSink(sink)
+      case OnSourceAdded(source)                          => onSourceAdded(source)
+      case OnSourceRemoved(source)                        => onSourceRemoved(source) -> NoOpTriggerEvent
+      case OnSinkAdded(sink)                              => onSinkAdded(sink)
+      case OnSinkRemoved(sink)                            => onSinkRemoved(sink) -> NoOpTriggerEvent
       case OnNewTransform(name, transform, replace)       => onAddTransform(name, transform, replace)
       case OnNewTrigger(trigger, retainTriggerAfterMatch) => onAddTrigger(trigger, retainTriggerAfterMatch)
     }

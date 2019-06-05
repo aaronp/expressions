@@ -14,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec
 import pipelines.users.LoginRequest
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{GivenWhenThen, Matchers, WordSpec}
+import pipelines.rest.users.UserRoutes
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

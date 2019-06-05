@@ -11,7 +11,7 @@ import pipelines.reactive.{DataSink, DataSource, MetadataCriteria}
   * @param sinkCriteria
   * @param transforms
   */
-case class Trigger(sourceCriteria: MetadataCriteria, sinkCriteria: MetadataCriteria, transforms: Seq[String]) {
+case class Trigger(sourceCriteria: MetadataCriteria = MetadataCriteria(), sinkCriteria: MetadataCriteria = MetadataCriteria(), transforms: Seq[String] = Nil) {
   def matchesSource(dataSource: DataSource): Boolean = sourceCriteria.matches(dataSource.metadata)
   def matchesSink(dataSink: DataSink): Boolean       = sinkCriteria.matches(dataSink.metadata)
 }

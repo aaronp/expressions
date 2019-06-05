@@ -2,21 +2,18 @@ package pipelines.reactive.repo.rest
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import pipelines.reactive.ContentType
 import pipelines.reactive.repo._
-import pipelines.reactive.{ContentType, SourceRepository}
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, SecureRoutes}
 
-case class SourceRepoRoutes(repository: SourceRepository, secureSettings: SecureRouteSettings)
-    extends SecureRoutes(secureSettings)
-    with SourceRepoEndpoints
-    with RepoSchemas
-    with BaseCirceRoutes {
+case class SourceRepoRoutes(secureSettings: SecureRouteSettings) extends SecureRoutes(secureSettings) with SourceRepoEndpoints with RepoSchemas with BaseCirceRoutes {
 
   def listSourcesRoute: Route = {
     val wtf = implicitly[JsonResponse[ListRepoSourcesResponse]]
     sources.list(wtf).implementedBy { contentTypeOpt =>
       val request = ListRepoSourcesRequest(contentTypeOpt.map(ContentType.apply))
-      repository.listSources(request)
+//      repository.listSources(request)
+      ???
     }
   }
 
@@ -24,7 +21,8 @@ case class SourceRepoRoutes(repository: SourceRepository, secureSettings: Secure
     val wtf = implicitly[JsonResponse[ListTransformationResponse]]
     transforms.list(wtf).implementedBy { contentTypeOpt =>
       val request = ListTransformationRequest(contentTypeOpt.map(ContentType.apply))
-      repository.listTransforms(request)
+//      repository.listTransforms(request)
+      ???
     }
   }
   def listTypesRoute: Route = {
@@ -35,7 +33,7 @@ case class SourceRepoRoutes(repository: SourceRepository, secureSettings: Secure
     }
     authReq { claims =>
       logger.info("Claims is: " + claims)
-      val result = repository.allTypes.map(_.toString).sorted
+      val result = ??? //repository.allTypes.map(_.toString).sorted
       listEndpoint.response(result)
     }
   }

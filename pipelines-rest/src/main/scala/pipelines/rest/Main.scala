@@ -27,7 +27,10 @@ object Main extends ConfigApp with StrictLogging {
     val certPath = config.getString("pipelines.tls.certificate")
     val preparedConf = if (!certPath.asPath.isFile && config.hasPath("generateMissingCerts")) {
       val password = Try(config.getString("pipelines.tls.password")).getOrElse("password")
-      ensureCert(certPath, password)
+
+      val hostName: String = Try(config.getString("pipelines.tls.hostname")).getOrElse(InetAddress.getLocalHost.getHostAddress)
+      ensureCert(certPath, password, hostName)
+
       config.set("pipelines.tls.password", password)
     } else {
       config
@@ -43,7 +46,7 @@ object Main extends ConfigApp with StrictLogging {
   /**
     * Create our own self-signed cert (if required) for local development
     */
-  def ensureCert(pathToCert: String, password: String = "password"): Path = {
+  def ensureCert(pathToCert: String, password: String, hostName: String): Path = {
     import eie.io._
     val certFile = pathToCert.asPath
     if (!certFile.isFile) {
@@ -51,10 +54,9 @@ object Main extends ConfigApp with StrictLogging {
       val dir = Option(certFile.getParent).getOrElse(".".asPath)
 
 //      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, "localhost", password, password, password)
-      val localhost = InetAddress.getLocalHost.getHostAddress
 
-      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, localhost, password, password, password)
-      logger.info(s"created ${certPath} for $localhost:\n\n${buffer.allOutput}\n\n")
+      val (resValue, buffer, certPath) = GenCerts.genCert(dir, certFile.fileName, hostName, password, password, password)
+      logger.info(s"created ${certPath} for $hostName:\n\n${buffer.allOutput}\n\n")
       require(resValue == 0, s"Gen cert script exited w/ non-zero value $resValue")
     } else {
       logger.info("dev cert exists, cracking on...")

@@ -5,8 +5,10 @@ import java.util.Properties
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.Scheduler
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.Serializer
+
+import scala.concurrent.Future
 
 /**
   * Supporting functions for publishing stuff
@@ -20,13 +22,10 @@ class RichKafkaProducer[K, V](val publisher: KafkaProducer[K, V])(implicit sched
     publisher.flush()
   }
 
-  def send(kafkaTopic: String, key: K, value: V): Unit = {
-    val record = new ProducerRecord[K, V](kafkaTopic, key, value)
-    publisher.send(record)
-  }
-
-  def sendTestMessage(topic: String, key: String, value: String) = {
-    send(topic, key.asInstanceOf[K], value.asInstanceOf[V])
+  def send(kafkaTopic: String, key: K, value: V): Future[RecordMetadata] = {
+    val record  = new ProducerRecord[K, V](kafkaTopic, key, value)
+    val jFuture = publisher.send(record)
+    Future(jFuture.get())
   }
 
   override def close(): Unit = {

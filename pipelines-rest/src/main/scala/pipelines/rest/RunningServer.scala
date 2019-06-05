@@ -8,7 +8,8 @@ import akka.http.scaladsl.settings.RoutingSettings
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.scaladsl.Flow
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.routes.{DocumentationRoutes, TraceRoute}
+import pipelines.rest.openapi.DocumentationRoutes
+import pipelines.rest.routes.TraceRoute
 import pipelines.ssl.SSLConfig
 
 import scala.concurrent.Future

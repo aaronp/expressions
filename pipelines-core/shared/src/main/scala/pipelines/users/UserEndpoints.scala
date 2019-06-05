@@ -1,6 +1,5 @@
 package pipelines.users
 
-import pipelines.admin.{CreateUserEndpoints, LoginEndpoints}
 
 /**
   * Endpoints for user actions (e.g. login, logout, update profile, ...)
