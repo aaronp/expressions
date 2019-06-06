@@ -8,7 +8,7 @@ import scala.concurrent.Future
 /**
   * Represents a data source -- some type coupled with a means of consuming that data
   */
-trait DataSource {
+trait DataSource extends HasMetadata {
 
   /** the type DataSource
     */
@@ -17,10 +17,6 @@ trait DataSource {
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
   def addMetadata(entries: Map[String, String]): T
-
-  /** @return key/value pairs
-    */
-  def metadata: Map[String, String]
 
   /** @return the content type of this data source
     */

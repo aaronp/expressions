@@ -19,11 +19,17 @@ import scala.concurrent.Future
   * @tparam Event
   * @tparam A
   */
-class Repo[Event, A](private val input: Observer[Event], nextObs: Observable[Event], addId: (A, String) => A, addEvent: A => Event, removeEvent: A => Event)(
+class Repo[Event, A <: HasMetadata](private val input: Observer[Event], nextObs: Observable[Event], addId: (A, String) => A, addEvent: A => Event, removeEvent: A => Event)(
     implicit scheduler: Scheduler) {
 
   private object Lock
   private var byId = Map[String, A]()
+
+  def find(criteria: MetadataCriteria): Seq[A] = {
+    byId.values.filter(x => criteria.matches(x.metadata)).toSeq
+  }
+
+  def list(): Seq[A] = byId.values.toSeq
 
   def get(id: String): Option[A] = byId.get(id)
 

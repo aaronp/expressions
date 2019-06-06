@@ -10,7 +10,7 @@ import monix.reactive.{Consumer, Observable}
   * There may be only one - or at least a fixed set, as we can use transforms to represent data pipelines e.g. through
   * a socket, and thus the actual sink itself can just be something which audits/records the fact that a pipeline has been run.
   */
-sealed trait DataSink {
+sealed trait DataSink extends HasMetadata {
   type T <: DataSink
   type Input
   type Output
@@ -21,7 +21,6 @@ sealed trait DataSink {
 
   def addMetadata(entries: Map[String, String]): T
 
-  def metadata: Map[String, String]
   def connect(observable: Observable[Input])(implicit scheduler: Scheduler): CancelableFuture[Output]
 }
 

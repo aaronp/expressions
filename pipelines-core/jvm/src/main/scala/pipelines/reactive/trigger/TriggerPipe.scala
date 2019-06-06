@@ -37,7 +37,7 @@ class TriggerPipe(initialState: TriggerState = new TriggerState(Map.empty, Nil, 
     input.onNext(OnNewTransform(name, transform, replace))
   }
 
-  val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
+  private val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
   val input: Observer[TriggerInput]                          = subject
   val output: Observable[(TriggerState, TriggerEvent)] = {
     val scanned = subject.scan(initialState -> (null: TriggerEvent)) {

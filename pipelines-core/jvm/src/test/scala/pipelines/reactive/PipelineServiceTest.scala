@@ -1,20 +1,22 @@
 package pipelines.reactive
 
-import monix.reactive.Observable
-import org.scalatest.WordSpec
 import pipelines.{BaseCoreTest, WithScheduler}
 
 class PipelineServiceTest extends BaseCoreTest {
 
-  "PipelineService" should {
+  "PipelineService.getOrCreateSource" should {
     "be able to register and connect to new sources" in {
       WithScheduler { implicit scheduler =>
-      val service = PipelineService()
+        val service = PipelineService()
 
-        import implicits._
+        val Seq(source) = service.getOrCreateSource(DataSource.push[String](Map("user" -> "dave")))
+        val Seq(source2)      = service.getOrCreateSource(DataSource.push[String](Map("user" -> "alice")))
+        source should not be(source2)
+        service.sourceMetadata().map(_("user")) should contain only ("dave", "alice")
 
-
-        service.getOrCreatePushSourceForUser("dave")
+        val Seq(existing) = service.getOrCreateSource(DataSource.push[String](Map("user" -> "dave")))
+        service.sourceMetadata().size shouldBe 2
+        existing shouldBe source
       }
     }
   }

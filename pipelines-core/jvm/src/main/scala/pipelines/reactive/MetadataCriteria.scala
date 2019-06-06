@@ -26,12 +26,14 @@ object MetadataCriteria {
 
   def apply(criteriaByKey: Map[String, String]): MetadataCriteria = {
     val matcherByName = criteriaByKey.mapValues {
-      case KindValueR("re", value)   => regex(value.r)
-      case KindValueR("any", values) => any(asSet(values))
-      case KindValueR("all", values) => all(asSet(values))
-      case KindValueR("ci", value)   => caseInsensitive(value.toLowerCase)
-      case KindValueR("eq", value)   => eq(value)
-      case default                   => eq(default)
+      case KindValueR("re", value)    => regex(value.r)
+      case KindValueR("any", values)  => any(asSet(values))
+      case KindValueR("all", values)  => all(asSet(values))
+      case KindValueR("none", values) => none(asSet(values))
+      case KindValueR("ci", value)    => caseInsensitive(value.toLowerCase)
+      case KindValueR("eq", value)    => eq(value)
+      case KindValueR("never", _)     => never
+      case default                    => eq(default)
     }
 
     // the .iterator.toMap is just so that we don't have a 'MappedValues' view over our map -- we want to evaluate and
@@ -43,6 +45,7 @@ object MetadataCriteria {
     value.split(",", -1).map(_.trim).toSet
   }
 
+  val never: Match                             = (_: String) => false
   def eq(expected: String): Match              = (_: String) == expected
   def caseInsensitive(expected: String): Match = (_: String).toLowerCase == expected
   def regex(expected: Regex): Match = (value: String) => {
@@ -50,6 +53,9 @@ object MetadataCriteria {
   }
   def any(values: Set[String]): Match = (value: String) => {
     asSet(value).exists(values.contains)
+  }
+  def none(values: Set[String]): Match = (value: String) => {
+    asSet(value).forall(x => !values.contains(x))
   }
   def all(values: Set[String]): Match = (value: String) => {
     val actual = asSet(value)
