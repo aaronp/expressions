@@ -6,6 +6,7 @@ import java.nio.file.Path
 import args4c.ConfigApp
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
+import pipelines.reactive.PipelineService
 import pipelines.socket.SocketRoutesSettings
 import pipelines.ssl.{GenCerts, SSLConfig}
 
@@ -22,10 +23,23 @@ object Main extends ConfigApp with StrictLogging {
 
   override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
 
-  def run(config: Config): RunningServer = {
+  def run(rootConfig: Config): RunningServer = {
+    val config             = ensureCerts(rootConfig)
+    val settings: Settings = Settings(config)
+    val service            = PipelineService()(settings.env.ioScheduler)
+    run(settings, service)
+  }
+
+  def run(settings: Settings, service: PipelineService): RunningServer = {
+    val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
+    val socketSettings     = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
+    RunningServer(settings, sslConf, socketSettings.routes)
+  }
+
+  def ensureCerts(config: Config): Config = {
     import eie.io._
     val certPath = config.getString("pipelines.tls.certificate")
-    val preparedConf = if (!certPath.asPath.isFile && config.hasPath("generateMissingCerts")) {
+    if (!certPath.asPath.isFile && config.hasPath("generateMissingCerts")) {
       val password = Try(config.getString("pipelines.tls.password")).getOrElse("password")
 
       val hostName: String = Try(config.getString("pipelines.tls.hostname")).getOrElse(InetAddress.getLocalHost.getHostAddress)
@@ -35,12 +49,6 @@ object Main extends ConfigApp with StrictLogging {
     } else {
       config
     }
-
-    val sslConf: SSLConfig = SSLConfig(preparedConf)
-
-    val settings       = Settings(preparedConf)
-    val socketSettings = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
-    RunningServer(settings, sslConf, socketSettings.routes)
   }
 
   /**

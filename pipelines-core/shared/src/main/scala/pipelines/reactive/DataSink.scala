@@ -15,6 +15,10 @@ sealed trait DataSink extends HasMetadata {
   type Input
   type Output
 
+  /** @return this instance as a parameterized type, just to help the compiler when creating Pipelines
+    */
+  def aux: DataSink.Aux[Input, Output] = this
+
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
   def contentType: ContentType
@@ -26,8 +30,9 @@ sealed trait DataSink extends HasMetadata {
 
 object DataSink {
 
-  type Aux[A] = DataSink {
-    type Output = A
+  type Aux[In, Out] = DataSink {
+    type Input  = In
+    type Output = Out
   }
 
   import scala.reflect.runtime.universe._

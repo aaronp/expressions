@@ -32,9 +32,9 @@ case class TriggerState private[trigger] (
       case Seq(only) =>
         this -> only
       case matches if retainTriggerAfterMatch =>
-        newState -> TriggerMatches(matches)
+        newState -> MultipleMatchesOnTrigger(matches)
       case matches =>
-        this -> TriggerMatches(matches)
+        this -> MultipleMatchesOnTrigger(matches)
     }
 
   }
@@ -76,7 +76,7 @@ case class TriggerState private[trigger] (
       resolveMatches(allMatches, MatchedSinkWithNoSource(dataSink, triggers, sources)) { all =>
         val validSources               = all.map(_.source)
         val transforms: Seq[Transform] = all.head.transforms
-        MatchedSinkWithManySources(validSources, transforms, dataSink)
+        MatchedSinkWithManySources(validSources, transforms, dataSink, all.head.trigger)
       }
     }
 
@@ -107,7 +107,7 @@ case class TriggerState private[trigger] (
       resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource, triggers, sinks)) { all =>
         val validSinks                 = all.map(_.sink)
         val transforms: Seq[Transform] = all.head.transforms
-        MatchedSourceWithManySinks(dataSource, transforms, validSinks)
+        MatchedSourceWithManySinks(dataSource, transforms, validSinks, all.head.trigger)
       }
     }
 

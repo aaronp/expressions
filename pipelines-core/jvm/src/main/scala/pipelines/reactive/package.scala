@@ -10,10 +10,6 @@ package object reactive {
   type Sinks = Repo[SinkEvent, DataSink]
   def Sinks(implicit sched: Scheduler): Sinks = Repo.sinks(sched)
 
-//  type NewSource = Scheduler => DataSource
-//  def NewSource(data: DataSource): NewSource                = (_: Scheduler) => data
-//  def NewSource(create: Scheduler => DataSource): NewSource = create
-
   /** samples 'max' elements from the given sequence
     *
     * @param data the data to sample

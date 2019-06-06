@@ -6,20 +6,27 @@ import pipelines.reactive.{DataSink, DataSource, Transform}
 
 import scala.util.control.NonFatal
 
-case class Pipeline[A] private (root: DataSource,
-                                logicalSource: DataSource,
-                                transformsByIndex: Map[Int, Transform],
-                                sink: DataSink,
-                                scheduler: Scheduler,
-                                connection: CancelableFuture[A])
+class Pipeline[A] private (root: DataSource,
+                           logicalSource: DataSource,
+                           transformsByIndex: Map[Int, Transform],
+                           sink: DataSink,
+                           scheduler: Scheduler,
+                           connection: CancelableFuture[A]) {
+  def cancel(): Unit = connection.cancel()
+}
 
 object Pipeline {
-  def apply(source: DataSource, transforms: Seq[Transform], sink: DataSink)(implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
+//  def apply(pipelineMatch: PipelineMatch)(prepare : Observable[In] => Observable[pipelineMatch.sink.Input])(implicit scheduler: Scheduler): Either[String, Pipeline[DataSink#Output]] = {
+//
+//  }
+
+  def apply[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
+      implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
     connect(source, transforms) match {
       case Right(logicalSource) =>
         if (logicalSource.contentType.matches(sink.contentType)) {
           try {
-            val obs: Observable[sink.Input]           = logicalSource.asObservable.asInstanceOf[Observable[sink.Input]]
+            val obs: Observable[In]                   = prepare(logicalSource.asObservable.asInstanceOf[Observable[In]])
             val future: CancelableFuture[sink.Output] = sink.connect(obs)
             val byIndex                               = transforms.zipWithIndex.map(_.swap).toMap
             Right(new Pipeline[sink.Output](source, logicalSource, byIndex, sink, scheduler, future))

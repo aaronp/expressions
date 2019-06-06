@@ -32,24 +32,20 @@ sealed trait Transform {
 object Transform {
 
   def defaultTransforms(): Map[String, Transform] = {
-    Map[String, Transform]("Json to String"             -> jsonToString, //
-                           "String to UTF-8 byte array" -> stringToUtf8, //
-                           "parse String as Try[Json]"  -> stringToJson  //
+    Map[String, Transform](
+      "Json to String"                   -> jsonToString, //
+      "String to UTF-8 byte array"       -> stringToUtf8, //
+      "parse String as Try[Json]"        -> stringToJson,
+      "Try[_] as successes"              -> tries.successes,
+      "Try[_] as Throwable for failures" -> tries.failures,
+      "Try[_] as unsafe gets"            -> tries.get,
+      "_1"                               -> tuples._1,
+      "_2"                               -> tuples._2,
+      "_3"                               -> tuples._3,
+      "_4"                               -> tuples._4,
+      "dump"                             -> dump("debug")
     )
   }
-
-//  class Delegate(underlying: Transform) extends Transform {
-//    override def applyTo(d8a: DataSource): Option[DataSource] = {
-//      underlying.applyTo(d8a)
-//    }
-//    override def appliesTo(d8a: DataSource): Boolean = {
-//      underlying.appliesTo(d8a)
-//    }
-//    override def outputFor(inputType: ContentType): Option[ContentType] = {
-//      underlying.outputFor(inputType)
-//    }
-//  }
-
   import scala.reflect.runtime.universe.TypeTag
 
   case class FixedTransform[A, B](fromType: ContentType, toType: ContentType, apply: (Observable[A] => Observable[B])) extends Transform {
@@ -131,11 +127,6 @@ object Transform {
     map[Json, Try[A]](_.as[A].toTry)
   }
   def jsonEncoder[A: TypeTag: Encoder]: FixedTransform[A, Json] = map(_.asJson)
-  def tryAsError[A: TypeTag]: FixedTransform[Try[A], A]         = map(_.get)
-  def tryIgnored[A: TypeTag]: FixedTransform[Try[A], A] = flatMap {
-    case Success(x) => Observable(x)
-    case Failure(x) => Observable.raiseError(x)
-  }
 
   object tries {
     object TryType {

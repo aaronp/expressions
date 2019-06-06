@@ -1,12 +1,21 @@
 package pipelines.reactive
 
+import java.util.UUID
+
+import com.typesafe.scalalogging.StrictLogging
+import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import monix.reactive.subjects.Var
-import pipelines.reactive.trigger.{TriggerEvent, TriggerPipe, TriggerState}
+import pipelines.Pipeline
+import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent, TriggerPipe, TriggerState}
 
 object PipelineService {
-  def apply()(implicit scheduler: Scheduler): PipelineService = {
+  def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
     val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
+    transforms.foreach {
+      case (id, t) => trigger.addTransform(id, t)
+    }
     new PipelineService(sources, sinks, trigger)
   }
 }
@@ -23,20 +32,59 @@ object PipelineService {
   * @param triggers
   * @param scheduler
   */
-class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) {
+class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
   private var latest = Var(Option.empty[(TriggerState, TriggerEvent)])(scheduler)
   triggers.output.foreach { entry =>
     latest := Some(entry)
   }(triggers.scheduler)
 
+  private val pipelinesById = {
+    import scala.collection.JavaConverters._
+    new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_]]().asScala
+  }
+
+  def pipelineIds(): collection.Set[UUID] = pipelinesById.keySet
+  def cancel(id: UUID): Option[Pipeline[_]] = {
+    pipelinesById.remove(id).map { p =>
+      p.cancel()
+      p
+    }
+  }
+  def pipelines(): Iterator[(UUID, Pipeline[_])] = pipelinesById.iterator
+
+
+  val matchEvents: Observable[PipelineMatch] = triggers.output.flatMap {
+    case (_, event) => Observable.fromIterable(event.matches)
+  }
+  val pipelineCreatedEvents: Observable[Pipeline[_]] = matchEvents.flatMap { pipelineMatch =>
+    import pipelineMatch._
+    val id = UUID.randomUUID()
+    val either = Pipeline(source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
+      obs.guarantee(Task.eval {
+        logger.info(s"Pipeline removed '$id' : $pipelineMatch")
+        pipelinesById.remove(id)
+      })
+    }(scheduler)
+
+    either match {
+      case Left(err) =>
+        logger.info(s"Couldn't create a pipeline from $pipelineMatch: $err")
+        Observable.empty
+      case Right(pipeline) =>
+        logger.info(s"Pipeline '$id' added : $pipelineMatch")
+        pipelinesById.put(id, pipeline)
+        Observable(pipeline)
+    }
+  }
+
   def state(): Option[TriggerState]     = latest().map(_._1)
   def lastEvent(): Option[TriggerEvent] = latest().map(_._2)
 
   def sourceMetadata(): Seq[Map[String, String]] = sources.list().map(_.metadata)
   def sinkMetadata(): Seq[Map[String, String]]   = sinks.list().map(_.metadata)
-  def transforms()                               = state().fold(Map.empty[String, Transform])(_.transformsByName)
 
+  def transformsById(): Map[String, Transform] = state().fold(Map.empty[String, Transform])(_.transformsByName)
   def getOrCreateSource(source: DataSource): Seq[DataSource] = {
     val criteria: MetadataCriteria = MetadataCriteria(source.metadata)
     getOrCreateSource(criteria, source)
