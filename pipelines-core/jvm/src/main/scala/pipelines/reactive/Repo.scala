@@ -19,7 +19,11 @@ import scala.concurrent.Future
   * @tparam Event
   * @tparam A
   */
-class Repo[Event, A <: HasMetadata](private val input: Observer[Event], nextObs: Observable[Event], addId: (A, String) => A, addEvent: A => Event, removeEvent: A => Event)(
+class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
+                                    nextObs: Observable[Event],
+                                    addId: (A, String) => A,
+                                    addEvent: (A, TriggerCallback) => Event,
+                                    removeEvent: (A, TriggerCallback) => Event)(
     implicit scheduler: Scheduler) {
 
   private object Lock
@@ -33,28 +37,28 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event], nextObs:
 
   def get(id: String): Option[A] = byId.get(id)
 
-  def remove(id: String): Option[Future[Ack]] = {
+  def remove(id: String, callback: TriggerCallback = Ignore): Option[Future[Ack]] = {
     val removed = Lock.synchronized {
       val before = byId.get(id)
       byId = byId - id
       before
     }
     removed.map { instance =>
-      input.onNext(removeEvent(instance))
+      input.onNext(removeEvent(instance, callback))
     }
   }
-  def add(source: A): (A, Future[Ack]) = {
+  def add(source: A, callback: TriggerCallback = Ignore): (A, Future[Ack]) = {
     val id: String  = UUID.randomUUID().toString
     val idSource: A = addId(source, id)
     Lock.synchronized {
       byId = byId.updated(id, idSource)
     }
-    idSource -> input.onNext(addEvent(idSource))
+    idSource -> input.onNext(addEvent(idSource, callback))
   }
 
   /** @return an infinite observable of all existing and future values
     */
-  def events: Observable[Event] = (Observable.fromIterable(byId.values).map(addEvent) ++ nextObs)
+  def events: Observable[Event] = (Observable.fromIterable(byId.values).map(addEvent(_, Ignore)) ++ nextObs)
 }
 
 object Repo {

@@ -29,20 +29,20 @@ case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSetti
     }
     authCancel {
       case (user, query) =>
-        val metadata = query.toMap.updated("user", user.name)
+        val metadata                   = query.toMap.updated("user", user.name)
         val criteria: MetadataCriteria = MetadataCriteria(metadata)
-        val found: Seq[DataSource] = service.sources.find(criteria)
+        val found: Seq[DataSource]     = service.sources.find(criteria)
 
         push.pushEndpointCancel.response()
     }
   }
   def pushPostRoute = {
     push.pushEndpointPost.implementedBy { _ =>
-    }
+      }
   }
   def pushGetRoute = {
     push.pushEndpointGet.implementedBy { x =>
-    }
+      }
   }
   def errorRoute = {
     push.pushEndpointError.implementedBy { msgOpt =>

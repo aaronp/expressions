@@ -19,7 +19,7 @@ class RepoTest extends BaseCoreTest {
 
         val (added, _) = sources.add(Observable(1).asDataSource())
         eventually {
-          events should contain only (OnSourceAdded(added))
+          events should contain only (OnSourceAdded(added, Ignore))
         }
         events.clear()
         sources.get(added.metadata("id")) shouldBe Some(added)
@@ -27,7 +27,7 @@ class RepoTest extends BaseCoreTest {
         sources.remove(added.metadata("id")).isDefined shouldBe true
 
         eventually {
-          events should contain only (OnSourceRemoved(added))
+          events should contain only (OnSourceRemoved(added, Ignore))
         }
         sources.get(added.metadata("id")) shouldBe None
       }

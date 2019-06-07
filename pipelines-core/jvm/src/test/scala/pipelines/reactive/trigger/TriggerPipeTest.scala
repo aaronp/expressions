@@ -21,8 +21,8 @@ class TriggerPipeTest extends BaseCoreTest {
           .asDataSink("user" -> "foo")
 
         val (sources, sinks, pipe)                         = TriggerPipe.create(sched)
-        val ref: Var[Option[(TriggerState, TriggerEvent)]] = Var(Option.empty[(TriggerState, TriggerEvent)])
-        pipe.output.foreach { event: (TriggerState, TriggerEvent) =>
+        val ref: Var[Option[(RepoState, TriggerEvent)]] = Var(Option.empty[(RepoState, TriggerEvent)])
+        pipe.output.foreach { event: (RepoState, TriggerEvent) =>
           println(event)
           ref := Option(event)
         }
@@ -39,7 +39,7 @@ class TriggerPipeTest extends BaseCoreTest {
           state.sinks should not be (empty)
         }
 
-        pipe.triggerMatch(sourceCriteria = MetadataCriteria("topic" -> "test"), sinkCriteria = MetadataCriteria("user" -> "foo"))
+        pipe.connect(sourceCriteria = MetadataCriteria("topic" -> "test"), sinkCriteria = MetadataCriteria("user" -> "foo"))
 
         val matchEvent = eventually {
           val Some((_, ok: PipelineMatch)) = ref()
@@ -63,8 +63,8 @@ class TriggerPipeTest extends BaseCoreTest {
 
         When("We connect a trigger to the sources")
         val driver    = TriggerPipe()
-        val received  = ListBuffer[(TriggerState, TriggerEvent)]()
-        val received2 = ListBuffer[(TriggerState, TriggerEvent)]()
+        val received  = ListBuffer[(RepoState, TriggerEvent)]()
+        val received2 = ListBuffer[(RepoState, TriggerEvent)]()
 
         // subscribe twice, just to see/check we're not duplicating events via what would be a cold observer
         driver.output.foreach { next =>
@@ -97,7 +97,7 @@ class TriggerPipeTest extends BaseCoreTest {
 
         When("A trigger is added which will match a source and sink with our transform")
         val trigger = Trigger(MetadataCriteria("topic" -> "first"), MetadataCriteria("sink" -> "match me!"), Seq("double"))
-        driver.addTrigger(trigger, true) shouldBe Ack.Continue
+        driver.connect(trigger, true, Ignore) shouldBe Ack.Continue
 
         Then("We should see a trigger added event")
         eventually {

@@ -20,6 +20,10 @@ object MetadataCriteria {
 
   private val KindValueR = "(.*):(.*)".r
 
+  def forId(id: String): MetadataCriteria = {
+    apply("id" -> id)
+  }
+
   def apply(criteriaByKey: (String, String)*): MetadataCriteria = {
     apply(criteriaByKey.toMap)
   }

@@ -22,8 +22,9 @@ trait DataSource extends HasMetadata {
     */
   def contentType: ContentType
   def data(ct: ContentType): Option[Observable[_]]
-  def asObservable: Observable[_] = {
-    data(contentType).getOrElse {
+
+  def asObservable[A]: Observable[A] = {
+    data(contentType).map(_.asInstanceOf[Observable[A]]).getOrElse {
       sys.error(s"${this} wasn't able to provide an observable for its own content type '$contentType'")
     }
   }
@@ -54,7 +55,7 @@ object DataSource {
   def createPush[A: TypeTag]: Scheduler => DataSource = createPush[A](ContentType.of[A])
 
   def createPush[A](contentType: ContentType): Scheduler => DataSource = {
-    val ns = { implicit sched :Scheduler=>
+    val ns = { implicit sched: Scheduler =>
       push[A](contentType)
     }
     ns

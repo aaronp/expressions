@@ -20,7 +20,7 @@ case class PipelineMatch(source: DataSource, transforms: Seq[Transform], sink: D
       case (None, _)      => None
       case (Some(src), t) => t.applyTo(src)
     }
-    chainedSourceOpt.exists(_.contentType.matches(sink.contentType))
+    chainedSourceOpt.exists(_.contentType.matches(sink.inputType))
   }
 
   override def matches: Seq[PipelineMatch] = Seq(this)

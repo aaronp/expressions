@@ -23,9 +23,10 @@ object Pipeline {
 
   def apply[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
       implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
+
     connect(source, transforms) match {
       case Right(logicalSource) =>
-        if (logicalSource.contentType.matches(sink.contentType)) {
+        if (logicalSource.contentType.matches(sink.inputType)) {
           try {
             val obs: Observable[In]                   = prepare(logicalSource.asObservable.asInstanceOf[Observable[In]])
             val future: CancelableFuture[sink.Output] = sink.connect(obs)
@@ -36,7 +37,7 @@ object Pipeline {
               Left(s"Error connecting $source with $sink: $e")
           }
         } else {
-          Left(s"Can't connect ${logicalSource.contentType} with ${sink.contentType}")
+          Left(s"Can't connect ${logicalSource.contentType} with ${sink.inputType}")
         }
 
       case Left(err) => Left(err)
@@ -45,7 +46,7 @@ object Pipeline {
 
   def typesMatch(source: DataSource, transforms: Seq[Transform], sink: DataSink): Boolean = {
     connect(source, transforms).exists { newDs =>
-      newDs.contentType.matches(sink.contentType)
+      newDs.contentType.matches(sink.inputType)
     }
   }
 

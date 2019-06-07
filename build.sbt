@@ -8,8 +8,9 @@ name := repo
 
 val username            = "aaronp"
 val scalaTwelve         = "2.12.8"
+val scalaThirteen       = "2.13.0"
 val defaultScalaVersion = scalaTwelve
-val scalaVersions       = Seq(scalaTwelve)
+val scalaVersions       = Seq(scalaTwelve) //, scalaThirteen)
 
 crossScalaVersions := scalaVersions
 organization := s"com.github.${username}"

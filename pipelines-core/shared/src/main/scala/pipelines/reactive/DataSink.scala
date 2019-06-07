@@ -1,7 +1,9 @@
 package pipelines.reactive
 
+import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
+import monix.reactive.subjects.Var
 import monix.reactive.{Consumer, Observable}
 
 /**
@@ -21,7 +23,7 @@ sealed trait DataSink extends HasMetadata {
 
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
-  def contentType: ContentType
+  def inputType: ContentType
 
   def addMetadata(entries: Map[String, String]): T
 
@@ -38,7 +40,7 @@ object DataSink {
   import scala.reflect.runtime.universe._
   object syntax extends LowPriorityDataSinkImplicits
 
-  case class Instance[In, Out](consumer: Consumer[In, Out], override val metadata: Map[String, String], override val contentType: ContentType) extends DataSink {
+  case class Instance[In, Out](consumer: Consumer[In, Out], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink {
     override type T      = Instance[In, Out]
     override type Input  = In
     override type Output = Out
@@ -52,6 +54,27 @@ object DataSink {
     }
   }
 
+  /**
+    */
+  case class VarSink[A](current: Var[A], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink with StrictLogging {
+    override type T      = VarSink[A]
+    override type Input  = A
+    override type Output = Unit
+
+    override def addMetadata(entries: Map[String, String]): VarSink[A] = copy(metadata = metadata ++ entries)
+
+    override def connect(observable: Observable[A])(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
+      observable.foreach { next =>
+        current := next
+      }
+    }
+  }
+
+  def variable[A: TypeTag](currentFunction: Var[A], metadata: Map[String, String] = Map.empty): VarSink[A] = {
+    val inputType: ContentType = ContentType.of[A]
+    VarSink(currentFunction, metadata, inputType)
+  }
+
   def count(metadata: Map[String, String] = Map.empty): Instance[Any, Long] = {
     val counter: Consumer.Sync[Any, Long] = Consumer.foldLeft(0L) {
       case (c, _) => c + 1
@@ -59,6 +82,9 @@ object DataSink {
     apply[Any, Long](counter, metadata)
   }
 
+  def foreach[In: TypeTag](metadata: (String, String), theRest: (String, String)*)(thunk: In => Unit): Instance[In, Unit] = {
+    foreach[In](theRest.toMap + metadata)(thunk)
+  }
   def foreach[In: TypeTag](metadata: Map[String, String] = Map.empty)(thunk: In => Unit): Instance[In, Unit] = {
     apply[In, Unit](Consumer.foreach(thunk), metadata)
   }

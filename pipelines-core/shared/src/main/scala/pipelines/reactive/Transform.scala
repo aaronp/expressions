@@ -11,7 +11,7 @@ import scala.util.{Failure, Success, Try}
   *
   * The concept of [[ContentType]] is used to help type-check operations
   */
-sealed trait Transform {
+trait Transform {
 
   /** @param d8a the input [[DataSource]]
     * @return a new [[DataSource]] with this transformation applied if this transformation can be applied to the given [[DataSource]]
@@ -23,8 +23,20 @@ sealed trait Transform {
     */
   def appliesTo(d8a: DataSource): Boolean = applyTo(d8a).isDefined
 
-  /** @param inputType the input type
-    * @return the output type if given the input type
+  /** return the result type based on the input type.
+    *
+    * This is our poor-man's way of chaining parameterized types.
+    *
+    * e.g. a transform which puts inputs into a list would return a some of 'List[T]' for whatever 'T' input type.
+    *
+    * A transform which takes the second value from a tuple would return 'B' when given an input type of (A,B,C).
+    *
+    * another transform might just produce a count, so would return a some of 'Int' for any 'T'.
+    *
+    * And still others might not work at all, e.g. a transform which doubles Long values would return None when given an inputType of 'String'
+    *
+    * @param inputType the input type
+    * @return the output type if this transform can operate on the input input
     */
   def outputFor(inputType: ContentType): Option[ContentType]
 }
@@ -48,12 +60,16 @@ object Transform {
   }
   import scala.reflect.runtime.universe.TypeTag
 
-  case class FixedTransform[A, B](fromType: ContentType, toType: ContentType, apply: (Observable[A] => Observable[B])) extends Transform {
+  object identity extends Transform {
+    override def applyTo(d8a: DataSource): Option[DataSource]           = Option(d8a)
+    override def outputFor(inputType: ContentType): Option[ContentType] = Option(inputType)
+  }
+
+  case class FixedTransform[A, B](fromType: ContentType, toType: ContentType, apply: ((DataSource, Observable[A]) => DataSource)) extends Transform {
     override def toString: String = s"$fromType -> $toType"
-    override def applyTo(obs: DataSource): Option[DataSource] = {
-      obs.data(fromType).map { obs =>
-        val changed = apply(obs.asInstanceOf[Observable[A]])
-        DataSource(toType, changed)
+    override def applyTo(dataSource: DataSource): Option[DataSource] = {
+      dataSource.data(fromType).map { obs =>
+        apply(dataSource, obs.asInstanceOf[Observable[A]])
       }
     }
 
@@ -81,6 +97,10 @@ object Transform {
   }
 
   def fixed[A, B](fromType: ContentType, toType: ContentType)(apply: (Observable[A] => Observable[B])): FixedTransform[A, B] = {
+    new FixedTransform[A, B](fromType, toType, (original, obs: Observable[A]) => DataSource.of(toType, apply(obs), original.metadata.updated(s"from $fromType -> $toType", "fixed")))
+  }
+
+  def fixedFor[A, B](fromType: ContentType, toType: ContentType)(apply: ((DataSource, Observable[A]) => DataSource)): FixedTransform[A, B] = {
     new FixedTransform[A, B](fromType, toType, apply)
   }
 

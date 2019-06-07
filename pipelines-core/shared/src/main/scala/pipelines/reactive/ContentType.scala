@@ -16,6 +16,7 @@ sealed trait ContentType {
 
 object ContentType {
 
+
   implicit val encoder = Encoder.instance[ContentType] {
     case request @ SimpleContentType(_) => request.asJson
     case request @ ClassType(_, _)      => request.asJson
@@ -29,6 +30,8 @@ object ContentType {
   }
 
   import scala.reflect.runtime.universe._
+
+  def any: ContentType = of[Any]
 
   def of[A](implicit typeTag: TypeTag[A]): ContentType = {
     typeTag.tpe match {

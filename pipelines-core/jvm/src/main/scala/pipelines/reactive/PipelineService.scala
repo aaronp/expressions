@@ -8,7 +8,9 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.Pipeline
-import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent, TriggerPipe, TriggerState}
+import pipelines.reactive.trigger.{PipelineMatch, RepoState, TriggerEvent, TriggerPipe}
+
+import scala.collection.concurrent
 
 object PipelineService {
   def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
@@ -34,7 +36,11 @@ object PipelineService {
   */
 class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
-  private var latest = Var(Option.empty[(TriggerState, TriggerEvent)])(scheduler)
+  private var latest = Var(Option.empty[(RepoState, TriggerEvent)])(scheduler)
+
+  def state(): Option[RepoState]        = latest().map(_._1)
+  def lastEvent(): Option[TriggerEvent] = latest().map(_._2)
+
   triggers.output.foreach { entry =>
     latest := Some(entry)
   }(triggers.scheduler)
@@ -44,47 +50,50 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_]]().asScala
   }
 
-  def pipelineIds(): collection.Set[UUID] = pipelinesById.keySet
   def cancel(id: UUID): Option[Pipeline[_]] = {
     pipelinesById.remove(id).map { p =>
       p.cancel()
       p
     }
   }
-  def pipelines(): Iterator[(UUID, Pipeline[_])] = pipelinesById.iterator
-
+  def pipelines(): concurrent.Map[UUID, Pipeline[_]] = pipelinesById
 
   val matchEvents: Observable[PipelineMatch] = triggers.output.flatMap {
     case (_, event) => Observable.fromIterable(event.matches)
   }
-  val pipelineCreatedEvents: Observable[Pipeline[_]] = matchEvents.flatMap { pipelineMatch =>
-    import pipelineMatch._
-    val id = UUID.randomUUID()
-    val either = Pipeline(source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
-      obs.guarantee(Task.eval {
-        logger.info(s"Pipeline removed '$id' : $pipelineMatch")
-        pipelinesById.remove(id)
-      })
-    }(scheduler)
+  val pipelineCreatedEvents: Observable[(UUID, Pipeline[_])] = {
+    val events = matchEvents.flatMap { pipelineMatch =>
+      import pipelineMatch._
+      val id = UUID.randomUUID()
+      val either = Pipeline(source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
+        obs.guarantee(Task.eval {
+          logger.info(s"Pipeline removed '$id' : $pipelineMatch")
+          pipelinesById.remove(id)
+        })
+      }(scheduler)
 
-    either match {
-      case Left(err) =>
-        logger.info(s"Couldn't create a pipeline from $pipelineMatch: $err")
-        Observable.empty
-      case Right(pipeline) =>
-        logger.info(s"Pipeline '$id' added : $pipelineMatch")
-        pipelinesById.put(id, pipeline)
-        Observable(pipeline)
+      either match {
+        case Left(err) =>
+          logger.info(s"Couldn't create a pipeline from $pipelineMatch: $err")
+          Observable.empty[(UUID, Pipeline[_])]
+        case Right(pipeline: Pipeline[_]) =>
+          logger.info(s"Pipeline '$id' added : $pipelineMatch")
+          Observable((id, pipeline))
+      }
     }
+    events.share(scheduler)
   }
 
-  def state(): Option[TriggerState]     = latest().map(_._1)
-  def lastEvent(): Option[TriggerEvent] = latest().map(_._2)
+  pipelineCreatedEvents.foreach {
+    case (id, pipeline) =>
+      logger.info(s"!>! Pipeline added $id : $pipeline")
+      pipelinesById.put(id, pipeline)
 
+  }
   def sourceMetadata(): Seq[Map[String, String]] = sources.list().map(_.metadata)
   def sinkMetadata(): Seq[Map[String, String]]   = sinks.list().map(_.metadata)
 
-  def transformsById(): Map[String, Transform] = state().fold(Map.empty[String, Transform])(_.transformsByName)
+  def transformsById(): Map[String, Transform]               = state().fold(Map.empty[String, Transform])(_.transformsByName)
   def getOrCreateSource(source: DataSource): Seq[DataSource] = getOrCreateSource(MetadataCriteria(source.metadata), source)
   def getOrCreateSource(criteria: MetadataCriteria, source: => DataSource): Seq[DataSource] = {
     sources.find(criteria) match {

@@ -12,7 +12,14 @@ import pipelines.users.{LoginEndpoints, LoginResponse, UserSchemas}
 import scala.concurrent.Future
 import scala.scalajs.js
 
-object PipelinesXhr extends xhr.future.Endpoints with xhr.circe.JsonSchemaEntities with LoginEndpoints with SourceRepoEndpoints with RepoSchemas with UserSchemas with PushEndpoints {
+object PipelinesXhr
+    extends xhr.future.Endpoints
+    with xhr.circe.JsonSchemaEntities
+    with LoginEndpoints
+    with SourceRepoEndpoints
+    with RepoSchemas
+    with UserSchemas
+    with PushEndpoints {
 
   def onLogin(response: LoginResponse) = {
     dom.window.console.log(s"got response $response")

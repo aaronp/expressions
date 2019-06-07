@@ -8,38 +8,36 @@ import pipelines.reactive._
 
 import scala.concurrent.Future
 
-/** The trigger pipe is the driver to push sources, sinks, transforms and triggers through a [[TriggerState]]
+/** The trigger pipe is the driver to push sources, sinks, transforms and triggers through a [[RepoState]]
   *
   * The 'output' is the hot observable stream of the trigger state and events
   *
   * @param initialState
   * @param scheduler
   */
-class TriggerPipe(initialState: TriggerState = new TriggerState(Map.empty, Nil, Nil, Nil))(implicit val scheduler: Scheduler) extends StrictLogging {
+class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit val scheduler: Scheduler) extends StrictLogging {
 
-  def triggerMatch(sourceCriteria: MetadataCriteria = MetadataCriteria(), sinkCriteria: MetadataCriteria = MetadataCriteria(), transforms: Seq[String] = Nil): Future[Ack] = {
-    addTrigger(sourceCriteria, sinkCriteria, transforms, false)
+  def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(), sinkCriteria: MetadataCriteria = MetadataCriteria(), transforms: Seq[String] = Nil, callback: TriggerCallback = Ignore): Future[Ack] = {
+    connect(sourceCriteria, sinkCriteria, transforms, false, callback)
   }
 
-  def addTrigger(sourceCriteria: MetadataCriteria = MetadataCriteria(),
-                 sinkCriteria: MetadataCriteria = MetadataCriteria(),
-                 transforms: Seq[String] = Nil,
-                 retainTriggerAfterMatch: Boolean = true): Future[Ack] = {
-    addTrigger(Trigger(sourceCriteria, sinkCriteria, transforms), retainTriggerAfterMatch)
+  def connect(sourceCriteria: MetadataCriteria, sinkCriteria: MetadataCriteria, transforms: Seq[String], retainTriggerAfterMatch: Boolean, callback: TriggerCallback): Future[Ack] = {
+    connect(Trigger(sourceCriteria, sinkCriteria, transforms), retainTriggerAfterMatch, callback)
   }
 
-  def addTrigger(trigger: Trigger, retainTriggerAfterMatch: Boolean): Future[Ack] = {
-    input.onNext(OnNewTrigger(trigger, retainTriggerAfterMatch))
+  def connect(trigger: Trigger, retainTriggerAfterMatch: Boolean, callback: TriggerCallback): Future[Ack] = {
+    input.onNext(OnNewTrigger(trigger, retainTriggerAfterMatch, callback))
   }
-  def subscribeToSinks(sinks: Observable[TriggerInput with SinkEvent]): Cancelable = sinks.subscribe(input)
+
+  def subscribeToSinks(sinks: Observable[TriggerInput with SinkEvent]): Cancelable       = sinks.subscribe(input)
   def subscribeToSources(sources: Observable[TriggerInput with SourceEvent]): Cancelable = sources.subscribe(input)
-  def addTransform(name: String, transform: Transform, replace: Boolean = false): Future[Ack] = {
-    input.onNext(OnNewTransform(name, transform, replace))
+  def addTransform(name: String, transform: Transform, replace: Boolean = false, callback: TriggerCallback = Ignore): Future[Ack] = {
+    input.onNext(OnNewTransform(name, transform, replace, callback))
   }
 
   private val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
-  val input: Observer[TriggerInput]                          = subject
-  val output: Observable[(TriggerState, TriggerEvent)] = {
+  val input: Observer[TriggerInput]                                  = subject
+  val output: Observable[(RepoState, TriggerEvent)] = {
     val scanned = subject.scan(initialState -> (null: TriggerEvent)) {
       case ((state, _), input) => state.update(input)
     }
@@ -58,7 +56,7 @@ object TriggerPipe {
     instance.subscribeToSinks(sinks.events.dump("sinks"))
     (sources, sinks, instance)
   }
-  def apply(initialState: TriggerState = new TriggerState(Map.empty, Nil, Nil, Nil))(implicit scheduler: Scheduler): TriggerPipe = {
+  def apply(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit scheduler: Scheduler): TriggerPipe = {
     new TriggerPipe(initialState)
   }
 }
