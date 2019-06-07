@@ -105,15 +105,6 @@ class RichKafkaConsumer[K, V](val client: KafkaConsumer[K, V], val defaultPollFr
     }
     (topic, results)
   }
-//
-//  def listTopics(): Map[String, List[PartitionData]] = {
-//    import scala.collection.JavaConverters._
-//    client.listTopics.asScala.mapValues { info: util.List[PartitionInfo] =>
-//      info.asScala.map { pi =>
-//        PartitionData(partition = pi.partition, leader = Option(pi.leader).fold("")(_.idString))
-//      }.toList
-//    }.toMap
-//  }
 
   def pull(pollTimeout: FiniteDuration = defaultPollFrequency): Iterator[ConsumerRecord[K, V]] = {
     val all: Iterator[Iterable[ConsumerRecord[K, V]]] = Iterator.continually(pullOrEmpty(pollTimeout))

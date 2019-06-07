@@ -52,6 +52,17 @@ object DataSink {
     }
   }
 
+  def count(metadata: Map[String, String] = Map.empty): Instance[Any, Long] = {
+    val counter: Consumer.Sync[Any, Long] = Consumer.foldLeft(0L) {
+      case (c, _) => c + 1
+    }
+    apply[Any, Long](counter, metadata)
+  }
+
+  def foreach[In: TypeTag](metadata: Map[String, String] = Map.empty)(thunk: In => Unit): Instance[In, Unit] = {
+    apply[In, Unit](Consumer.foreach(thunk), metadata)
+  }
+
   def apply[In: TypeTag, Out](consumer: Consumer[In, Out], metadata: Map[String, String] = Map.empty): Instance[In, Out] = {
     apply(consumer, metadata, ContentType.of[In])
   }

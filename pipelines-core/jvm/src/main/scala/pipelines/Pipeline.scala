@@ -6,19 +6,20 @@ import pipelines.reactive.{DataSink, DataSource, Transform}
 
 import scala.util.control.NonFatal
 
-class Pipeline[A] private (root: DataSource,
-                           logicalSource: DataSource,
-                           transformsByIndex: Map[Int, Transform],
-                           sink: DataSink,
+class Pipeline[A] private (val root: DataSource,
+                           val logicalSource: DataSource,
+                           val transformsByIndex: Map[Int, Transform],
+                           val sink: DataSink,
                            scheduler: Scheduler,
-                           connection: CancelableFuture[A]) {
-  def cancel(): Unit = connection.cancel()
+                           val result: CancelableFuture[A]) {
+  def cancel(): Unit = result.cancel()
 }
 
 object Pipeline {
-//  def apply(pipelineMatch: PipelineMatch)(prepare : Observable[In] => Observable[pipelineMatch.sink.Input])(implicit scheduler: Scheduler): Either[String, Pipeline[DataSink#Output]] = {
-//
-//  }
+
+  def from[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(implicit scheduler: Scheduler): Either[String, Pipeline[Out]] = {
+    apply(source, transforms, sink)(identity)
+  }
 
   def apply[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
       implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {

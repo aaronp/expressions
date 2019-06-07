@@ -85,15 +85,21 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
   def sinkMetadata(): Seq[Map[String, String]]   = sinks.list().map(_.metadata)
 
   def transformsById(): Map[String, Transform] = state().fold(Map.empty[String, Transform])(_.transformsByName)
-  def getOrCreateSource(source: DataSource): Seq[DataSource] = {
-    val criteria: MetadataCriteria = MetadataCriteria(source.metadata)
-    getOrCreateSource(criteria, source)
-  }
+  def getOrCreateSource(source: DataSource): Seq[DataSource] = getOrCreateSource(MetadataCriteria(source.metadata), source)
   def getOrCreateSource(criteria: MetadataCriteria, source: => DataSource): Seq[DataSource] = {
     sources.find(criteria) match {
       case Seq() =>
         val (newSource, _) = sources.add(source)
         Seq(newSource)
+      case found => found
+    }
+  }
+  def getOrCreateSink(Sink: DataSink): Seq[DataSink] = getOrCreateSink(MetadataCriteria(Sink.metadata), Sink)
+  def getOrCreateSink(criteria: MetadataCriteria, Sink: => DataSink): Seq[DataSink] = {
+    Sinks.find(criteria) match {
+      case Seq() =>
+        val (newSink, _) = Sinks.add(Sink)
+        Seq(newSink)
       case found => found
     }
   }

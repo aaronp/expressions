@@ -23,7 +23,7 @@ case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSetti
       }
     }
   }
-  def cancelRoute = {
+  def cancelRoute: Route = {
     val authCancel = push.pushEndpointCancel.request.flatMap { _ =>
       authWithQuery
     }

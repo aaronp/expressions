@@ -9,8 +9,9 @@ import io.circe.{Decoder, Encoder, ObjectEncoder}
   */
 sealed trait ContentType {
   final def matches(other: ContentType): Boolean = {
-    toString == other.toString
+    toString == other.toString || other.isAny
   }
+  def isAny: Boolean
 }
 
 object ContentType {
@@ -68,7 +69,8 @@ object ContentType {
 }
 
 case class SimpleContentType(name: String) extends ContentType {
-  override def toString = name
+  override def toString       = name
+  override def isAny: Boolean = name == "Any"
 }
 object SimpleContentType {
   implicit val encoder: ObjectEncoder[SimpleContentType] = io.circe.generic.semiauto.deriveEncoder[SimpleContentType]
@@ -76,6 +78,7 @@ object SimpleContentType {
 }
 
 case class ClassType(className: String, params: Seq[ClassType] = Nil) extends ContentType {
+  override def isAny = className == "Any" && params.isEmpty
   override def toString: String = {
     if (params.isEmpty) {
       className
