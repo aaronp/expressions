@@ -2,11 +2,15 @@ package pipelines.reactive
 
 import monix.reactive.Observable
 import pipelines.BaseCoreTest
+import pipelines.reactive.implicits._
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
-
 class TransformTest extends BaseCoreTest with RepoTestData {
+
+  def intPears              = Observable(1, 2, 3).map(x => (x, x.toString)).asDataSource()
+  def intTuples: DataSource = Observable(1, 2, 3).map(x => (x.toString, x, x.toString * x)).asDataSource()
+  def intQuads: DataSource  = Observable(1, 2, 3).map(x => (x.toString, x, x, x.toString * x)).asDataSource()
 
   "Transform.tries" should {
     "Transform any Try[T] to a [T]" in {
@@ -61,11 +65,20 @@ class TransformTest extends BaseCoreTest with RepoTestData {
   }
   "Transform.tuples._1.outputFor" should {
     "produce the type of the first tuple element" in {
+
+      intPears.contentType shouldBe (ClassType("Tuple2", Seq(ClassType("Int"), ClassType("String"))))
+      intTuples.contentType shouldBe (ClassType("Tuple3", Seq(ClassType("String"), ClassType("Int"), ClassType("String"))))
+
+      Transform.tuples._1.outputFor(ContentType.of[Int]) shouldBe None
+
       Transform.tuples._1.outputFor(ContentType.of[Int]) shouldBe None
       Transform.tuples._1.outputFor(ContentType.of[String]) shouldBe None
       Transform.tuples._1.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[String])
       Transform.tuples._1.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
       Transform.tuples._1.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Double])
+
+      Transform.tuples._1.applyTo(intPears).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List(1, 2, 3)
+      Transform.tuples._1.applyTo(intTuples).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List("1", "2", "3")
     }
   }
   "Transform.tuples._2.outputFor" should {
@@ -75,6 +88,9 @@ class TransformTest extends BaseCoreTest with RepoTestData {
       Transform.tuples._2.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe Some(ContentType.of[Array[Byte]])
       Transform.tuples._2.outputFor(ContentType.of[(Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
       Transform.tuples._2.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Int])
+
+      Transform.tuples._2.applyTo(intPears).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List("1", "2", "3")
+      Transform.tuples._2.applyTo(intTuples).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List(1, 2, 3)
     }
   }
   "Transform.tuples._3.outputFor" should {
@@ -85,6 +101,25 @@ class TransformTest extends BaseCoreTest with RepoTestData {
       Transform.tuples._3.outputFor(ContentType.of[(String, Array[Byte], Int)]) shouldBe Some(ContentType.of[Int])
       Transform.tuples._3.outputFor(ContentType.of[(Int, String, BigDecimal)]) shouldBe Some(ContentType.of[BigDecimal])
       Transform.tuples._3.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[String])
+
+      Transform.tuples._3.applyTo(intPears) shouldBe None
+      Transform.tuples._3.applyTo(intTuples).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List("1", "22", "333")
+    }
+  }
+  "Transform.tuples._4.outputFor" should {
+    "produce the type of the third tuple element" in {
+      Transform.tuples._4.outputFor(ContentType.of[Int]) shouldBe None
+      Transform.tuples._4.outputFor(ContentType.of[String]) shouldBe None
+      Transform.tuples._4.outputFor(ContentType.of[(String, Array[Byte])]) shouldBe None
+      Transform.tuples._4.outputFor(ContentType.of[(String, Array[Byte], Int)]) shouldBe None
+      Transform.tuples._4.outputFor(ContentType.of[(Int, String, BigDecimal)]) shouldBe None
+
+      Transform.tuples._4.outputFor(ContentType.of[(Int, String, Float, BigDecimal)]) shouldBe Some(ContentType.of[BigDecimal])
+      Transform.tuples._4.outputFor(ContentType.of[(Double, Int, String, Array[Byte])]) shouldBe Some(ContentType.of[Array[Byte]])
+
+      Transform.tuples._4.applyTo(intPears) shouldBe None
+      Transform.tuples._4.applyTo(intTuples) shouldBe None
+      Transform.tuples._4.applyTo(intQuads).get.asObservable.toListL.runSyncUnsafe(testTimeout) shouldBe List("1", "22", "333")
     }
   }
   "Transform.map" should {
@@ -98,7 +133,7 @@ class TransformTest extends BaseCoreTest with RepoTestData {
     }
 
     "be able to transform into tuples, apply functions which work on tuples, and then back again" in {
-      val stringToTuple = Transform.map { s: String =>
+      val stringToTuple: Transform = Transform.map { s: String =>
         (s, s.getBytes)
       }
 
@@ -116,6 +151,19 @@ class TransformTest extends BaseCoreTest with RepoTestData {
 
       val Some(bytes) = Transform.tuples._2.applyTo(stringAndByteArrayData)
       stringToTuple.appliesTo(bytes) shouldBe false
+
+      val tupleList          = stringAndByteArrayData.asObservable.toListL.runSyncUnsafe(testTimeout)
+      val stringsList        = stringsAgain.asObservable.toListL.runSyncUnsafe(testTimeout)
+      val bytesList: List[_] = bytes.asObservable.toListL.runSyncUnsafe(testTimeout)
+      stringsList.size shouldBe 2
+      bytesList.size shouldBe 2
+
+      println()
+      tupleList.foreach(println)
+      stringsList.foreach(println)
+      bytesList.foreach(println)
+      println()
+
     }
   }
 

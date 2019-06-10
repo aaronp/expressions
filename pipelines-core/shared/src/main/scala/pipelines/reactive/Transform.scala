@@ -259,11 +259,16 @@ object Transform {
         case tuples.Tuple1Type(t1) => t1
       }.using { d8a: DataSource =>
         d8a.contentType match {
-          case tuples.Tuple1Type(t1) =>
-            val opt = d8a.data(t1)
-
-            println(opt)
-            opt.map(t1 -> _)
+          case ClassType(TupleR(n), t1 +: _) =>
+            val newObs = d8a.asObservable.map { owt: Any =>
+              owt match {
+                case (value: Any, _)          => value
+                case (value: Any, _, _)       => value
+                case (value: Any, _, _, _)    => value
+                case (value: Any, _, _, _, _) => value
+              }
+            }
+            Option(t1 -> newObs)
           case _ => None
         }
       }
@@ -273,8 +278,17 @@ object Transform {
         case tuples.Tuple2Type(t2) => t2
       }.using { d8a =>
         d8a.contentType match {
-          case tuples.Tuple2Type(t2) => d8a.data(t2).map(t2 -> _)
-          case _                     => None
+          case ClassType(TupleR(_), _ +: t2 +: _) =>
+            val newObs = d8a.asObservable.map { owt: Any =>
+              owt match {
+                case (_, value)          => value
+                case (_, value, _)       => value
+                case (_, value, _, _)    => value
+                case (_, value, _, _, _) => value
+              }
+            }
+            Option(t2 -> newObs)
+          case _ => None
         }
       }
     }
@@ -282,23 +296,36 @@ object Transform {
     def _3: Transform = {
       partial {
         case tuples.Tuple3Type(t3) => t3
-      }.using {
-        case d8a =>
-          d8a.contentType match {
-            case tuples.Tuple3Type(t3) => d8a.data(t3).map(t3 -> _)
-            case _                     => None
-          }
+      }.using { d8a =>
+        d8a.contentType match {
+          case ClassType(TupleR(_), _ +: _ +: t3 +: _) =>
+            val newObs = d8a.asObservable.map { owt: Any =>
+              owt match {
+                case (_, _, value)       => value
+                case (_, _, value, _)    => value
+                case (_, _, value, _, _) => value
+              }
+            }
+            Option(t3 -> newObs)
+          case _ => None
+        }
       }
     }
     def _4: Transform = {
       partial {
         case tuples.Tuple4Type(t4) => t4
-      }.using {
-        case d8a =>
-          d8a.contentType match {
-            case tuples.Tuple4Type(t4) => d8a.data(t4).map(t4 -> _)
-            case _                     => None
-          }
+      }.using { d8a =>
+        d8a.contentType match {
+          case ClassType(TupleR(_), _ +: _ +: _ +: t4 +: _) =>
+            val newObs = d8a.asObservable.map { owt: Any =>
+              owt match {
+                case (_, _, _, value)    => value
+                case (_, _, _, value, _) => value
+              }
+            }
+            Option(t4 -> newObs)
+          case _ => None
+        }
       }
     }
   }
