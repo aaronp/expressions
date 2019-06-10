@@ -54,7 +54,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     case (_, event) => Observable.fromIterable(event.matches)
   }
   val pipelineCreatedEvents: Observable[(UUID, Pipeline[_])] = {
-    val events = matchEvents.flatMap { pipelineMatch =>
+    val events = matchEvents.dump("match event").flatMap { pipelineMatch =>
       import pipelineMatch._
       val id = UUID.randomUUID()
       val either = Pipeline(source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>

@@ -83,6 +83,9 @@ object DataSource {
       new PushSource(contentType, input, obs, metadata ++ entries)
     }
 
+    def complete(): Unit            = input.onComplete()
+    def error(err: Throwable): Unit = input.onError(err)
+
     def push(value: A): Future[Ack] = input.onNext(value)
     override def data(ct: ContentType): Option[Observable[_]] = {
       if (ct == contentType) {

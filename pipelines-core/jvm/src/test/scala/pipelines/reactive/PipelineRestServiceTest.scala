@@ -38,7 +38,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
         val (second, _) = service.getOrCreatePushSource(Map("source" -> "second"))
         service.sinks.map(_.metadata).flatMap(_.get("name")) should contain("count")
 
-        service.connect(MetadataCriteria(first.metadata), MetadataCriteria("name" -> "count"), Seq("dump before", "join", "dump after"))
+        service.connect(MetadataCriteria(second.metadata), MetadataCriteria("name" -> "count"), Seq("dump before", "join", "dump after"))
 
         val pipeline = eventually {
           val Seq(found) = service.pipelines.values.toSeq
@@ -49,11 +49,16 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
         }
 
         val Some(firstSrc) = service.pushSourceFor(first.id.get)
-        firstSrc.push(AddressedTextMessage("first", "hello"))
+        firstSrc.push(AddressedTextMessage("first", "hello")).futureValue
 
         val Some(secondSrc) = service.pushSourceFor(second.id.get)
-        secondSrc.push(AddressedTextMessage("second", "world"))
+        secondSrc.push(AddressedTextMessage("second", "world")).futureValue
+        firstSrc.push(AddressedTextMessage("first", "hello again")).futureValue
+        secondSrc.push(AddressedTextMessage("second", "world again")).futureValue
 
+        firstSrc.complete()
+        secondSrc.complete()
+        pipeline.result.futureValue shouldBe 3
       }
     }
 
