@@ -152,18 +152,16 @@ class TransformTest extends BaseCoreTest with RepoTestData {
       val Some(bytes) = Transform.tuples._2.applyTo(stringAndByteArrayData)
       stringToTuple.appliesTo(bytes) shouldBe false
 
-      val tupleList          = stringAndByteArrayData.asObservable.toListL.runSyncUnsafe(testTimeout)
-      val stringsList        = stringsAgain.asObservable.toListL.runSyncUnsafe(testTimeout)
+      val tupleList = stringAndByteArrayData.asObservable.toListL.runSyncUnsafe(testTimeout).toMap[String, Array[Byte]]
+      tupleList.keySet shouldBe Set("a", "b")
+      tupleList("a") should contain inOrderElementsOf ("a".getBytes)
+      tupleList("b") should contain inOrderElementsOf ("b".getBytes)
+
+      val stringsList = stringsAgain.asObservable.toListL.runSyncUnsafe(testTimeout)
+      stringsList shouldBe List("a", "b")
+
       val bytesList: List[_] = bytes.asObservable.toListL.runSyncUnsafe(testTimeout)
-      stringsList.size shouldBe 2
       bytesList.size shouldBe 2
-
-      println()
-      tupleList.foreach(println)
-      stringsList.foreach(println)
-      bytesList.foreach(println)
-      println()
-
     }
   }
 

@@ -19,9 +19,44 @@ object MetadataCriteria {
   type Match = String => Boolean
 
   private val KindValueR = "(.*):(.*)".r
+  private val PrefixR    = "([^.]*)\\.(.*)".r
 
   def forId(id: String): MetadataCriteria = {
     apply("id" -> id)
+  }
+
+  /**
+    * There are use-cases where we want to both supply some criteria and specify some new metadata from a single map.
+    *
+    * For example, as taken from REST query parameters:
+    *
+    * {{{
+    *   ?src.id=123&sink.id=456&type=topic
+    * }}}
+    *
+    * could be used to create one set of MetadataCriteria for a data source, one for a DataSink and create some raw metadata itself for the 'type=topic' key/value pair.
+    *
+    *
+    * This function will strip out any metadata matching keys '<prefix>.XXX=YYY' as 'XXX=YYY' pairs, so that you might e.g.:
+    *
+    * 'sink.topic=re:topic.*'
+    *
+    * @param prefix
+    * @param metadata
+    * @return some criteria which only contains keys with the given prefix, but with that prefix stripped away
+    */
+  def forPrefix(prefix: String, metadata: Map[String, String]): Map[String, String] = {
+    val pears = metadata.collect {
+      case (PrefixR(`prefix`, stripped), value) => (stripped, value)
+    }
+    pears
+  }
+
+  def withoutPrefix(metadata: Map[String, String]): Map[String, String] = {
+    metadata.filterKeys {
+      case PrefixR(_, _) => false
+      case _             => true
+    }
   }
 
   def apply(criteriaByKey: (String, String)*): MetadataCriteria = {

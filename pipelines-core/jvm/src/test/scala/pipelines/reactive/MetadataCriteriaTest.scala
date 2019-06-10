@@ -5,6 +5,30 @@ import pipelines.BaseCoreTest
 
 class MetadataCriteriaTest extends BaseCoreTest {
 
+  "MetadataCriteria.forPrefix" should {
+    "return the entries for the given prefix" in {
+      val input = Map(
+        "source.foo" -> "re:topic/*",
+        "sink.foo"   -> "re:xyz",
+        "sink.bar"   -> "meh",
+        "other"      -> "value"
+      )
+      MetadataCriteria.forPrefix("source", input) shouldBe Map("foo" -> "re:topic/*")
+      MetadataCriteria.forPrefix("sink", input) shouldBe Map("foo"   -> "re:xyz", "bar" -> "meh")
+      MetadataCriteria.forPrefix("missing", input) shouldBe (empty)
+    }
+  }
+  "MetadataCriteria.withoutPrefix" should {
+    "return the entries for the given prefix" in {
+      val input = Map(
+        "source.foo" -> "re:topic/*",
+        "sink.foo"   -> "re:xyz",
+        "sink.bar"   -> "meh",
+        "other"      -> "value"
+      )
+      MetadataCriteria.withoutPrefix(input) shouldBe Map("other" -> "value")
+    }
+  }
   "MetadataCriteria.regex" should {
     "match data sinks" in {
       import DataSink.syntax._
@@ -12,7 +36,7 @@ class MetadataCriteriaTest extends BaseCoreTest {
       val criteria = MetadataCriteria("sink" -> "match me!")
       val matchingSink = Consumer
         .foreach[Any] { _ =>
-          }
+        }
         .asDataSink("sink" -> "match me!")
       criteria.matches(matchingSink.metadata) shouldBe true
     }

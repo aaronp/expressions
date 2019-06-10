@@ -12,22 +12,14 @@ import pipelines.reactive.trigger.{PipelineMatch, RepoState, TriggerEvent, Trigg
 
 import scala.collection.concurrent
 
-object PipelineService {
-  def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
-    val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
-    transforms.foreach {
-      case (id, t) => trigger.addTransform(id, t)
-    }
-    new PipelineService(sources, sinks, trigger)
-  }
-}
-
 /**
-  * A place to support:
+  * An in-memory, JVM-side place to support:
   *
   * 1) CRUD of sources, transforms and sinks
   * 2) triggering 'pipelines' from #1 when matches occur
   * 3) updating existing pipelines
+  *
+  * The operations from this service are intended to be driven by e.g. a REST api, though don't necessarily need to be serializable
   *
   * @param sources
   * @param sinks
@@ -111,5 +103,15 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
         Seq(newSink)
       case found => found
     }
+  }
+}
+
+object PipelineService {
+  def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
+    val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
+    transforms.foreach {
+      case (id, t) => trigger.addTransform(id, t)
+    }
+    new PipelineService(sources, sinks, trigger)
   }
 }

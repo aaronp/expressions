@@ -4,12 +4,12 @@ import pipelines.{BaseCoreTest, WithScheduler}
 
 class PipelineServiceTest extends BaseCoreTest {
 
-  "PipelineService.getOrCreateSource" should {
-    "treat a transform as a sink" ignore {
+  "PipelineService.getOrCreateTransform" should {
+    "create a data source for some config" in {
       WithScheduler { implicit scheduler =>
         val service = PipelineService()
-
-        val Seq(sink) = service.getOrCreateSink(DataSink.count(Map("user" -> "dave")))
+//
+//        service.getOrCreateTransform()
 
       }
     }

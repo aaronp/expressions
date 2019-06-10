@@ -5,14 +5,10 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, Location}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
 import pipelines.rest.jwt.JsonWebToken.CorruptJwtSecret
 import pipelines.rest.jwt.{Claims, Hmac256, JsonWebToken}
-import io.circe.generic.auto._
-import pipelines.users.{LoginRequest, LoginResponse}
-import org.scalatest.{Matchers, WordSpec}
 import pipelines.rest.users.UserRoutes
+import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

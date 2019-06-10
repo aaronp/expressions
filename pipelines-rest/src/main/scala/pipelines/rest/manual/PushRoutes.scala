@@ -39,11 +39,11 @@ case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSetti
   }
   def pushPostRoute = {
     push.pushEndpointPost.implementedBy { _ =>
-    }
+      }
   }
   def pushGetRoute = {
     push.pushEndpointGet.implementedBy { x =>
-    }
+      }
   }
   def errorRoute = {
     push.pushEndpointError.implementedBy { msgOpt =>
