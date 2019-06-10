@@ -11,7 +11,7 @@ import monix.reactive.{Consumer, Observable}
   * There may be only one - or at least a fixed set, as we can use transforms to represent data pipelines e.g. through
   * a socket, and thus the actual sink itself can just be something which audits/records the fact that a pipeline has been run.
   */
-sealed trait DataSink extends HasMetadata {
+trait DataSink extends HasMetadata {
   type T <: DataSink
   type Input
   type Output
@@ -26,7 +26,7 @@ sealed trait DataSink extends HasMetadata {
 
   def addMetadata(entries: Map[String, String]): T
 
-  def connect(observable: Observable[Input])(implicit scheduler: Scheduler): CancelableFuture[Output]
+  def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Output]
 }
 
 object DataSink {
@@ -43,7 +43,7 @@ object DataSink {
     override type T      = Instance[In, Out]
     override type Input  = In
     override type Output = Out
-    override def connect(observable: Observable[Input])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
+    override def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
       val result: Task[Out] = consumer(observable)
       result.runToFuture(scheduler)
     }
@@ -62,7 +62,7 @@ object DataSink {
 
     override def addMetadata(entries: Map[String, String]): VarSink[A] = copy(metadata = metadata ++ entries)
 
-    override def connect(observable: Observable[A])(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
+    override def connect(contentType: ContentType, observable: Observable[A], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
       observable.foreach { next =>
         current := next
       }
@@ -95,4 +95,5 @@ object DataSink {
   def apply[In, Out](consumer: Consumer[In, Out], metadata: Map[String, String], contentType: ContentType): Instance[In, Out] = {
     new Instance(consumer, metadata, contentType)
   }
+
 }

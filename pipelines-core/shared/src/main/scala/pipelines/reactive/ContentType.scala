@@ -33,6 +33,8 @@ object ContentType {
 
   def any: ContentType = of[Any]
 
+  def tuple2(a : ContentType, b: ContentType): ClassType = ClassType("Tuple2", Seq(a,b))
+
   def of[A](implicit typeTag: TypeTag[A]): ContentType = {
     typeTag.tpe match {
       case tr @ TypeRef(_, _, _) => forTypeRef(tr)
@@ -80,7 +82,7 @@ object SimpleContentType {
   implicit val decoder: Decoder[SimpleContentType]       = io.circe.generic.semiauto.deriveDecoder[SimpleContentType]
 }
 
-case class ClassType(className: String, params: Seq[ClassType] = Nil) extends ContentType {
+case class ClassType(className: String, params: Seq[ContentType] = Nil) extends ContentType {
   override def isAny = className == "Any" && params.isEmpty
   override def toString: String = {
     if (params.isEmpty) {

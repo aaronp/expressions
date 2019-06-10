@@ -29,7 +29,7 @@ object Pipeline {
         if (logicalSource.contentType.matches(sink.inputType)) {
           try {
             val obs: Observable[In]                   = prepare(logicalSource.asObservable.asInstanceOf[Observable[In]])
-            val future: CancelableFuture[sink.Output] = sink.connect(obs)
+            val future: CancelableFuture[sink.Output] = sink.connect(logicalSource.contentType, obs, logicalSource.metadata)
             val byIndex                               = transforms.zipWithIndex.map(_.swap).toMap
             Right(new Pipeline[sink.Output](source, logicalSource, byIndex, sink, scheduler, future))
           } catch {

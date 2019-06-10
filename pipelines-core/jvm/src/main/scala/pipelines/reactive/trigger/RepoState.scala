@@ -19,6 +19,8 @@ case class RepoState private[trigger] (
     sinks: Seq[DataSink]
 ) {
 
+  lazy val sourcesById = sources.flatMap(s => s.id.map(_ -> s)).toMap
+
   override def toString: String = {
     s"Triggers(${transformsByName.size} transforms:${transformsByName.keySet.mkString(",")}, ${triggers.size} triggers, ${sources.size} sources, ${sinks.size} sinks)"
   }

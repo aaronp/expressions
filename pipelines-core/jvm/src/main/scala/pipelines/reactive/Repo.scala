@@ -34,6 +34,8 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
 
   def list(): Seq[A] = byId.values.toSeq
 
+  def size() = byId.size
+
   def get(id: String): Option[A] = byId.get(id)
 
   def remove(id: String, callback: TriggerCallback = Ignore): Option[Future[Ack]] = {

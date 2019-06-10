@@ -1,5 +1,7 @@
 package pipelines.reactive
 
+import java.util.UUID
+
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 
@@ -9,6 +11,14 @@ import scala.concurrent.Future
   * Represents a data source -- some type coupled with a means of consuming that data
   */
 trait DataSource extends HasMetadata {
+
+  def ensuringId(): DataSource = {
+    if (metadata.contains("id")) {
+      this
+    } else {
+      addMetadata("id", UUID.randomUUID.toString)
+    }
+  }
 
   /** the type DataSource
     */
@@ -21,6 +31,7 @@ trait DataSource extends HasMetadata {
   /** @return the content type of this data source
     */
   def contentType: ContentType
+
   def data(ct: ContentType): Option[Observable[_]]
 
   def asObservable[A]: Observable[A] = {
