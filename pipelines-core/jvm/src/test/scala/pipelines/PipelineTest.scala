@@ -27,11 +27,14 @@ class PipelineTest extends BaseCoreTest with ScalaFutures {
       }
     }
   }
+
   "Pipeline.connect" should {
     "return a left w/ an error if the types don't match and success when they do" in {
       val left = Pipeline.connect(source, Seq(double, asString, stringToTryTuple, Transform.tuples._2, Transform.tries.get, stringToTryTuple))
-      left shouldBe Left(
-        "Can't connect source with type Int through 6 transforms as the types don't match: Int->Int->String->Tuple2[String,Try[Int]]-> !ERROR! 'partial transform' can't be applied to 'Tuple2[String,Try[Int]]'")
+
+      val Left(actual) = left
+
+      actual shouldBe "Can't connect source with type Int through 6 transforms as the types don't match: Int->Int->String->Tuple2[String,Try[Int]]->Try[Int]->Int-> !ERROR! 'String -> Tuple2[String,Try[Int]]' can't be applied to 'Int'"
 
       val Right(newSource) = Pipeline.connect(source, Seq(double, asString, stringToTryTuple, Transform.tuples._2, Transform.tries.get))
       newSource.contentType shouldBe ContentType.of[Int]
