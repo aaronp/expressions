@@ -295,6 +295,7 @@ lazy val pipelinesCoreJS  = pipelinesCoreCrossProject.js
 
 lazy val example = project
   .in(file("example"))
+  .dependsOn(expressionsAst % "compile->compile;test->test")
   .settings(name := "example", coverageFailOnMinimum := false)
   .settings(commonSettings: _*)
   .settings((stringType in AvroConfig) := "String")
@@ -313,7 +314,7 @@ lazy val expressions = project
       "org.scala-lang"  % "scala-reflect"  % "2.12.8", // % "provided",
       "org.scala-lang"  % "scala-compiler" % "2.12.8" // % "provided"
     ))
-  .dependsOn(example % "test->test")
+//  .dependsOn(example % "test->test")
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
 
 lazy val expressionsAst = project
@@ -325,7 +326,7 @@ lazy val expressionsAst = project
     "com.lihaoyi" %% "fastparse" % "2.1.0"
   ))
   .dependsOn(expressions % "compile->compile;test->test")
-  .dependsOn(example % "test->test")
+//  .dependsOn(example % "test->test")
 
 lazy val geometry = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
@@ -409,7 +410,7 @@ lazy val pipelinesEval = project
   .settings(libraryDependencies ++= typesafeConfig :: logging)
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
   .dependsOn(expressionsAst % "compile->compile;test->test")
-  .dependsOn(example % "test->compile")
+//  .dependsOn(example % "test->compile")
 
 lazy val pipelinesRest = project
   .in(file("pipelines-rest"))

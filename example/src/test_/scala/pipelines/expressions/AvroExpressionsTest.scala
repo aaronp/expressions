@@ -2,7 +2,6 @@ package pipelines
 
 package expressions
 
-import example.Example
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.language.dynamics

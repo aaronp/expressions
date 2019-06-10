@@ -110,7 +110,7 @@ object DataSource {
       } else {
         contentType match {
           case ClassType("Tuple2", Seq(t1, t2)) =>
-            observable match {
+            (observable: @unchecked) match {
               case x: Observable[(_, _)] if t1 == ct => Option(x.map(_._1))
               case x: Observable[(_, _)] if t2 == ct => Option(x.map(_._2))
               case _                                 => None

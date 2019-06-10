@@ -12,6 +12,7 @@ import pipelines.rest.jwt.{Claims, Hmac256, JsonWebToken}
 import io.circe.generic.auto._
 import pipelines.users.{LoginRequest, LoginResponse}
 import org.scalatest.{Matchers, WordSpec}
+import pipelines.rest.users.UserRoutes
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

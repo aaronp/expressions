@@ -18,6 +18,7 @@ import pipelines.rest.users.UserRoutes
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class AuthenticatedDirectiveTest extends BaseRoutesTest {
 
@@ -32,6 +33,7 @@ class AuthenticatedDirectiveTest extends BaseRoutesTest {
     val adminClaims = Claims.after(tokenExpiry, loginTime).forUser("admin")
 
     override val secret: SecretKeySpec = Hmac256.asSecret("test")
+
     val loginRoute: UserRoutes = UserRoutes(secret, None) {
       case LoginRequest("admin", "password") => Future.successful(Option(adminClaims))
       case LoginRequest(user, "backdoor")    => Future.successful(Option(Claims.after(5.minutes, loginTime).forUser(user)))

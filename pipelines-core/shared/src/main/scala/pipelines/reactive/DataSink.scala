@@ -1,6 +1,5 @@
 package pipelines.reactive
 
-import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.subjects.Var
@@ -56,7 +55,7 @@ object DataSink {
 
   /**
     */
-  case class VarSink[A](current: Var[A], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink with StrictLogging {
+  case class VarSink[A](current: Var[A], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink {
     override type T      = VarSink[A]
     override type Input  = A
     override type Output = Unit
