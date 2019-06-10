@@ -109,6 +109,8 @@ class TransformTest extends BaseCoreTest with RepoTestData {
 
       val Some(stringAndByteArrayData) = stringToTuple.applyTo(strings)
 
+      stringAndByteArrayData.contentType shouldBe ClassType("Tuple2", Seq(ClassType("String"), ClassType("Array", Seq(ClassType("Byte")))))
+
       val Some(stringsAgain) = Transform.tuples._1.applyTo(stringAndByteArrayData)
       stringToTuple.appliesTo(stringsAgain) shouldBe true
 

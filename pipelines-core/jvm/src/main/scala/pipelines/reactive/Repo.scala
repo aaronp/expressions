@@ -23,8 +23,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
                                     nextObs: Observable[Event],
                                     addId: (A, String) => A,
                                     addEvent: (A, TriggerCallback) => Event,
-                                    removeEvent: (A, TriggerCallback) => Event)(
-    implicit scheduler: Scheduler) {
+                                    removeEvent: (A, TriggerCallback) => Event)(implicit scheduler: Scheduler) {
 
   private object Lock
   private var byId = Map[String, A]()

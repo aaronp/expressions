@@ -17,11 +17,18 @@ import scala.concurrent.Future
   */
 class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit val scheduler: Scheduler) extends StrictLogging {
 
-  def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(), sinkCriteria: MetadataCriteria = MetadataCriteria(), transforms: Seq[String] = Nil, callback: TriggerCallback = Ignore): Future[Ack] = {
+  def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(),
+              sinkCriteria: MetadataCriteria = MetadataCriteria(),
+              transforms: Seq[String] = Nil,
+              callback: TriggerCallback = Ignore): Future[Ack] = {
     connect(sourceCriteria, sinkCriteria, transforms, false, callback)
   }
 
-  def connect(sourceCriteria: MetadataCriteria, sinkCriteria: MetadataCriteria, transforms: Seq[String], retainTriggerAfterMatch: Boolean, callback: TriggerCallback): Future[Ack] = {
+  def connect(sourceCriteria: MetadataCriteria,
+              sinkCriteria: MetadataCriteria,
+              transforms: Seq[String],
+              retainTriggerAfterMatch: Boolean,
+              callback: TriggerCallback): Future[Ack] = {
     connect(Trigger(sourceCriteria, sinkCriteria, transforms), retainTriggerAfterMatch, callback)
   }
 

@@ -20,7 +20,7 @@ class TriggerPipeTest extends BaseCoreTest {
             }
           .asDataSink("user" -> "foo")
 
-        val (sources, sinks, pipe)                         = TriggerPipe.create(sched)
+        val (sources, sinks, pipe)                      = TriggerPipe.create(sched)
         val ref: Var[Option[(RepoState, TriggerEvent)]] = Var(Option.empty[(RepoState, TriggerEvent)])
         pipe.output.foreach { event: (RepoState, TriggerEvent) =>
           println(event)

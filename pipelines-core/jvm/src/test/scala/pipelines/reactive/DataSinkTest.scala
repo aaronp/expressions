@@ -100,7 +100,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
         received.clear()
         first := "second message"
         eventually {
-          received should contain only("source: 'second message', other: 'control'")
+          received should contain only ("source: 'second message', other: 'control'")
         }
         received.clear()
 
@@ -112,7 +112,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
 
         Then("We should see an updated result")
         eventually {
-          received should contain only("source: 'last message', other: 'an update'")
+          received should contain only ("source: 'last message', other: 'an update'")
         }
         received.clear()
       }

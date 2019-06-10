@@ -97,7 +97,9 @@ object Transform {
   }
 
   def fixed[A, B](fromType: ContentType, toType: ContentType)(apply: (Observable[A] => Observable[B])): FixedTransform[A, B] = {
-    new FixedTransform[A, B](fromType, toType, (original, obs: Observable[A]) => DataSource.of(toType, apply(obs), original.metadata.updated(s"from $fromType -> $toType", "fixed")))
+    new FixedTransform[A, B](fromType,
+                             toType,
+                             (original, obs: Observable[A]) => DataSource.of(toType, apply(obs), original.metadata.updated(s"from $fromType -> $toType", "fixed")))
   }
 
   def fixedFor[A, B](fromType: ContentType, toType: ContentType)(apply: ((DataSource, Observable[A]) => DataSource)): FixedTransform[A, B] = {
@@ -255,10 +257,14 @@ object Transform {
     def _1: Transform = {
       partial {
         case tuples.Tuple1Type(t1) => t1
-      }.using { d8a =>
+      }.using { d8a: DataSource =>
         d8a.contentType match {
-          case tuples.Tuple1Type(t1) => d8a.data(t1).map(t1 -> _)
-          case _                     => None
+          case tuples.Tuple1Type(t1) =>
+            val opt = d8a.data(t1)
+
+            println(opt)
+            opt.map(t1 -> _)
+          case _ => None
         }
       }
     }

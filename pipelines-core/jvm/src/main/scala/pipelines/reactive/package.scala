@@ -9,8 +9,8 @@ package object reactive {
 
   type TriggerCallback = Try[TriggerEvent] => Unit
 
-  val Ignore: TriggerCallback = {
-    _ => ()
+  val Ignore: TriggerCallback = { _ =>
+    ()
   }
 
   type Metadata = Map[String, String]
