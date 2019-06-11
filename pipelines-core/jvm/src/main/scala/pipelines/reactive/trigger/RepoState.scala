@@ -190,11 +190,11 @@ case class RepoState private[trigger] (
   final def update(input: TriggerInput): (RepoState, TriggerEvent) = {
     try {
       val result @ (_, event) = updateUnsafe(input)
-      input.callback(Success(event))
+      input.callback.onResult(Success(event))
       result
     } catch {
       case NonFatal(e) =>
-        input.callback(Failure(e))
+        input.callback.onResult(Failure(e))
         e.printStackTrace()
         throw e
     }

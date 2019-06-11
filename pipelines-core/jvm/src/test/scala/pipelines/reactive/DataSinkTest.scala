@@ -31,9 +31,10 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
 
         val callbackMatches = ListBuffer[PipelineMatch]()
         val matches         = ListBuffer[PipelineMatch]()
-        service.matchEvents.foreach { pipeline: PipelineMatch =>
-          println(s"pipeline: $pipeline")
-          matches += pipeline
+        service.matchEvents.foreach {
+          case (_, pipeline) =>
+            println(s"pipeline: $pipeline")
+            matches += pipeline
         }
 
         And("A variable sink for the control and a transform which uses it")
@@ -57,7 +58,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
           service.state.get.transformsByName.size shouldBe 1
         }
 
-        def triggerCallback(event: Try[TriggerEvent]): Unit = {
+        val triggerCallback = TriggerCallback { event: Try[TriggerEvent] =>
           event match {
             case Success(value: PipelineMatch) =>
               callbackMatches += value
@@ -66,7 +67,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
           }
         }
 
-        service.triggers.connect(MetadataCriteria(controlSource.metadata), MetadataCriteria(someVariableSink.metadata), callback = triggerCallback _).futureValue
+        service.triggers.connect(MetadataCriteria(controlSource.metadata), MetadataCriteria(someVariableSink.metadata), callback = triggerCallback).futureValue
 
         eventually {
           callbackMatches.size shouldBe 1
@@ -82,7 +83,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
 
         MetadataCriteria(sourceA.metadata).matches(sourceA.metadata) shouldBe true
         MetadataCriteria(sink.metadata).matches(sink.metadata) shouldBe true
-        service.triggers.connect(MetadataCriteria(sourceA.metadata), MetadataCriteria(sink.metadata), Seq("modified"), callback = triggerCallback _).futureValue
+        service.triggers.connect(MetadataCriteria(sourceA.metadata), MetadataCriteria(sink.metadata), Seq("modified"), callback = triggerCallback).futureValue
         eventually {
           matches.size shouldBe 2
           service.pipelines.size shouldBe 2

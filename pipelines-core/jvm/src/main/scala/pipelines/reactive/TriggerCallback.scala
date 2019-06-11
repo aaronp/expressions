@@ -1,5 +1,6 @@
 package pipelines.reactive
 
+import com.typesafe.scalalogging.StrictLogging
 import pipelines.Pipeline
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
 
@@ -14,6 +15,20 @@ trait TriggerCallback {
 
 }
 object TriggerCallback {
+
+  class LoggingInstance extends TriggerCallback with StrictLogging {
+    override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {
+      logger.error(s"onFailedMatch($input, $mtch, $err)")
+    }
+
+    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_]): Unit = {
+      logger.error(s"onMatch($input, $mtch, $pipeline)")
+    }
+
+    override def onResult(response: Try[TriggerEvent]): Unit = {
+      logger.error(s"onResult($response)")
+    }
+  }
 
   def apply(onEvent: Try[TriggerEvent] => Unit) = new TriggerCallback {
     override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {}

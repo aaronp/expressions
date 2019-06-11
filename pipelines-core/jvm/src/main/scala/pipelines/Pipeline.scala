@@ -20,11 +20,11 @@ class Pipeline[A] private (val matchId: UUID,
 
 object Pipeline {
 
-  def from[In, Out](id : UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(implicit scheduler: Scheduler): Either[String, Pipeline[Out]] = {
+  def from[In, Out](id: UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(implicit scheduler: Scheduler): Either[String, Pipeline[Out]] = {
     apply(id, source, transforms, sink)(identity)
   }
 
-  def apply[In, Out](id : UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
+  def apply[In, Out](id: UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
       implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
 
     connect(source, transforms) match {

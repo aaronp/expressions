@@ -78,7 +78,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     }
     .share(scheduler)
 
-  def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[pipelineMatch.sink.Output]] = {
+  def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_]] = {
     import pipelineMatch._
     Pipeline(pipelineMatch.matchId, source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
       obs.guarantee(Task.eval {
@@ -115,11 +115,11 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
 object PipelineService extends StrictLogging {
   def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
     val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
+    val service                   = new PipelineService(sources, sinks, trigger)
+
     transforms.foreach {
       case (id, t) => trigger.addTransform(id, t)
     }
-    val service = new PipelineService(sources, sinks, trigger)
-
     service.pipelineCreatedEvents.dump("pipeline created").foreach { pipeline =>
       service.addPipeline(pipeline.matchId, pipeline)
     }

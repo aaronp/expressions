@@ -38,7 +38,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
 
   def get(id: String): Option[A] = byId.get(id)
 
-  def remove(id: String, callback: TriggerCallback = Ignore): Option[Future[Ack]] = {
+  def remove(id: String, callback: TriggerCallback = TriggerCallback.Ignore): Option[Future[Ack]] = {
     val removed = Lock.synchronized {
       val before = byId.get(id)
       byId = byId - id
@@ -48,7 +48,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
       input.onNext(removeEvent(instance, callback))
     }
   }
-  def add(source: A, callback: TriggerCallback = Ignore): (A, Future[Ack]) = {
+  def add(source: A, callback: TriggerCallback = TriggerCallback.Ignore): (A, Future[Ack]) = {
     val id: String  = UUID.randomUUID().toString
     val idSource: A = addId(source, id)
     Lock.synchronized {
@@ -59,7 +59,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
 
   /** @return an infinite observable of all existing and future values
     */
-  def events: Observable[Event] = (Observable.fromIterable(byId.values).map(addEvent(_, Ignore)) ++ nextObs)
+  def events: Observable[Event] = (Observable.fromIterable(byId.values).map(addEvent(_, TriggerCallback.Ignore)) ++ nextObs)
 }
 
 object Repo {

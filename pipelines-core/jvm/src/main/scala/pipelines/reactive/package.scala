@@ -4,6 +4,7 @@ import monix.execution.Scheduler
 
 package object reactive {
 
+  def Ignore = TriggerCallback.Ignore
   type Metadata = Map[String, String]
 
   type Sources = Repo[SourceEvent, DataSource]

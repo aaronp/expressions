@@ -1,22 +1,19 @@
 package pipelines.reactive
 
 import org.scalatest.concurrent.ScalaFutures
+import pipelines._
 import pipelines.reactive.DataSource.PushSource
 import pipelines.reactive.PipelineRestService.Settings
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
 import pipelines.socket.AddressedTextMessage
-import pipelines.{BaseCoreTest, Pipeline, WithScheduler, WithTempDir}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
 
-  override def testTimeout: FiniteDuration = 13.seconds
-
   "PipelineRestService" should {
-    "be able to create a transform which joins two data sources" ignore {
+    "be able to create a transform which joins two data sources" in {
 
       WithScheduler { implicit sched =>
         //
@@ -37,7 +34,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
         service.getOrCreateDump("before").futureValue
         service.getOrCreateDump("after").futureValue
         eventually {
-          service.underlying.state().get.transformsByName.keySet shouldBe Set("before", "after", "persisted", "join")
+          service.underlying.state().get.transformsByName.keySet should contain allOf ("before", "after", "persisted", "join")
         }
 
         //
@@ -92,84 +89,75 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
           val service = PipelineRestService(settings)
 
           When("We register a trigger which connects sources which contain a 'autoconnect' set to 'true' with a 'count' sink via the filesystem")
-          service.transformsByName.keySet should contain("persisted")
+          eventually {
+            service.transformsByName.keySet should contain("persisted")
+          }
+
           service.getOrCreateDump("before")
           service.getOrCreateDump("after")
-          service.underlying.triggers.connect(MetadataCriteria("autoconnect" -> "true"),
-                                              MetadataCriteria("name"        -> "count"),
-                                              Seq("before", "persisted", "after"),
-                                              retainTriggerAfterMatch = true,
-                                              Ignore)
+          service.underlying.triggers.connect(
+            MetadataCriteria("autoconnect" -> "true"),
+            MetadataCriteria("name"        -> "count"),
+            Seq("before", "addressedTextAsJson", "Json to String", "String to UTF-8 byte array", "persisted", "after"),
+            retainTriggerAfterMatch = true,
+            TriggerCallback.Ignore
+          )
 
           And("we add a data source")
           val matches = ListBuffer[PipelineMatch]()
-          service.underlying.triggers.output.foreach { out =>
-            println(s"\tTrigger Output: $out")
-          }
-          service.underlying.pipelineCreatedEvents.foreach { out =>
-            println(s"""
-                 |
-                 |
-                 |PIPELINE CREATE EVENT:
-                 |$out
-                 |
-                 |
-               """.stripMargin)
-          }
 
           val pipes = ListBuffer[Pipeline[_]]()
           service.underlying.pipelineCreatedEvents.foreach { next =>
-            println(s"""
-                 |
-                 | GOT $next
-                 |
-               """.stripMargin)
             pipes += next
           }
-          service.underlying.matchEvents.foreach { newConnection: PipelineMatch =>
-            println(s"new match: ${newConnection.matches.size} matches")
-            matches += newConnection
+          service.underlying.matchEvents.foreach {
+            case (_, newConnection) =>
+              println(s"new match: ${newConnection.matches.size} matches")
+              matches += newConnection
           }
 
-          var triggeredResult: Try[TriggerEvent] = null
-          def callback(result: Try[TriggerEvent]) = {
-            println(s"\tresult is $result")
-            triggeredResult = result
+          object callback extends reactive.TriggerCallback.LoggingInstance {
+            var triggeredResult = Option.empty[Either[String, Pipeline[_]]]
+            override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {
+              super.onFailedMatch(input, mtch, err)
+              triggeredResult = Option(Left(err))
+            }
+
+            override def onResult(response: Try[TriggerEvent]): Unit = {
+              super.onResult(response)
+              response match {
+                case Failure(err) => triggeredResult = Some(Left(err.getMessage))
+                case Success(res) =>
+              }
+            }
+
+            override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_]): Unit = {
+              super.onMatch(input, mtch, pipeline)
+              triggeredResult = Option(Right(pipeline))
+            }
           }
 
           val (pushSource: PushSource[AddressedTextMessage], _) = service.getOrCreatePushSource(Map("user" -> "foo", "autoconnect" -> "true"), callback)
 
           Then("we should see the new source connect")
-          eventually {
-            val Success(ok: PipelineMatch) = triggeredResult
-            ok
+          val either = eventually {
+            val Some(result) = callback.triggeredResult
+            result
+          }
+          val pipeline: Pipeline[_] = either match {
+            case Left(err) => fail(err)
+            case Right(ok) => ok
           }
 
           eventually {
             matches.size shouldBe 1
           }
 
-//          val pipeline: Pipeline[_] = eventually {
-////            val Seq(r) = service.pipelines.values.toSeq
-////            r
-//            pipes.head._2
-//          }
-          while (pipes.isEmpty) {
-            Thread.sleep(500)
-          }
-
-          val pipeline = pipes.head
-
-          println("")
-          pipeline.result.foreach { res =>
-            println(s"Future result: " + res)
-          }
-
           pushSource.push(AddressedTextMessage("first", "value"))
           pushSource.push(AddressedTextMessage("second", "value"))
           pushSource.complete()
 
-          pipeline.result.futureValue shouldBe 1
+          pipeline.result.futureValue shouldBe 2
         }
       }
     }

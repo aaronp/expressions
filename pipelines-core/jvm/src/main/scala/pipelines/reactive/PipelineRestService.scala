@@ -17,15 +17,17 @@ import scala.concurrent.Future
 object PipelineRestService {
   case class Settings(persistUnder: Path, ioScheduler: Scheduler)
 
-  def apply(ioScheduler: Scheduler): PipelineRestService = {
-    apply(Settings("./data".asPath, ioScheduler))
+  def apply(ioScheduler: Scheduler, dataDir: Path = "./data".asPath): PipelineRestService = {
+    apply(Settings(dataDir, ioScheduler))
   }
 
   def apply(settings: Settings): PipelineRestService = {
     import settings._
     val underlying = PipelineService()(ioScheduler)
 
+
     underlying.triggers.addTransform("persisted", Transform.writeToZipped(persistUnder))
+
     underlying.sinks.add(DataSink.count(Map("name"       -> "count")))
     underlying.sinks.add(RegisterAsSourceSink(Map("name" -> "register", "prefix" -> "register"), underlying.sources))
 
@@ -70,7 +72,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
   def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(),
               sinkCriteria: MetadataCriteria = MetadataCriteria(),
               transforms: Seq[String] = Nil,
-              callback: TriggerCallback = Ignore): Future[Ack] = {
+              callback: TriggerCallback = TriggerCallback.Ignore): Future[Ack] = {
     underlying.triggers.connect(sourceCriteria, sinkCriteria, transforms, false, callback)
   }
 
@@ -85,7 +87,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
   def getOrCreateJoinLatestTransform(name: String,
                                      criteria: MetadataCriteria,
                                      replace: Boolean = false,
-                                     callback: TriggerCallback = Ignore): Either[String, (Transform, Future[Ack])] = {
+                                     callback: TriggerCallback = TriggerCallback.Ignore): Either[String, (Transform, Future[Ack])] = {
     underlying.sources.find(criteria) match {
       case Seq(only) =>
         val newTransform = Transform.combineLatest(only)
@@ -104,7 +106,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
 
   def getOrCreateDump(text: String) = underlying.triggers.addTransform(text, Transform.dump(text))
 
-  def getOrCreatePushSource(metadata: Map[String, String], callback: TriggerCallback = Ignore): (DataSource, Future[Ack]) = {
+  def getOrCreatePushSource(metadata: Map[String, String], callback: TriggerCallback = TriggerCallback.Ignore): (DataSource, Future[Ack]) = {
     implicit val wtf = ioScheduler
     val push         = DataSource.push[AddressedTextMessage](metadata)
     underlying.sources.add(push, callback)
@@ -116,7 +118,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
     *
     * @param metadata
     */
-  def getOrCreateStringSource(content: String, metadata: Map[String, String], callback: TriggerCallback = Ignore): (DataSource, Future[Ack]) = {
+  def getOrCreateStringSource(content: String, metadata: Map[String, String], callback: TriggerCallback = TriggerCallback.Ignore): (DataSource, Future[Ack]) = {
     val source = DataSource[String](Observable(content)).addMetadata(metadata)
     underlying.sources.add(source, callback)
   }

@@ -6,6 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
 import monix.reactive.Observable
+import pipelines.socket.{AddressedMessage, AddressedTextMessage}
 
 import scala.util.{Failure, Success, Try}
 
@@ -57,6 +58,7 @@ object Transform {
   }
 
   def defaultTransforms(): Map[String, Transform] = {
+
     Map[String, Transform](
       "Json to String"                   -> jsonToString, //
       "String to UTF-8 byte array"       -> stringToUtf8, //
@@ -68,10 +70,17 @@ object Transform {
       "_2"                               -> tuples._2,
       "_3"                               -> tuples._3,
       "_4"                               -> tuples._4,
+      "addressedTextAsJson"              -> sockets.addressedTextAsJson,
+      "addressedMessageAsJson"           -> sockets.addressedAsJson,
       "dump"                             -> dump("debug")
     )
   }
   import scala.reflect.runtime.universe.TypeTag
+
+  object sockets {
+    val addressedTextAsJson: FixedTransform[AddressedTextMessage, Json] = Transform.map[AddressedTextMessage, Json](_.asJson)
+    val addressedAsJson: FixedTransform[AddressedMessage, Json]         = Transform.map[AddressedMessage, Json](_.asJson)
+  }
 
   object identity extends Transform {
     override def applyTo(d8a: DataSource): Option[DataSource]           = Option(d8a)

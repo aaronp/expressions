@@ -20,7 +20,7 @@ class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, N
   def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(),
               sinkCriteria: MetadataCriteria = MetadataCriteria(),
               transforms: Seq[String] = Nil,
-              callback: TriggerCallback = Ignore): Future[Ack] = {
+              callback: TriggerCallback = TriggerCallback.Ignore): Future[Ack] = {
     connect(sourceCriteria, sinkCriteria, transforms, false, callback)
   }
 
@@ -38,7 +38,7 @@ class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, N
 
   def subscribeToSinks(sinks: Observable[TriggerInput with SinkEvent]): Cancelable       = sinks.subscribe(input)
   def subscribeToSources(sources: Observable[TriggerInput with SourceEvent]): Cancelable = sources.subscribe(input)
-  def addTransform(name: String, transform: Transform, replace: Boolean = false, callback: TriggerCallback = Ignore): Future[Ack] = {
+  def addTransform(name: String, transform: Transform, replace: Boolean = false, callback: TriggerCallback = TriggerCallback.Ignore): Future[Ack] = {
     input.onNext(OnNewTransform(name, transform, replace, callback))
   }
 

@@ -20,9 +20,9 @@ class TriggerPipeTest extends BaseCoreTest {
             }
           .asDataSink("user" -> "foo")
 
-        val (sources, sinks, pipe)                      = TriggerPipe.create(sched)
-        val ref: Var[Option[(RepoState, TriggerEvent)]] = Var(Option.empty[(RepoState, TriggerEvent)])
-        pipe.output.foreach { event: (RepoState, TriggerEvent) =>
+        val (sources, sinks, pipe)                                    = TriggerPipe.create(sched)
+        val ref: Var[Option[(RepoState, TriggerInput, TriggerEvent)]] = Var(Option.empty)
+        pipe.output.foreach { event: (RepoState, TriggerInput, TriggerEvent) =>
           println(event)
           ref := Option(event)
         }
@@ -34,7 +34,7 @@ class TriggerPipeTest extends BaseCoreTest {
         sinks.add(ignoredConsumer)
 
         eventually {
-          val Some((state, _)) = ref()
+          val Some((state, _, _)) = ref()
           state.sources should not be (empty)
           state.sinks should not be (empty)
         }
@@ -42,7 +42,7 @@ class TriggerPipeTest extends BaseCoreTest {
         pipe.connect(sourceCriteria = MetadataCriteria("topic" -> "test"), sinkCriteria = MetadataCriteria("user" -> "foo"))
 
         val matchEvent = eventually {
-          val Some((_, ok: PipelineMatch)) = ref()
+          val Some((_, _, ok: PipelineMatch)) = ref()
           ok
         }
         matchEvent.source shouldBe s1
@@ -63,11 +63,11 @@ class TriggerPipeTest extends BaseCoreTest {
 
         When("We connect a trigger to the sources")
         val driver    = TriggerPipe()
-        val received  = ListBuffer[(RepoState, TriggerEvent)]()
-        val received2 = ListBuffer[(RepoState, TriggerEvent)]()
+        val received  = ListBuffer[(RepoState, TriggerInput, TriggerEvent)]()
+        val received2 = ListBuffer[(RepoState, TriggerInput, TriggerEvent)]()
 
         // subscribe twice, just to see/check we're not duplicating events via what would be a cold observer
-        driver.output.foreach { next =>
+        driver.output.foreach { next: (RepoState, TriggerInput, TriggerEvent) =>
           received += next
         }
         driver.output.foreach { next =>
@@ -81,7 +81,7 @@ class TriggerPipeTest extends BaseCoreTest {
           received2.size shouldBe 2
         }
         received.foreach {
-          case (_, UnmatchedSource(_, triggers)) => triggers should be(empty)
+          case (_, _, UnmatchedSource(_, triggers)) => triggers should be(empty)
         }
         received.clear()
 
@@ -97,7 +97,7 @@ class TriggerPipeTest extends BaseCoreTest {
 
         When("A trigger is added which will match a source and sink with our transform")
         val trigger = Trigger(MetadataCriteria("topic" -> "first"), MetadataCriteria("sink" -> "match me!"), Seq("double"))
-        driver.connect(trigger, true, Ignore) shouldBe Ack.Continue
+        driver.connect(trigger, true, TriggerCallback.Ignore) shouldBe Ack.Continue
 
         Then("We should see a trigger added event")
         eventually {
@@ -126,7 +126,7 @@ class TriggerPipeTest extends BaseCoreTest {
           received.size shouldBe 1
         }
         locally {
-          val UnmatchedSink(_, triggers) = received.head._2
+          val UnmatchedSink(_, triggers) = received.head._3
           triggers should contain only (trigger)
         }
         received.clear()
@@ -147,7 +147,7 @@ class TriggerPipeTest extends BaseCoreTest {
           received.size shouldBe 1
         }
         withClue("the matching logic shouldn't actually connect the source and sink - just identify a match") {
-          val Seq(PipelineMatch(_, src, trans, sink, _)) = received.map(_._2)
+          val Seq(PipelineMatch(_, src, trans, sink, _)) = received.map(_._3)
           matchedList should be(empty)
         }
         received.clear()

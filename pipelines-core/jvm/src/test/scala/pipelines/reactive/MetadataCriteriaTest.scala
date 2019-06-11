@@ -36,7 +36,7 @@ class MetadataCriteriaTest extends BaseCoreTest {
       val criteria = MetadataCriteria("sink" -> "match me!")
       val matchingSink = Consumer
         .foreach[Any] { _ =>
-        }
+          }
         .asDataSink("sink" -> "match me!")
       criteria.matches(matchingSink.metadata) shouldBe true
     }
