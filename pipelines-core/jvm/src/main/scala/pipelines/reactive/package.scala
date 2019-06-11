@@ -1,17 +1,8 @@
 package pipelines
 
 import monix.execution.Scheduler
-import pipelines.reactive.trigger.TriggerEvent
-
-import scala.util.Try
 
 package object reactive {
-
-  type TriggerCallback = Try[TriggerEvent] => Unit
-
-  val Ignore: TriggerCallback = { _ =>
-    ()
-  }
 
   type Metadata = Map[String, String]
 

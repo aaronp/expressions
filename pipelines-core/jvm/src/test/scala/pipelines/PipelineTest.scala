@@ -1,5 +1,7 @@
 package pipelines
 
+import java.util.UUID
+
 import monix.reactive.Observable
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.reactive.{ContentType, DataSink, Transform}
@@ -19,10 +21,10 @@ class PipelineTest extends BaseCoreTest with ScalaFutures {
     "connect any source w/ a generic sink" in {
       WithScheduler { implicit scheduler =>
         val sink                        = DataSink.count()
-        val Right(ints: Pipeline[Long]) = Pipeline.from(source, Nil, sink)
+        val Right(ints: Pipeline[Long]) = Pipeline.from(UUID.randomUUID, source, Nil, sink)
         ints.result.futureValue shouldBe 3
 
-        val Right(strings: Pipeline[Long]) = Pipeline.from(source, Seq(asString), sink)
+        val Right(strings: Pipeline[Long]) = Pipeline.from(UUID.randomUUID, source, Seq(asString), sink)
         strings.result.futureValue shouldBe 3
       }
     }

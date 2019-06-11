@@ -28,12 +28,17 @@ import scala.collection.concurrent
   */
 class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
-  private var latest = Var(Option.empty[(RepoState, TriggerEvent)])(scheduler)
+  private def addPipeline(id: UUID, pipeline: Pipeline[_]): Unit = {
+    logger.info(s"!>! Pipeline added $id : $pipeline")
+    pipelinesById.put(id, pipeline)
+  }
+
+  private var latest = Var(Option.empty[(RepoState, TriggerInput, TriggerEvent)])(scheduler)
 
   def state(): Option[RepoState]        = latest().map(_._1)
-  def lastEvent(): Option[TriggerEvent] = latest().map(_._2)
+  def lastEvent(): Option[TriggerEvent] = latest().map(_._3)
 
-  triggers.output.foreach { entry =>
+  triggers.output.foreach { entry: (RepoState, TriggerInput, TriggerEvent) =>
     latest := Some(entry)
   }(triggers.scheduler)
 
@@ -50,38 +55,39 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
   }
   def pipelines(): concurrent.Map[UUID, Pipeline[_]] = pipelinesById
 
-  val matchEvents: Observable[PipelineMatch] = triggers.output.flatMap {
-    case (_, event) => Observable.fromIterable(event.matches)
-  }
-  val pipelineCreatedEvents: Observable[(UUID, Pipeline[_])] = {
-    val events = matchEvents.dump("match event").flatMap { pipelineMatch =>
-      import pipelineMatch._
-      val id = UUID.randomUUID()
-      val either = Pipeline(source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
-        obs.guarantee(Task.eval {
-          logger.info(s"Pipeline removed '$id' : $pipelineMatch")
-          pipelinesById.remove(id)
-        })
-      }(scheduler)
-
-      either match {
-        case Left(err) =>
-          logger.info(s"Couldn't create a pipeline from $pipelineMatch: $err")
-          Observable.empty[(UUID, Pipeline[_])]
-        case Right(pipeline: Pipeline[_]) =>
-          logger.info(s"Pipeline '$id' added : $pipelineMatch")
-          Observable((id, pipeline))
-      }
+  lazy val matchEvents: Observable[(TriggerInput, PipelineMatch)] = triggers.output
+    .flatMap {
+      case (_, input, event) => Observable.fromIterable(event.matches.map(input -> _))
     }
-    events.share(scheduler)
+    .share(scheduler)
+
+  lazy val pipelineCreatedEvents: Observable[Pipeline[_]] = matchEvents
+    .dump("match event")
+    .flatMap {
+      case (input: TriggerInput, mtch: PipelineMatch) =>
+        onPipelineMatch(input, mtch) match {
+          case Left(err) =>
+            input.callback.onFailedMatch(input, mtch, err)
+            logger.info(s"Couldn't create a pipeline: $err")
+            Observable.empty[Pipeline[_]]
+          case Right(pipeline: Pipeline[_]) =>
+            logger.info(s"Pipeline '${pipeline.matchId}' added : $pipeline")
+            input.callback.onMatch(input, mtch, pipeline)
+            Observable(pipeline)
+        }
+    }
+    .share(scheduler)
+
+  def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[pipelineMatch.sink.Output]] = {
+    import pipelineMatch._
+    Pipeline(pipelineMatch.matchId, source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
+      obs.guarantee(Task.eval {
+        logger.info(s"Pipeline removed '${pipelineMatch.matchId} : $pipelineMatch")
+        pipelinesById.remove(pipelineMatch.matchId)
+      })
+    }(scheduler)
   }
 
-  pipelineCreatedEvents.foreach {
-    case (id, pipeline) =>
-      logger.info(s"!>! Pipeline added $id : $pipeline")
-      pipelinesById.put(id, pipeline)
-
-  }
   def sourceMetadata(): Seq[Map[String, String]] = sources.list().map(_.metadata)
   def sinkMetadata(): Seq[Map[String, String]]   = sinks.list().map(_.metadata)
 
@@ -106,12 +112,18 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
   }
 }
 
-object PipelineService {
+object PipelineService extends StrictLogging {
   def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
     val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
     transforms.foreach {
       case (id, t) => trigger.addTransform(id, t)
     }
-    new PipelineService(sources, sinks, trigger)
+    val service = new PipelineService(sources, sinks, trigger)
+
+    service.pipelineCreatedEvents.dump("pipeline created").foreach { pipeline =>
+      service.addPipeline(pipeline.matchId, pipeline)
+    }
+
+    service
   }
 }

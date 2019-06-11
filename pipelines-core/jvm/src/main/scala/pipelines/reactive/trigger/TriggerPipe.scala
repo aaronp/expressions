@@ -44,9 +44,11 @@ class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, N
 
   private val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
   val input: Observer[TriggerInput]                                  = subject
-  val output: Observable[(RepoState, TriggerEvent)] = {
-    val scanned = subject.scan(initialState -> (null: TriggerEvent)) {
-      case ((state, _), input) => state.update(input)
+  val output: Observable[(RepoState, TriggerInput, TriggerEvent)] = {
+    val scanned = subject.scan((initialState, (null: TriggerInput), (null: TriggerEvent))) {
+      case ((state, _, _), input) =>
+        val (newState, result) = state.update(input)
+        (newState, input, result)
     }
     scanned.share
   }

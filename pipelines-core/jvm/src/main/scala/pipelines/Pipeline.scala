@@ -1,12 +1,15 @@
 package pipelines
 
+import java.util.UUID
+
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import pipelines.reactive.{DataSink, DataSource, Transform}
 
 import scala.util.control.NonFatal
 
-class Pipeline[A] private (val root: DataSource,
+class Pipeline[A] private (val matchId: UUID,
+                           val root: DataSource,
                            val logicalSource: DataSource,
                            val transformsByIndex: Map[Int, Transform],
                            val sink: DataSink,
@@ -17,11 +20,11 @@ class Pipeline[A] private (val root: DataSource,
 
 object Pipeline {
 
-  def from[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(implicit scheduler: Scheduler): Either[String, Pipeline[Out]] = {
-    apply(source, transforms, sink)(identity)
+  def from[In, Out](id : UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(implicit scheduler: Scheduler): Either[String, Pipeline[Out]] = {
+    apply(id, source, transforms, sink)(identity)
   }
 
-  def apply[In, Out](source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
+  def apply[In, Out](id : UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink.Aux[In, Out])(prepare: Observable[In] => Observable[In])(
       implicit scheduler: Scheduler): Either[String, Pipeline[sink.Output]] = {
 
     connect(source, transforms) match {
@@ -31,7 +34,7 @@ object Pipeline {
             val obs: Observable[In]                   = prepare(logicalSource.asObservable.asInstanceOf[Observable[In]])
             val future: CancelableFuture[sink.Output] = sink.connect(logicalSource.contentType, obs, logicalSource.metadata)
             val byIndex                               = transforms.zipWithIndex.map(_.swap).toMap
-            Right(new Pipeline[sink.Output](source, logicalSource, byIndex, sink, scheduler, future))
+            Right(new Pipeline[sink.Output](id, source, logicalSource, byIndex, sink, scheduler, future))
           } catch {
             case NonFatal(e) =>
               Left(s"Error connecting $source with $sink: $e")

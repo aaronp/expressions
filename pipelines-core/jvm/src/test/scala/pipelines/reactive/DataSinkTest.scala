@@ -25,8 +25,8 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
         val (controlSource, _)       = service.sources.add(control.asDataSource("type" -> "control"))
 
         service.triggers.output.dump("trigger").foreach {
-          case (a, b) =>
-            println(s"Trigger output: $b")
+          case (a, b, c) =>
+            println(s"Trigger output: $c")
         }
 
         val callbackMatches = ListBuffer[PipelineMatch]()

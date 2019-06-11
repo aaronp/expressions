@@ -147,7 +147,7 @@ class TriggerPipeTest extends BaseCoreTest {
           received.size shouldBe 1
         }
         withClue("the matching logic shouldn't actually connect the source and sink - just identify a match") {
-          val Seq(PipelineMatch(src, trans, sink, _)) = received.map(_._2)
+          val Seq(PipelineMatch(_, src, trans, sink, _)) = received.map(_._2)
           matchedList should be(empty)
         }
         received.clear()

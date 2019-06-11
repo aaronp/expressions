@@ -1,5 +1,7 @@
 package pipelines.reactive.trigger
 
+import java.util.UUID
+
 import pipelines.reactive.{DataSink, DataSource, Transform}
 
 sealed trait TriggerEvent {
@@ -14,7 +16,7 @@ sealed trait TriggerEvent {
   * @param sink the matched sink
   * @param trigger the trigger which matched the source and sink
   */
-case class PipelineMatch(source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger) extends TriggerEvent {
+case class PipelineMatch(matchId: UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger) extends TriggerEvent {
   def typesMatch: Boolean = {
     val chainedSourceOpt = transforms.foldLeft(Option(source)) {
       case (None, _)      => None
@@ -24,6 +26,11 @@ case class PipelineMatch(source: DataSource, transforms: Seq[Transform], sink: D
   }
 
   override def matches: Seq[PipelineMatch] = Seq(this)
+}
+object PipelineMatch {
+  def apply(source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger) = {
+    new PipelineMatch(UUID.randomUUID, source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger)
+  }
 }
 
 /**

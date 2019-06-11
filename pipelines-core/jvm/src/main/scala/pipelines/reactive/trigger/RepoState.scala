@@ -1,5 +1,7 @@
 package pipelines.reactive.trigger
 
+import java.util.UUID
+
 import pipelines.reactive._
 
 import scala.util.control.NonFatal
@@ -180,7 +182,7 @@ case class RepoState private[trigger] (
     }
 
     missingTransformOpt match {
-      case None          => PipelineMatch(dataSource, transforms, sink, trigger)
+      case None          => PipelineMatch(UUID.randomUUID, dataSource, transforms, sink, trigger)
       case Some(missing) => MatchedSourceWithMissingTransforms(dataSource, sink, triggers, missing)
     }
   }

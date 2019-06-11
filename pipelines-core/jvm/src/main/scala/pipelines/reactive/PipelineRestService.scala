@@ -102,7 +102,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
     }
   }
 
-  def getOrCreateDump(text: String) = underlying.triggers.addTransform(s"dump $text", Transform.dump(text))
+  def getOrCreateDump(text: String) = underlying.triggers.addTransform(text, Transform.dump(text))
 
   def getOrCreatePushSource(metadata: Map[String, String], callback: TriggerCallback = Ignore): (DataSource, Future[Ack]) = {
     implicit val wtf = ioScheduler
