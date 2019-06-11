@@ -8,6 +8,7 @@ import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observable
 import pipelines.Pipeline
 import pipelines.reactive.DataSource.PushSource
+import pipelines.reactive.PipelineRestService.Settings
 import pipelines.socket.AddressedTextMessage
 
 import scala.collection.concurrent
@@ -28,14 +29,20 @@ object PipelineRestService {
     underlying.sinks.add(DataSink.count(Map("name"       -> "count")))
     underlying.sinks.add(RegisterAsSourceSink(Map("name" -> "register", "prefix" -> "register"), underlying.sources))
 
-    new PipelineRestService(underlying, ioScheduler)
+    new PipelineRestService(settings, underlying, ioScheduler)
   }
 }
 
-class PipelineRestService(val underlying: PipelineService, ioScheduler: Scheduler) {
+class PipelineRestService(val settings: Settings, val underlying: PipelineService, ioScheduler: Scheduler) {
+
   def sinks(): Seq[DataSink] = {
     underlying.state().fold(Seq[DataSink]()) { st8 =>
       st8.sinks
+    }
+  }
+  def transformsByName(): Map[String, Transform] = {
+    underlying.state().fold(Map[String, Transform]()) { st8 =>
+      st8.transformsByName
     }
   }
   def sources(): Seq[DataSource] = {

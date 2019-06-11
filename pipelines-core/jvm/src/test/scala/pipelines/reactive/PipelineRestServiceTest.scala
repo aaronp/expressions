@@ -1,8 +1,13 @@
 package pipelines.reactive
 
 import org.scalatest.concurrent.ScalaFutures
+import pipelines.reactive.DataSource.PushSource
+import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
 import pipelines.socket.AddressedTextMessage
 import pipelines.{BaseCoreTest, WithScheduler, WithTempDir}
+
+import scala.collection.mutable.ListBuffer
+import scala.util.{Success, Try}
 
 class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
 
@@ -75,17 +80,58 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
       *
       * 3) then make a couple calls to push data to our new source and see the data appear on disk
       */
-    "be able to create, automagically trigger a connection to, and then push to a push source" ignore {
+    "be able to create, automagically trigger a connection, and then push to a push source" in {
       WithTempDir { dir =>
         WithScheduler { implicit sched =>
           Given("A new service")
           val service = PipelineRestService(sched)
 
-          When("We register a trigger")
-          val (push, _) = service.getOrCreatePushSource(Map("user" -> "foo"))
-          push.metadata("user") shouldBe "foo"
+          When("We register a trigger which connects sources which contain a 'autoconnect' set to 'true' with a 'count' sink via the filesystem")
+          service.transformsByName.keySet should contain("persisted")
+          service.underlying.triggers.connect(MetadataCriteria("autoconnect" -> "true"),
+                                              MetadataCriteria("name"        -> "count"),
+                                              Seq("persisted"),
+                                              retainTriggerAfterMatch = true,
+                                              Ignore)
 
-          ???
+          And("we add a data source")
+          val matches = ListBuffer[PipelineMatch]()
+          service.underlying.triggers.output.foreach { out =>
+            println(s"\tTrigger Output: $out")
+          }
+
+          service.underlying.matchEvents.foreach { newConnection: PipelineMatch =>
+            println(s"new match: $newConnection")
+            matches += newConnection
+          }
+
+          var triggeredResult: Try[TriggerEvent] = null
+          def callback(result: Try[TriggerEvent]) = {
+            println(s"\tresult is $result")
+            triggeredResult = result
+          }
+
+          val (pushSource: PushSource[AddressedTextMessage], _) = service.getOrCreatePushSource(Map("user" -> "foo", "autoconnect" -> "true"), callback)
+
+          Then("we should see the new source connect")
+          eventually {
+            val Success(ok: PipelineMatch) = triggeredResult
+            ok
+          }
+
+          eventually {
+            matches.size shouldBe 1
+          }
+          val pipeline = eventually {
+            val Seq(r) = service.pipelines.values.toSeq
+            r
+          }
+
+          pushSource.push(AddressedTextMessage("first", "value"))
+          pushSource.push(AddressedTextMessage("second", "value"))
+          pushSource.complete()
+          val count = pipeline.result.futureValue
+          count shouldBe 1
         }
       }
     }
