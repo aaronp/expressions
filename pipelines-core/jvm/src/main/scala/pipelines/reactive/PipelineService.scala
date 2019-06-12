@@ -28,7 +28,7 @@ import scala.collection.concurrent
   */
 class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
-  private def addPipeline(id: UUID, pipeline: Pipeline[_]): Unit = {
+  private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
     logger.info(s"!>! Pipeline added $id : $pipeline")
     pipelinesById.put(id, pipeline)
   }
@@ -44,16 +44,21 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
 
   private val pipelinesById = {
     import scala.collection.JavaConverters._
-    new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_]]().asScala
+    new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_, _]]().asScala
   }
 
-  def cancel(id: UUID): Option[Pipeline[_]] = {
-    pipelinesById.remove(id).map { p =>
-      p.cancel()
-      p
+  def cancel(id: UUID): Option[Pipeline[_, _]] = {
+    pipelinesById.remove(id) match {
+      case None =>
+        logger.info(s"Couldn't cancel the pipeline: $id")
+        None
+      case Some(p) =>
+        logger.info(s"Canceled pipeline: $id")
+        p.cancel()
+        Some(p)
     }
   }
-  def pipelines(): concurrent.Map[UUID, Pipeline[_]] = pipelinesById
+  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = pipelinesById
 
   lazy val matchEvents: Observable[(TriggerInput, PipelineMatch)] = triggers.output
     .flatMap {
@@ -61,7 +66,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     }
     .share(scheduler)
 
-  lazy val pipelineCreatedEvents: Observable[Pipeline[_]] = matchEvents
+  lazy val pipelineCreatedEvents: Observable[Pipeline[_, _]] = matchEvents
     .dump("match event")
     .flatMap {
       case (input: TriggerInput, mtch: PipelineMatch) =>
@@ -69,8 +74,8 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
           case Left(err) =>
             input.callback.onFailedMatch(input, mtch, err)
             logger.info(s"Couldn't create a pipeline: $err")
-            Observable.empty[Pipeline[_]]
-          case Right(pipeline: Pipeline[_]) =>
+            Observable.empty[Pipeline[_, _]]
+          case Right(pipeline: Pipeline[_, _]) =>
             logger.info(s"Pipeline '${pipeline.matchId}' added : $pipeline")
             input.callback.onMatch(input, mtch, pipeline)
             Observable(pipeline)
@@ -78,11 +83,11 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     }
     .share(scheduler)
 
-  def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_]] = {
+  def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_, _]] = {
     import pipelineMatch._
     Pipeline(pipelineMatch.matchId, source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
       obs.guarantee(Task.eval {
-        logger.info(s"Pipeline removed '${pipelineMatch.matchId} : $pipelineMatch")
+        logger.info(s"Pipeline removed '${pipelineMatch.matchId}' : $pipelineMatch")
         pipelinesById.remove(pipelineMatch.matchId)
       })
     }(scheduler)

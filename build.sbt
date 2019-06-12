@@ -314,7 +314,6 @@ lazy val expressions = project
       "org.scala-lang"  % "scala-reflect"  % "2.12.8", // % "provided",
       "org.scala-lang"  % "scala-compiler" % "2.12.8" // % "provided"
     ))
-//  .dependsOn(example % "test->test")
   .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
 
 lazy val expressionsAst = project

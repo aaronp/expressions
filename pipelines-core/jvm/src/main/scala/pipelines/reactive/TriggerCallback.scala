@@ -9,7 +9,7 @@ import scala.util.Try
 trait TriggerCallback {
   def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit
 
-  def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_]): Unit
+  def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_,_]): Unit
 
   def onResult(response: Try[TriggerEvent]): Unit
 
@@ -21,7 +21,7 @@ object TriggerCallback {
       logger.error(s"onFailedMatch($input, $mtch, $err)")
     }
 
-    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_]): Unit = {
+    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_,_]): Unit = {
       logger.error(s"onMatch($input, $mtch, $pipeline)")
     }
 
@@ -33,7 +33,7 @@ object TriggerCallback {
   def apply(onEvent: Try[TriggerEvent] => Unit) = new TriggerCallback {
     override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {}
 
-    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_]): Unit = {}
+    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_,_]): Unit = {}
 
     override def onResult(response: Try[TriggerEvent]): Unit = {
       onEvent(response)

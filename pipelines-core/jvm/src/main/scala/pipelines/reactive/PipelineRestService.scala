@@ -52,7 +52,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
       st8.sources
     }
   }
-  def pipelines(): concurrent.Map[UUID, Pipeline[_]] = underlying.pipelines
+  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = underlying.pipelines
 
   def pushSourceFor(id: String): Option[PushSource[AddressedTextMessage]] = {
     sourceFor(id).collect {

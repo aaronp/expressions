@@ -82,7 +82,7 @@ case class RepoState private[trigger] (
 
       resolveMatches(allMatches, MatchedSinkWithNoSource(dataSink, triggers, sources)) { all =>
         val validSources               = all.map(_.source)
-        val transforms: Seq[Transform] = all.head.transforms
+        val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSinkWithManySources(validSources, transforms, dataSink, all.head.trigger)
       }
     }
@@ -113,7 +113,7 @@ case class RepoState private[trigger] (
       }
       resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource, triggers, sinks)) { all =>
         val validSinks                 = all.map(_.sink)
-        val transforms: Seq[Transform] = all.head.transforms
+        val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSourceWithManySinks(dataSource, transforms, validSinks, all.head.trigger)
       }
     }
@@ -172,11 +172,11 @@ case class RepoState private[trigger] (
 
   private def resolveTransformations(dataSource: DataSource, sink: DataSink, trigger: Trigger): TriggerEvent = {
     // go through all the specified transforms and return either the resolved transformations or the Some of the first missing one
-    val (missingTransformOpt, transforms) = trigger.transforms.foldLeft((Option.empty[String], Seq[Transform]())) {
+    val (missingTransformOpt, transforms) = trigger.transforms.foldLeft((Option.empty[String], Seq[(String, Transform)]())) {
       case ((None, transforms), transformKey) =>
         transformsByName.get(transformKey) match {
           case None            => (Some(transformKey), Nil)
-          case Some(transform) => (None, transforms :+ transform)
+          case Some(transform) => (None, transforms :+ (transformKey, transform))
         }
       case (entry, _) => entry
     }

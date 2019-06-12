@@ -16,11 +16,11 @@ sealed trait TriggerEvent {
   * @param sink the matched sink
   * @param trigger the trigger which matched the source and sink
   */
-case class PipelineMatch(matchId: UUID, source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger) extends TriggerEvent {
+case class PipelineMatch(matchId: UUID, source: DataSource, transforms: Seq[(String, Transform)], sink: DataSink, trigger: Trigger) extends TriggerEvent {
   def typesMatch: Boolean = {
     val chainedSourceOpt = transforms.foldLeft(Option(source)) {
       case (None, _)      => None
-      case (Some(src), t) => t.applyTo(src)
+      case (Some(src), (_,t)) => t.applyTo(src)
     }
     chainedSourceOpt.exists(_.contentType.matches(sink.inputType))
   }
@@ -28,8 +28,8 @@ case class PipelineMatch(matchId: UUID, source: DataSource, transforms: Seq[Tran
   override def matches: Seq[PipelineMatch] = Seq(this)
 }
 object PipelineMatch {
-  def apply(source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger) = {
-    new PipelineMatch(UUID.randomUUID, source: DataSource, transforms: Seq[Transform], sink: DataSink, trigger: Trigger)
+  def apply(source: DataSource, transforms: Seq[(String, Transform)], sink: DataSink, trigger: Trigger) = {
+    new PipelineMatch(UUID.randomUUID, source: DataSource, transforms: Seq[(String, Transform)], sink: DataSink, trigger: Trigger)
   }
 }
 
@@ -40,14 +40,14 @@ object PipelineMatch {
   */
 case class MultipleMatchesOnTrigger(override val matches: Seq[PipelineMatch]) extends TriggerEvent
 
-case class MatchedSourceWithManySinks(dataSource: DataSource, transforms: Seq[Transform], sinks: Seq[DataSink], trigger: Trigger) extends TriggerEvent {
+case class MatchedSourceWithManySinks(dataSource: DataSource, transforms: Seq[(String, Transform)], sinks: Seq[DataSink], trigger: Trigger) extends TriggerEvent {
   override def matches: Seq[PipelineMatch] = {
     sinks.map { sink =>
       PipelineMatch(dataSource, transforms, sink, trigger)
     }
   }
 }
-case class MatchedSinkWithManySources(dataSources: Seq[DataSource], transforms: Seq[Transform], sink: DataSink, trigger: Trigger) extends TriggerEvent {
+case class MatchedSinkWithManySources(dataSources: Seq[DataSource], transforms: Seq[(String, Transform)], sink: DataSink, trigger: Trigger) extends TriggerEvent {
   override def matches: Seq[PipelineMatch] = {
     dataSources.map { dataSource =>
       PipelineMatch(dataSource, transforms, sink, trigger)
