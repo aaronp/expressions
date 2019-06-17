@@ -1,7 +1,5 @@
 package pipelines.client.jvm
 
-import java.net.InetAddress
-
 import com.softwaremill.sttp
 import com.softwaremill.sttp.{SttpBackend, TryHttpURLConnectionBackend}
 import com.typesafe.config.Config
@@ -11,7 +9,7 @@ import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.SourceRepoEndpoints
 import pipelines.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
-import pipelines.users.{LoginEndpoints, LoginRequest, LoginResponse}
+import pipelines.users.{AuthEndpoints, LoginRequest, LoginResponse, UserAuthEndpoints, UserEndpoints}
 
 import scala.util.{Failure, Success, Try}
 
@@ -20,9 +18,11 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with endpoints.algebra.circe.JsonEntitiesFromCodec
     with endpoints.circe.JsonSchemas
     with endpoints.sttp.client.JsonEntitiesFromCodec[R]
-    with LoginEndpoints
+    with UserEndpoints
     with SocketEndpoint
     with PushEndpoints
+    with AuthEndpoints
+    with UserAuthEndpoints
     with SourceRepoEndpoints {
 
   implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)

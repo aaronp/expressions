@@ -15,6 +15,9 @@ trait HtmlUtils {
   def showAlert(text: String): Unit = {
     dom.window.alert(text)
   }
+  def log(text: String): Unit = {
+    dom.window.console.log(text)
+  }
 
   def valueOfNonEmpty(id: String, uniqueId: => String = UUID.randomUUID.toString): String = {
     document.getElementById(id) match {

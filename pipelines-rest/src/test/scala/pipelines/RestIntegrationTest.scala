@@ -59,6 +59,11 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
   }
 
   override def beforeAll(): Unit = {
+    import eie.io._
+    "./target/certificates/".asPath match {
+      case dir if dir.isDir => dir.delete()
+      case _                =>
+    }
     super.beforeAll()
     val Some(started) = rest.Main.runMain(DevMain.devArgs)
     server = started

@@ -18,50 +18,113 @@ import scala.util.Properties
   */
 object GenCerts extends StrictLogging {
 
-  def genCert(workDir: Path, certificateName: String, hostname: String, crtPassword: String, caPassword: String, jksPassword: String): (Int, BufferLogger, Path) = {
-    val properties: CertSettings = CertSettings(workDir, certificateName, hostname, crtPassword, caPassword, jksPassword)
+  def genCert(workDir: Path, certificateName: String, hostname: String, password: String): (Int, BufferLogger, Path) = {
+    val properties: CertSettings = CertSettings(workDir, certificateName, hostname, password)
     genCert(properties)
   }
 
   def genCert(properties: CertSettings): (Int, BufferLogger, Path) = {
-    val (res, buffer) = run("scripts/generateP12Cert.sh", properties.asPropertyMap())
-    (res, buffer, properties.p12CertFile)
+    genCert(properties.p12CertFile, properties.asPropertyMap())
   }
 
+  def genCert(p12CertFile: Path, envProps: Map[String, String]): (Int, BufferLogger, Path) = {
+    val (res, buffer) = run("scripts/generateP12Cert.sh", envProps)
+    (res, buffer, p12CertFile)
+  }
+
+  case class CertAuthSettings(caDefaultPassword: String, caDetails: Option[Path], caFile: Option[Path], caPasswordFile: Option[Path], privateKeyFile: Option[Path]) {
+    def asPropertyMap(): Map[String, String] = {
+      def empty = Map.empty[String, String]
+
+      val caDetailsMap = caDetails.fold(empty) { path =>
+        Map("CA_DETAILS_FILE" -> path.toAbsolutePath.toString)
+      }
+
+      val caPasswordFileMap = caPasswordFile.fold(empty) { path =>
+        Map("CA_PWFILE" -> path.toAbsolutePath.toString)
+      }
+
+      val caFileMap = caFile.fold(empty) { path =>
+        Map("CA_FILE" -> path.toAbsolutePath.toString)
+      }
+
+      val privateKeyFileMap = privateKeyFile.fold(empty) { path =>
+        Map("CA_PRIVATE_KEY_FILE" -> path.toAbsolutePath.toString)
+      }
+
+      caDetailsMap ++ caPasswordFileMap ++ caFileMap ++ privateKeyFileMap ++ Map("CA_DEFAULT_PWD" -> caDefaultPassword)
+    }
+  }
+
+  object CertAuthSettings {
+    def apply(pwd: String = "password"): CertAuthSettings = {
+      new CertAuthSettings(pwd, None, None, None, None)
+    }
+
+    /**
+      * If we just run the generator scripts once, we'll end up with a <dir>/ca/... file where the 'ca' directory contains
+      *
+      * @param caDir the presumably pre-generated directory containing the CA files such as:
+      * {{{
+      * <hostname>-ca.crt
+      * ca-options.conf
+      * capass.txt
+      * secret.key
+      * secret.pub
+      * }}}
+      * @return the CertAuthSettings from the files in the 'ca' directory
+      */
+    def fromGeneratedCaDir(caDir: Path): CertAuthSettings = {
+      import eie.io._
+      new CertAuthSettings(
+        "password",
+        caDetails = caDir.find(_.fileName == "ca-options.conf").toIterable.headOption,
+        caFile = caDir.find(_.fileName.endsWith("-ca.crt")).toIterable.headOption,
+        caPasswordFile = caDir.find(_.fileName == "capass.txt").toIterable.headOption,
+        privateKeyFile = caDir.find(_.fileName == "secret.key").toIterable.headOption
+      )
+    }
+  }
   case class CertSettings(certDir: Path,
                           caDir: Path,
                           p12CertFile: Path,
                           dnsName: String,
                           crtName: String,
                           certDefaultPassword: String,
-                          caDefaultPassword: String,
-                          certJksPassword: String) {
-    def asPropertyMap() = {
-      Map(
+                          certJksPassword: String,
+                          crtDetails: Option[Path],
+                          authSettings: Option[CertAuthSettings]) {
+    def asPropertyMap(): Map[String, String] = {
+      val default = Map(
         "CRT_DIR"           -> certDir.toAbsolutePath.toString, //
         "CA_DIR"            -> caDir.toAbsolutePath.toString, //
         "CRT_CERT_FILE_P12" -> p12CertFile.toAbsolutePath.toString, //
         "DNS_NAME"          -> dnsName,
         "CRT_NAME"          -> crtName,
         "CRT_DEFAULT_PWD"   -> certDefaultPassword,
-        "CA_DEFAULT_PWD"    -> caDefaultPassword,
         "CRT_JKS_PW"        -> certJksPassword
       )
+
+      val withCrtDetails = crtDetails.fold(default) { path =>
+        default.updated("CRT_DETAILS_FILE", path.toAbsolutePath.toString)
+      }
+      authSettings.fold(withCrtDetails)(a => withCrtDetails ++ a.asPropertyMap())
     }
   }
 
   object CertSettings {
-    def apply(workDir: Path, certificateName: String, hostname: String, crtPassword: String, caPassword: String, jksPassword: String) = {
+    def apply(workDir: Path, certificateName: String, hostname: String, password: String, authSettings: Option[CertAuthSettings] = None): CertSettings = {
       val p12CertFile: Path = workDir.resolve(certificateName)
       new CertSettings(
         certDir = workDir.resolve("crt"), //
-        caDir = workDir.resolve("ca"),    //
-        p12CertFile = p12CertFile,        //
+        caDir = workDir.resolve("ca"), //
+        p12CertFile = p12CertFile, //
         dnsName = hostname,
         crtName = hostname,
-        certDefaultPassword = crtPassword,
-        caDefaultPassword = caPassword,
-        certJksPassword = jksPassword
+        certDefaultPassword = password,
+        certJksPassword = password,
+        None,
+        authSettings
       )
     }
   }

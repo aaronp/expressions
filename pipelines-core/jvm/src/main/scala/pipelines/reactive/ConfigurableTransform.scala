@@ -13,7 +13,7 @@ import scala.util.Try
   *
   * @tparam A
   */
-@deprecated
+@deprecated("don't use this", "rewrite it")
 trait ConfigurableTransform[A] {
 
   /**

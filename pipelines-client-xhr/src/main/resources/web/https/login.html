@@ -4,29 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login</title>
-    <!--
--->
     <link rel="stylesheet" type="text/css" href="css/pipelines.css">
+    <!--
+    https://www.sanwebe.com/2014/08/css-html-forms-designs
+    -->
+    <link rel="stylesheet" type="text/css" href="css/form.css">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
     <style>
-</style>
+    </style>
 </head>
 <body>
-<!-- Include JavaScript dependencies -->
 <script type="text/javascript" src="js/pipelines-client-xhr-jsdeps.js"></script>
-<!-- Include Scala.js compiled code
-<script type="text/javascript" src="./target/scala-2.12/pipelines-client-xhr-opt.js"></script>
--->
 <script type="text/javascript" src="js/pipelines-client-xhr-fastopt.js"></script>
 
 
-<form>
-    User:<br>
-    <input type="text" id="username"><br>
-    Password:<br>
-    <input type="password" id="pwd" onkeyup="loginOnKeyUp('username', 'pwd', event)" >
-</form>
+<div class="form-style-8">
+    <h2>Login</h2>
+    <form>
+        <input type="text" name="user" placeholder="User Name"/>
+        <input type="password" name="password" placeholder="Password" id="pwd"
+               onkeyup="loginOnKeyUp('username', 'pwd', event)"/>
+        <input type="button" value="Login" onclick="login('username', 'pwd')"/>
+        <br/>
+        <a href="/createUser.html">Create a new User</a>
+        <br/>
+        <a href="/forgot.html">I've completely forgotten my credentials.</a>
+    </form>
+</div>
 
-<br/>
-<button class="btn" type="button" onclick="login('username', 'pwd')">Login</button>
+
 </body>
 </html>

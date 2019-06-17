@@ -20,11 +20,11 @@ class PipelineTest extends BaseCoreTest with ScalaFutures {
   "Pipeline.from" should {
     "connect any source w/ a generic sink" in {
       WithScheduler { implicit scheduler =>
-        val sink                        = DataSink.count()
-        val Right(ints: Pipeline[_,Long]) = Pipeline.from(UUID.randomUUID, source, Nil, sink)
+        val sink                           = DataSink.count()
+        val Right(ints: Pipeline[_, Long]) = Pipeline.from(UUID.randomUUID, source, Nil, sink)
         ints.result.futureValue shouldBe 3
 
-        val Right(strings: Pipeline[_,Long]) = Pipeline.from(UUID.randomUUID, source, Seq("asString" -> asString), sink)
+        val Right(strings: Pipeline[_, Long]) = Pipeline.from(UUID.randomUUID, source, Seq("asString" -> asString), sink)
         strings.result.futureValue shouldBe 3
       }
     }

@@ -2,7 +2,6 @@ package pipelines.reactive
 
 import java.nio.file.Path
 
-import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
 import monix.reactive.Observable
@@ -164,41 +163,11 @@ object Transform {
     }
   }
 
-  def writeToZipped(baseDir: Path): FixedTransform[Array[Byte], (Array[Byte], String)] = {
-    val newType = ContentType.of[(Array[Byte], String)]
-    forTypes(ContentType.of[Array[Byte]], newType) {
-      case (original, obs) =>
-        val dataSource = original.ensuringId()
-        import eie.io._
-        val dir = baseDir.resolve(dataSource.id.get).mkDirs()
-        val newObs = obs.zipWithIndex.map {
-          case (bytes, index) =>
-            val fileName = s"$index.dat"
-            dir.resolve(fileName).bytes = bytes
-            (bytes, fileName)
-        }
-        DataSource.of(newType, newObs, dataSource.prefixedMetadata("persisted"))
-    }
-  }
-
-  def writeTo(dir: Path): FixedTransform[(Array[Byte], String), (Array[Byte], String)] = {
-    map[(Array[Byte], String), (Array[Byte], String)] {
-      case entry @ (bytes, fileName) =>
-        import eie.io._
-        dir.resolve(fileName).bytes = bytes
-        entry
-    }
-  }
-
   def map[A: TypeTag, B: TypeTag](f: A => B): FixedTransform[A, B] = apply[A, B](_.map(f))
 
   def zipWithIndex[A: TypeTag]: FixedTransform[A, (A, Long)] = apply[A, (A, Long)](_.zipWithIndex)
 
   def flatMap[A: TypeTag, B: TypeTag](f: A => Observable[B]): FixedTransform[A, B] = apply[A, B](_.flatMap(f))
-
-  def parseStringAsConfig: FixedTransform[String, Try[Config]] = map { str =>
-    Try(ConfigFactory.parseString(str))
-  }
 
   def stringToJson: FixedTransform[String, Try[Json]]   = map(s => io.circe.parser.parse(s).toTry)
   def jsonToString: FixedTransform[Json, String]        = map[Json, String](_.noSpaces)

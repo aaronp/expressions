@@ -3,6 +3,7 @@ package pipelines.users.jvm
 import java.security.SecureRandom
 import java.util.Base64
 
+import com.typesafe.config.Config
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
@@ -19,7 +20,16 @@ class UserHash private[jvm] (random: SecureRandom, salt: Array[Byte], iterationC
 
 object UserHash {
 
-  def apply(salt: Array[Byte], iterationCount: Int = 65536, keyLen: Int = 128): UserHash = {
+  def apply(rootConfig: Config): UserHash = {
+    val config = rootConfig.getConfig("pipelines.tls.userHash")
+    apply(
+      salt = config.getString("salt").getBytes("UTF-8"),
+      iterationCount = config.getInt("iterationCount"),
+      keyLen = config.getInt("keyLen")
+    )
+  }
+
+  def apply(salt: Array[Byte], iterationCount: Int, keyLen: Int): UserHash = {
     val random = new SecureRandom(salt)
     new UserHash(random, salt.toList.toArray, iterationCount, keyLen)
   }

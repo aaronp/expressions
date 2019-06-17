@@ -51,10 +51,7 @@ object Settings {
 
   def apply(rootConfig: Config): Settings = {
     val config = rootConfig.getConfig("pipelines")
-
-    val env = pipelines.Env()
-//    val repository: SourceRepository = SourceRepository()(env.ioScheduler)
-
+    val env    = pipelines.Env()
     new Settings(rootConfig, host = config.getString("host"), port = config.getInt("port"), env)
   }
 }

@@ -67,7 +67,6 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
     .share(scheduler)
 
   lazy val pipelineCreatedEvents: Observable[Pipeline[_, _]] = matchEvents
-    .dump("match event")
     .flatMap {
       case (input: TriggerInput, mtch: PipelineMatch) =>
         onPipelineMatch(input, mtch) match {
@@ -125,7 +124,7 @@ object PipelineService extends StrictLogging {
     transforms.foreach {
       case (id, t) => trigger.addTransform(id, t)
     }
-    service.pipelineCreatedEvents.dump("pipeline created").foreach { pipeline =>
+    service.pipelineCreatedEvents.foreach { pipeline =>
       service.addPipeline(pipeline.matchId, pipeline)
     }
 

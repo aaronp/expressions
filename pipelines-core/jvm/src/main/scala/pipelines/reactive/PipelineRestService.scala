@@ -25,8 +25,7 @@ object PipelineRestService {
     import settings._
     val underlying = PipelineService()(ioScheduler)
 
-
-    underlying.triggers.addTransform("persisted", Transform.writeToZipped(persistUnder))
+    underlying.triggers.addTransform("persisted", JVMTransforms.writeToZipped(persistUnder))
 
     underlying.sinks.add(DataSink.count(Map("name"       -> "count")))
     underlying.sinks.add(RegisterAsSourceSink(Map("name" -> "register", "prefix" -> "register"), underlying.sources))

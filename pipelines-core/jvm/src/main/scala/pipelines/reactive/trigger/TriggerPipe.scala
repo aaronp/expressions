@@ -61,8 +61,8 @@ object TriggerPipe {
     val sinks: Sinks     = Repo.sinks(scheduler)
     val instance         = apply()
 
-    instance.subscribeToSources(sources.events.dump("sources"))
-    instance.subscribeToSinks(sinks.events.dump("sinks"))
+    instance.subscribeToSources(sources.events)
+    instance.subscribeToSinks(sinks.events)
     (sources, sinks, instance)
   }
   def apply(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit scheduler: Scheduler): TriggerPipe = {

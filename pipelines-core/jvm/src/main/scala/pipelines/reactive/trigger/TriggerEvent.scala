@@ -19,8 +19,8 @@ sealed trait TriggerEvent {
 case class PipelineMatch(matchId: UUID, source: DataSource, transforms: Seq[(String, Transform)], sink: DataSink, trigger: Trigger) extends TriggerEvent {
   def typesMatch: Boolean = {
     val chainedSourceOpt = transforms.foldLeft(Option(source)) {
-      case (None, _)      => None
-      case (Some(src), (_,t)) => t.applyTo(src)
+      case (None, _)           => None
+      case (Some(src), (_, t)) => t.applyTo(src)
     }
     chainedSourceOpt.exists(_.contentType.matches(sink.inputType))
   }

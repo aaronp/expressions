@@ -1,20 +1,32 @@
 package pipelines.users
 
+import java.time.ZonedDateTime
+import java.util.UUID
+
 import io.circe.Decoder.Result
 import io.circe.generic.semiauto._
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.java8.time._
+import io.circe.{Decoder, Encoder, Json, ObjectEncoder}
 
-import scala.concurrent.duration.FiniteDuration
-
-case class UserDetails(email: Email, sessionDuration: FiniteDuration)
-object UserDetails {
-  implicit def encoder = deriveEncoder[UserDetails]
-  implicit def decoder = deriveDecoder[UserDetails]
+/**
+  *
+  * @param defaultHomePage
+  * @param confirmId an Id which, if non-null/non-empty, identifies an ID which the user can use to acknowledge their account
+  * @param confirmedOn the date at which the user has confirmed (presumably via a sent email) their account
+  */
+case class UserDetails(defaultHomePage: String, confirmId: String, confirmedOn: Option[ZonedDateTime]) {
+  def isConfirmed: Boolean = confirmedOn.nonEmpty
 }
 
-final case class CreateUserRequest(user: UserName, email: Email, password: String)
+object UserDetails extends JavaTimeDecoders with JavaTimeEncoders {
+  def empty                                        = UserDetails("", UUID.randomUUID.toString, None)
+  implicit def encoder: ObjectEncoder[UserDetails] = deriveEncoder[UserDetails]
+  implicit def decoder                             = deriveDecoder[UserDetails]
+}
+
+final case class CreateUserRequest(userName: UserName, email: Email, hashedPassword: String)
 object CreateUserRequest {
-  implicit def encoder = deriveEncoder[CreateUserRequest]
+  implicit def encoder: ObjectEncoder[CreateUserRequest] = deriveEncoder[CreateUserRequest]
   implicit def decoder = deriveDecoder[CreateUserRequest]
 }
 

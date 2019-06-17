@@ -7,7 +7,7 @@ import org.scalajs.dom.XMLHttpRequest
 import pipelines.core.Redirection
 import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.{ListRepoSourcesResponse, RepoSchemas, SourceRepoEndpoints}
-import pipelines.users.{LoginEndpoints, LoginResponse, UserSchemas}
+import pipelines.users.{LoginResponse, UserAuthEndpoints, UserEndpoints, UserSchemas}
 
 import scala.concurrent.Future
 import scala.scalajs.js
@@ -15,7 +15,8 @@ import scala.scalajs.js
 object PipelinesXhr
     extends xhr.future.Endpoints
     with xhr.circe.JsonSchemaEntities
-    with LoginEndpoints
+    with UserEndpoints
+    with UserAuthEndpoints
     with SourceRepoEndpoints
     with RepoSchemas
     with UserSchemas

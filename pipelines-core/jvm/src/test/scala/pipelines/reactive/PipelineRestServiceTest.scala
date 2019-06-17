@@ -102,7 +102,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
           And("we add a data source")
           val matches = ListBuffer[PipelineMatch]()
 
-          val pipes = ListBuffer[Pipeline[_,_]]()
+          val pipes = ListBuffer[Pipeline[_, _]]()
           service.underlying.pipelineCreatedEvents.foreach { next =>
             pipes += next
           }
@@ -113,7 +113,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
           }
 
           object callback extends reactive.TriggerCallback.LoggingInstance {
-            var triggeredResult = Option.empty[Either[String, Pipeline[_,_]]]
+            var triggeredResult = Option.empty[Either[String, Pipeline[_, _]]]
             override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {
               super.onFailedMatch(input, mtch, err)
               triggeredResult = Option(Left(err))
@@ -127,7 +127,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
               }
             }
 
-            override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_,_]): Unit = {
+            override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_, _]): Unit = {
               super.onMatch(input, mtch, pipeline)
               triggeredResult = Option(Right(pipeline))
             }
@@ -140,7 +140,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
             val Some(result) = callback.triggeredResult
             result
           }
-          val pipeline: Pipeline[_,_] = either match {
+          val pipeline: Pipeline[_, _] = either match {
             case Left(err) => fail(err)
             case Right(ok) => ok
           }

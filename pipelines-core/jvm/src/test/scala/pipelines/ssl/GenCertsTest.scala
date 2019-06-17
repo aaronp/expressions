@@ -14,7 +14,7 @@ class GenCertsTest extends WordSpec with Matchers {
 
       try {
         val pwd                  = "password"
-        val (res, log, certFile) = GenCerts.genCert(dir, "cert.p12", testHostName, pwd, pwd, pwd)
+        val (res, log, certFile) = GenCerts.genCert(dir, "cert.p12", testHostName, pwd)
         res shouldBe 0
         withClue(log.allOutput) {
           certFile.size.toInt should be > 0

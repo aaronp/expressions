@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    <link rel="stylesheet" type="text/css" href="css/pipelines.css">
+    <link rel="stylesheet" type="text/css" href="css/form.css">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
+    <style>
+</style>
+</head>
+<body>
+<script type="text/javascript" src="js/pipelines-client-xhr-jsdeps.js"></script>
+<script type="text/javascript" src="js/pipelines-client-xhr-fastopt.js"></script>
+
+
+
+
+<form>
+    User:<br>
+    <input type="text" id="username"><br>
+    Password:<br>
+    <input type="password" id="pwd" onkeyup="loginOnKeyUp('username', 'pwd', event)" >
+</form>
+
+<div class="form-style-8">
+    <h2>Login to your account</h2>
+    <form>
+        <input type="text" name="field1" placeholder="Full Name" />
+        <input type="email" name="field2" placeholder="Email" />
+        <input type="url" name="field3" placeholder="Website" />
+        <textarea placeholder="Message" onkeyup="adjust_textarea(this)"></textarea>
+        <input type="button" value="Send Message" />
+    </form>
+</div>
+
+<br/>
+<button class="btn" type="button" onclick="login('username', 'pwd')">Login</button>
+</body>
+</html>

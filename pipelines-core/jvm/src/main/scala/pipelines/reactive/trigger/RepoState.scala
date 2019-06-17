@@ -81,7 +81,7 @@ case class RepoState private[trigger] (
       }
 
       resolveMatches(allMatches, MatchedSinkWithNoSource(dataSink, triggers, sources)) { all =>
-        val validSources               = all.map(_.source)
+        val validSources                         = all.map(_.source)
         val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSinkWithManySources(validSources, transforms, dataSink, all.head.trigger)
       }
@@ -112,7 +112,7 @@ case class RepoState private[trigger] (
         }
       }
       resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource, triggers, sinks)) { all =>
-        val validSinks                 = all.map(_.sink)
+        val validSinks                           = all.map(_.sink)
         val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSourceWithManySinks(dataSource, transforms, validSinks, all.head.trigger)
       }

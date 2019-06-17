@@ -113,7 +113,7 @@ ensureCA () {
 
 	echo "+ + + + + + + + + + + + + + + Ensuring root CA file $CA_FILE + + + + + + + + + + + + + + + "
 	if [[ ! -f ${CA_FILE} ]];then
-		echo "$INFO Certificate Authority file '$CA_FILE' doesn't exist, creating with subject $SUBJECT"
+		echo "$INFO Certificate Authority file (CA_FILE) '$CA_FILE' doesn't exist, creating with subject ${SUBJECT}"
 
 	    ensureCAKeys
 	    ensureCAPassword
@@ -121,9 +121,9 @@ ensureCA () {
 
         #https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
         #https://www.endpoint.com/blog/2014/10/30/openssl-csr-with-alternative-names-one
-	    openssl req -x509 -new -nodes -key ${CA_PRIVATE_KEY_FILE} -passin file:$CA_PWFILE -sha256 -days 1825 -out ${CA_FILE} -config <( cat $CA_DETAILS_FILE )
+	    openssl req -x509 -new -nodes -key ${CA_PRIVATE_KEY_FILE} -passin file:${CA_PWFILE} -sha256 -days 1825 -out ${CA_FILE} -config <( cat ${CA_DETAILS_FILE} )
 	else
-		echo "$INFO CA_FILE '${CA_FILE}'' exists, skipping"
+		echo "$INFO CA_FILE '${CA_FILE}' exists, skipping"
 	fi
 }
 

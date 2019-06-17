@@ -165,7 +165,7 @@ ensureSignedCrt () {
       # we need to reference an 'extfile' for the config of this CSR
       ensureCrtCSRConfFile
 
-  		openssl x509 -req -in ${CRT_CSR_FILE} -CA ${CA_FILE} -CAkey ${CA_PRIVATE_KEY_FILE} -passin file:$CA_PWFILE -CAcreateserial -out $CRT_CERT_FILE -days 1825 -sha256 -extfile $CRT_CSR_DETAILS_FILE
+  		openssl x509 -req -in ${CRT_CSR_FILE} -CA ${CA_FILE} -CAkey ${CA_PRIVATE_KEY_FILE} -passin file:${CA_PWFILE} -CAcreateserial -out ${CRT_CERT_FILE} -days 1825 -sha256 -extfile ${CRT_CSR_DETAILS_FILE}
   	else
   		echo "$INFO Signed certificate CRT_CERT_FILE $CRT_CERT_FILE exists, skipping"
   	fi

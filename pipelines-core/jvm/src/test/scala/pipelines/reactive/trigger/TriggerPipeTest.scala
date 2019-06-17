@@ -23,7 +23,6 @@ class TriggerPipeTest extends BaseCoreTest {
         val (sources, sinks, pipe)                                    = TriggerPipe.create(sched)
         val ref: Var[Option[(RepoState, TriggerInput, TriggerEvent)]] = Var(Option.empty)
         pipe.output.foreach { event: (RepoState, TriggerInput, TriggerEvent) =>
-          println(event)
           ref := Option(event)
         }
 
@@ -86,13 +85,14 @@ class TriggerPipeTest extends BaseCoreTest {
         received.clear()
 
         When("We add a transformation")
-        driver.addTransform("double", Transform[Int, Int](_.map(_ * 2))) shouldBe Ack.Continue
+        val doubleT = Transform[Int, Int](_.map(_ * 2))
+        driver.addTransform("double", doubleT) shouldBe Ack.Continue
 
         Then("We should see a transform added event")
         eventually {
           received.size shouldBe 1
+          received.head._3 shouldBe TransformAdded("double")
         }
-        received.head._2 shouldBe TransformAdded("double")
         received.clear()
 
         When("A trigger is added which will match a source and sink with our transform")
@@ -103,7 +103,7 @@ class TriggerPipeTest extends BaseCoreTest {
         eventually {
           received.size shouldBe 1
         }
-        received.head._2 shouldBe TriggerAdded(trigger)
+        received.head._3 shouldBe TriggerAdded(trigger)
         received.clear()
 
         //
