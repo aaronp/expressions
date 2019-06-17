@@ -19,28 +19,62 @@ import scala.util.Properties
 object GenCerts extends StrictLogging {
 
   def genCert(workDir: Path, certificateName: String, hostname: String, crtPassword: String, caPassword: String, jksPassword: String): (Int, BufferLogger, Path) = {
-    val p12CertFile = workDir.resolve(certificateName)
-    val (res, buffer) = run(
-      "scripts/generateP12Cert.sh", //
-      "CRT_DIR"           -> workDir.resolve("crt").toAbsolutePath.toString, //
-      "CA_DIR"            -> workDir.resolve("ca").toAbsolutePath.toString, //
-      "CRT_CERT_FILE_P12" -> p12CertFile.toAbsolutePath.toString, //
-      "DNS_NAME"          -> hostname,
-      "CRT_NAME"          -> hostname,
-      "CRT_DEFAULT_PWD"   -> crtPassword,
-      "CA_DEFAULT_PWD"    -> caPassword,
-      "CRT_JKS_PW"        -> jksPassword
-    )
-    (res, buffer, p12CertFile)
+    val properties: CertSettings = CertSettings(workDir, certificateName, hostname, crtPassword, caPassword, jksPassword)
+    genCert(properties)
   }
 
-  def run(script: String, extraEnv: (String, String)*): (Int, BufferLogger) = {
+  def genCert(properties: CertSettings): (Int, BufferLogger, Path) = {
+    val (res, buffer) = run("scripts/generateP12Cert.sh", properties.asPropertyMap())
+    (res, buffer, properties.p12CertFile)
+  }
+
+  case class CertSettings(certDir: Path,
+                          caDir: Path,
+                          p12CertFile: Path,
+                          dnsName: String,
+                          crtName: String,
+                          certDefaultPassword: String,
+                          caDefaultPassword: String,
+                          certJksPassword: String) {
+    def asPropertyMap() = {
+      Map(
+        "CRT_DIR"           -> certDir.toAbsolutePath.toString, //
+        "CA_DIR"            -> caDir.toAbsolutePath.toString, //
+        "CRT_CERT_FILE_P12" -> p12CertFile.toAbsolutePath.toString, //
+        "DNS_NAME"          -> dnsName,
+        "CRT_NAME"          -> crtName,
+        "CRT_DEFAULT_PWD"   -> certDefaultPassword,
+        "CA_DEFAULT_PWD"    -> caDefaultPassword,
+        "CRT_JKS_PW"        -> certJksPassword
+      )
+    }
+  }
+
+  object CertSettings {
+    def apply(workDir: Path, certificateName: String, hostname: String, crtPassword: String, caPassword: String, jksPassword: String) = {
+      val p12CertFile: Path = workDir.resolve(certificateName)
+      new CertSettings(
+        certDir = workDir.resolve("crt"), //
+        caDir = workDir.resolve("ca"),    //
+        p12CertFile = p12CertFile,        //
+        dnsName = hostname,
+        crtName = hostname,
+        certDefaultPassword = crtPassword,
+        caDefaultPassword = caPassword,
+        certJksPassword = jksPassword
+      )
+    }
+  }
+
+  def run(script: String, extraEnv: Map[String, String]): (Int, BufferLogger) = {
     val buffer = new BufferLogger
-    val res    = parseScript(script, extraEnv: _*).run(buffer)
+    val res    = parseScript(script, extraEnv).run(buffer)
     res.exitValue() -> buffer
   }
 
-  private def parseScript(script: String, extraEnv: (String, String)*): process.ProcessBuilder = {
+  def run(script: String, extraEnv: (String, String)*): (Int, BufferLogger) = run(script, extraEnv.toMap)
+
+  private def parseScript(script: String, extraEnv: Map[String, String]): process.ProcessBuilder = {
     val location: URL = getClass.getClassLoader.getResource(script) match {
       case null => getClass.getProtectionDomain.getCodeSource.getLocation
       case url  => url
@@ -64,7 +98,7 @@ object GenCerts extends StrictLogging {
     import sys.process._
 
     val scriptFile = s"./${scriptLoc.getFileName.toString}"
-    Process(scriptFile, scriptLoc.getParent.toFile, extraEnv: _*)
+    Process(scriptFile, scriptLoc.getParent.toFile, extraEnv.toSeq: _*)
   }
 
   private def extractScriptsFromJar(fromPath: String, toDir: Path): Path = {
