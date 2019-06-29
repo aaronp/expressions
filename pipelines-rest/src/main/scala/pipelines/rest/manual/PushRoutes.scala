@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import pipelines.manual.PushEndpoints
 import pipelines.reactive.{DataSource, MetadataCriteria, PipelineService}
-import pipelines.rest.jwt.Claims
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, SecureRoutes}
 import pipelines.socket.SocketSchemas
+import pipelines.users.jwt.Claims
 
 case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSettings)
     extends SecureRoutes(secureSettings)

@@ -1,5 +1,6 @@
 package pipelines.rest.jwt
 import org.scalatest.{Matchers, WordSpec}
+import pipelines.users.jwt.Hmac256
 
 class Hmac256Test extends WordSpec with Matchers {
 

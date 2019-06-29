@@ -28,7 +28,7 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
   implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)
   implicit def loginResponseSchema: JsonSchema[LoginResponse] = JsonSchema(implicitly, implicitly)
 
-  def login(login: LoginRequest): R[LoginResponse]            = loginEndpoint.apply(login -> None)
+  def login(login: LoginRequest): R[LoginResponse]            = userLogin.loginEndpoint.apply(login -> None)
   def login(user: String, password: String): R[LoginResponse] = login(LoginRequest(user, password))
 
   def newSession(user: String, password: String)(implicit ev: R[LoginResponse] =:= Try[LoginResponse]): Try[ClientSession[R]] = {

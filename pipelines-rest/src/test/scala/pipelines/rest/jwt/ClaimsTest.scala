@@ -2,6 +2,7 @@ package pipelines.rest.jwt
 import java.time.{ZoneId, ZonedDateTime}
 
 import org.scalatest.{Matchers, WordSpec}
+import pipelines.users.jwt.Claims
 
 import scala.concurrent.duration._
 
@@ -21,8 +22,9 @@ class ClaimsTest extends WordSpec with Matchers {
   }
   "Claims json" should {
     "encode to and from json" in {
-      val now  = ZonedDateTime.of(2019, 2, 3, 4, 5, 6, 6, ZoneId.of("UTC"))
-      val bc   = Claims.after(10.seconds, now).forUser("Dave")
+//      val now  = ZonedDateTime.of(2019, 2, 3, 4, 5, 6, 6, ZoneId.of("UTC"))
+      val now  = ZonedDateTime.now()
+      val bc   = Claims.after(10.seconds, now).forUser("Dave").setRoles("a", "another role").setPermissions("whatever", "show me; don't tell me")
       val json = bc.toJson
       Claims.fromJson(json) shouldBe Right(bc)
     }

@@ -6,7 +6,7 @@ import io.circe.parser._
 import io.circe.syntax._
 import org.bson.BsonNumber
 import org.bson.json.{JsonMode, JsonWriterSettings}
-import org.bson.types.Decimal128
+import org.bson.types.{Decimal128, ObjectId}
 import org.mongodb.scala.Document
 import org.mongodb.scala.bson.collection._
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonString}
@@ -108,6 +108,10 @@ object BsonUtil {
   }
 
   private val bsonJsonSettings = JsonWriterSettings.builder.outputMode(JsonMode.RELAXED).build
+  def idForDocument(doc: Document): String = {
+    val oid: ObjectId = doc.getObjectId("_id")
+    oid.toHexString
+  }
   def fromBson(doc: Document): Try[Json] = {
     val jsonStr: String = doc.toJson(bsonJsonSettings)
     fromBson(jsonStr)

@@ -1,12 +1,11 @@
-package pipelines.rest.users
+package pipelines.users
 
 import java.net.URLEncoder
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.Config
-import pipelines.rest.jwt.Claims
-import pipelines.users.LoginRequest
+import pipelines.users.jwt.Claims
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

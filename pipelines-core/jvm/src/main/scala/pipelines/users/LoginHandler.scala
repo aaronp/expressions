@@ -1,10 +1,9 @@
-package pipelines.rest.users
+package pipelines.users
 
 import java.lang.reflect.Constructor
 
 import com.typesafe.config.Config
-import pipelines.rest.jwt.Claims
-import pipelines.users.LoginRequest
+import pipelines.users.jwt.Claims
 
 import scala.concurrent.Future
 

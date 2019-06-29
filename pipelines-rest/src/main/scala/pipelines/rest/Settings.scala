@@ -6,8 +6,9 @@ import com.typesafe.config.Config
 import pipelines.Env
 import pipelines.reactive.repo.rest.SourceRepoRoutes
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes}
-import pipelines.rest.users.{LoginHandler, UserRoutes}
+import pipelines.rest.users.UserRoutes
 import pipelines.ssl.SSLConfig
+import pipelines.users.LoginHandler
 
 import scala.compat.Platform
 import scala.concurrent.ExecutionContext

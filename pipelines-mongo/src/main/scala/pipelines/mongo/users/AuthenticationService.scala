@@ -8,9 +8,9 @@ import pipelines.users.{AuthModel, UserRoles}
 /**
   * Contains the info for logging in/updating users, as well as their roles
   */
-case class UserAuthService(authRepo: RefDataMongo[AuthModel], users: RefDataMongo[UserRoles]) {
+case class AuthenticationService(authRepo: RefDataMongo[AuthModel], userRoles: RefDataMongo[UserRoles]) {
   private[users] def authCollection = authRepo.repo.collection
-  private[users] def userCollection = users.repo.collection
+  private[users] def userCollection = userRoles.repo.collection
 
   private val nowt = Set.empty[String]
   def permissionsForRole(roleId: String): Set[String] = {
@@ -19,32 +19,32 @@ case class UserAuthService(authRepo: RefDataMongo[AuthModel], users: RefDataMong
     }
   }
 
-  def rolesForUser(userId: String): Set[String] = users.latestModel().fold(nowt)(_.rolesByUserId.getOrElse(userId, nowt))
+  def rolesForUser(userId: String): Set[String] = userRoles.latestModel().fold(nowt)(_.rolesByUserId.getOrElse(userId, nowt))
 
   def permissionsForUser(userId: String): Set[String] = {
     val all = for {
       authModel <- authRepo.latestModel()
       roles     = rolesForUser(userId)
     } yield {
-      roles.flatMap(authModel.permissionsByRole.getOrElse(_, nowt))
+      roles.flatMap(permissionsForRole)
     }
     all.getOrElse(nowt)
   }
 }
 
-object UserAuthService {
-  def apply(rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[UserAuthService] = {
+object AuthenticationService {
+  def apply(rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[AuthenticationService] = {
     val userRoles: CollectionSettings = CollectionSettings(rootConfig, "userRoles")
     val roles                         = CollectionSettings(rootConfig, "roles")
     apply(userRoles, roles)
   }
-  def apply(users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[UserAuthService] = {
+  def apply(users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[AuthenticationService] = {
     val second = RefDataMongo[UserRoles](users)
     for {
       authService <- RefDataMongo[AuthModel](roles)
       userService <- second
     } yield {
-      new UserAuthService(authService, userService)
+      new AuthenticationService(authService, userService)
     }
   }
 }

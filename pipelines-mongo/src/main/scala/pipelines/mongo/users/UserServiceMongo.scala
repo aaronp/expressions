@@ -3,10 +3,13 @@ package pipelines.mongo.users
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.{CancelableFuture, Scheduler}
+import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase}
-import pipelines.mongo.{CollectionSettings, LowPriorityMongoImplicits}
-import pipelines.users.CreateUserRequest
+import pipelines.mongo.{BsonUtil, CollectionSettings, LowPriorityMongoImplicits}
 import pipelines.users.jvm.UserHash
+import pipelines.users.{CreateUserRequest, RegisteredUser}
+
+import scala.concurrent.Future
 
 /** exposes the means for creating new users
   *
@@ -15,8 +18,37 @@ import pipelines.users.jvm.UserHash
   * @param hasher
   * @param ioSched
   */
-final class UserServiceMongo(private[users] val mongoDb: MongoDatabase, private[users] val users: MongoCollection[Document], hasher: UserHash)(implicit ioSched: Scheduler)
+final class UserServiceMongo(private[users] val mongoDb: MongoDatabase, private[users] val users: MongoCollection[Document], val hasher: UserHash)(implicit val ioSched: Scheduler)
     extends LowPriorityMongoImplicits {
+
+  /** finds a user w/ the given username or email
+    *
+    * @param usernameOrEmail
+    * @return
+    */
+  def findUser(usernameOrEmail: String): Future[Option[RegisteredUser]] = {
+    val criteria = {
+      Filters.or(
+        Filters.equal(CreateUserRequest.userNameField, usernameOrEmail),
+        Filters.equal(CreateUserRequest.emailField, usernameOrEmail)
+      )
+    }
+
+    users
+      .find(criteria)
+      .limit(2) // in the odd case where we somehow get multiple users for the same username or email, we should know about it (and fail)
+      .map { doc =>
+        val result                              = BsonUtil.fromBson(doc).flatMap(_.as[CreateUserRequest].toTry)
+        val CreateUserRequest(name, email, pwd) = result.get
+        RegisteredUser(BsonUtil.idForDocument(doc), name, email, pwd)
+      }
+      .toFuture
+      .map {
+        case Seq(unique) => Option(unique)
+        case Seq()       => None
+        case many        => throw new IllegalStateException(s"Multiple users found w/ username or email '${usernameOrEmail}'")
+      }
+  }
 
   /**
     * Create a new user. If a user already exists w/ the same email then this should fail.
@@ -27,11 +59,19 @@ final class UserServiceMongo(private[users] val mongoDb: MongoDatabase, private[
     * @return a future for the request which will simply succeed or fail
     */
   def createUser(request: CreateUserRequest): CancelableFuture[Unit] = {
-    val reHashed    = hasher(request.hashedPassword)
-    val safeRequest = request.copy(hashedPassword = reHashed)
+    if (request.isValid()) {
+      val reHashed    = hasher(request.hashedPassword)
+      val safeRequest = request.copy(hashedPassword = reHashed)
 
-    // we _should_ have indices which will catch duplicate usernames/emails on create
-    users.insertOne(safeRequest.asBsonDoc).monix.completedL.runToFuture
+      // we _should_ have indices which will catch duplicate usernames/emails on create
+      users.insertOne(safeRequest.asBsonDoc).monix.completedL.runToFuture
+//         {
+      //        case _ => UserAlreadyExists(request.userName)
+      //      }
+    } else {
+      CancelableFuture.failed(new Exception(
+        "Invalid create user request for some reason. Good luck with that! (hint: some text is probably empty or an invalid email address based on some sketchy regex logic the internet seemed to think was ok)"))
+    }
   }
 }
 

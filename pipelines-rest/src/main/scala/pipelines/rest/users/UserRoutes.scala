@@ -7,8 +7,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directives, Rejection, Route}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
 import javax.crypto.spec.SecretKeySpec
-import pipelines.rest.jwt.{Claims, Hmac256, JsonWebToken}
 import pipelines.rest.routes.BaseCirceRoutes
+import pipelines.users.jwt.{Claims, Hmac256, JsonWebToken}
 import pipelines.users.{UserSchemas, _}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -58,7 +58,7 @@ class UserRoutes(secret: SecretKeySpec, loginRejection: Rejection, doLogin: Logi
       // An anonymous user may have tried to browse a page which requires login (e.g. a JWT token), and so upon a successful login,
       // we should redirect to the URL as specified by the 'redirectToHeader' (if set)
       redirectHeader { redirectToHeader: Option[String] =>
-        loginEndpoint.implementedByAsync {
+        userLogin.loginEndpoint.implementedByAsync {
           case (loginRequest, redirectToIn) =>
             doLogin(loginRequest).map {
               case Some(claims) =>

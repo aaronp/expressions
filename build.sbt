@@ -250,6 +250,7 @@ lazy val pipelinesCoreCrossProject = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(TestNGPlugin)
   .settings(
     name := "pipelines-core",
+    libraryDependencies += args4cModule,
     libraryDependencies ++= monix.map { art =>
       "io.monix" %%% art % "3.0.0-RC2"
     },
@@ -390,7 +391,6 @@ lazy val pipelinesMongo = project
   .settings(name := s"${repo}-mongo")
   .settings(commonSettings: _*)
   .settings(parallelExecution in Test := false)
-  .settings(libraryDependencies += args4cModule)
   .settings(libraryDependencies ++= typesafeConfig :: logging)
   .settings(libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "2.6.0")
   .settings(libraryDependencies ++= List(

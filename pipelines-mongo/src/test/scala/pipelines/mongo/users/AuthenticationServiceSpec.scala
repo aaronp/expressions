@@ -5,19 +5,19 @@ import pipelines.audit.AuditVersion
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
 import pipelines.users.{AuthModel, UserRoles}
 
-trait UserAuthServiceSpec extends BasePipelinesMongoSpec {
+trait AuthenticationServiceSpec extends BasePipelinesMongoSpec {
 
   "UsersMongo" should {
     "be able to associate users with permissions" in {
       WithScheduler { implicit sched =>
-        val userService: UserAuthService = {
+        val userService: AuthenticationService = {
           val usersCollectionName = s"users-${System.currentTimeMillis}"
           val rolesCollectionName = s"roles-${System.currentTimeMillis}"
 
           val rolesSettings = CollectionSettings(configForCollection(rolesCollectionName, basedOn = "roles"), rolesCollectionName)
           val userSettings  = CollectionSettings(configForCollection(usersCollectionName, basedOn = "userRoles"), usersCollectionName)
 
-          UserAuthService(userSettings, rolesSettings).futureValue
+          AuthenticationService(userSettings, rolesSettings).futureValue
         }
 
         try {
@@ -42,7 +42,7 @@ trait UserAuthServiceSpec extends BasePipelinesMongoSpec {
               "new user carl" -> Set("guestRole")
             )
           )
-          userService.users
+          userService.userRoles
             .updateWith("another user") {
               case None      => baseUsers
               case Some(old) => old.copy(rolesByUserId = old.rolesByUserId ++ baseUsers.rolesByUserId)
@@ -76,7 +76,7 @@ trait UserAuthServiceSpec extends BasePipelinesMongoSpec {
           }
 
           When("The users are updated")
-          userService.users
+          userService.userRoles
             .updateWith("yet another user") {
               case Some(old) => old.copy(rolesByUserId = old.rolesByUserId.updated("admin dave", Set("guestRole", "newRole")))
             }
@@ -89,7 +89,7 @@ trait UserAuthServiceSpec extends BasePipelinesMongoSpec {
           }
 
           val authChanges: Seq[AuditVersion] = userService.authRepo.repo.find().toListL.runSyncUnsafe(testTimeout)
-          val userChanges: Seq[AuditVersion] = userService.users.repo.find().toListL.runSyncUnsafe(testTimeout)
+          val userChanges: Seq[AuditVersion] = userService.userRoles.repo.find().toListL.runSyncUnsafe(testTimeout)
 
           authChanges.map(x => (x.userId, x.revision)).toList shouldBe List("admin user"   -> 1, "new admin user"   -> 2)
           userChanges.map(x => (x.userId, x.revision)).toList shouldBe List("another user" -> 1, "yet another user" -> 2)

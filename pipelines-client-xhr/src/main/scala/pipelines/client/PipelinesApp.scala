@@ -62,7 +62,7 @@ object PipelinesApp extends HtmlUtils {
 
     dom.window.console.log("search:" + dom.window.document.location.search + ", redirectUrl is " + redirectUrl)
 
-    val loginResponseFuture: Future[LoginResponse] = PipelinesXhr.loginEndpoint.apply(request, Option(redirectUrl).filterNot(_.isEmpty))
+    val loginResponseFuture: Future[LoginResponse] = PipelinesXhr.userLogin.loginEndpoint.apply(request, Option(redirectUrl).filterNot(_.isEmpty))
     loginResponseFuture.onComplete {
       case Success(response) => PipelinesXhr.onLogin(response)
       case Failure(err) =>

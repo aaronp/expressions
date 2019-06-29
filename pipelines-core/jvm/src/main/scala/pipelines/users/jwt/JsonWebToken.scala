@@ -1,4 +1,5 @@
-package pipelines.rest.jwt
+package pipelines.users.jwt
+
 import java.time.ZonedDateTime
 import java.util
 import java.util.Base64

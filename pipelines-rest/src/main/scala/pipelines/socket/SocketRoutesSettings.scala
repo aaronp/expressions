@@ -4,8 +4,8 @@ import akka.http.scaladsl.server.Route
 import args4c.implicits._
 import com.typesafe.config.Config
 import pipelines.Env
-import pipelines.rest.jwt.Claims
 import pipelines.rest.routes.SecureRouteSettings
+import pipelines.users.jwt.Claims
 
 import scala.concurrent.duration._
 

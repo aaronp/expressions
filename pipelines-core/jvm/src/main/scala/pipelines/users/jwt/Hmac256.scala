@@ -1,4 +1,4 @@
-package pipelines.rest.jwt
+package pipelines.users.jwt
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec

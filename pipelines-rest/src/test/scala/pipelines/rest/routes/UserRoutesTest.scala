@@ -5,9 +5,9 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, Location}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
-import pipelines.rest.jwt.JsonWebToken.CorruptJwtSecret
-import pipelines.rest.jwt.{Claims, Hmac256, JsonWebToken}
 import pipelines.rest.users.UserRoutes
+import pipelines.users.jwt.JsonWebToken.CorruptJwtSecret
+import pipelines.users.jwt.{Claims, Hmac256, JsonWebToken}
 import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.concurrent.Future

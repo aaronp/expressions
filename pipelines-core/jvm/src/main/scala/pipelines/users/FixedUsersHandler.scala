@@ -1,16 +1,20 @@
-package pipelines.rest.users
+package pipelines.users
 
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.jwt.Claims
-import pipelines.users.LoginRequest
+import pipelines.users.jwt.Claims
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Try
 
+/**
+  * A login handler which takes the users/passwords from a fixed set based on the configuration
+  *
+  * @param userConfig
+  */
 class FixedUsersHandler(userConfig: Config) extends LoginHandler with StrictLogging {
   import args4c.implicits._
   val sessionDuration = userConfig.getDuration("sessionDuration", TimeUnit.MILLISECONDS).millis

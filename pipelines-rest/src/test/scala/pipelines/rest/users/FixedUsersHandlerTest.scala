@@ -3,7 +3,7 @@ package pipelines.rest.users
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.users.LoginRequest
+import pipelines.users.{FixedUsersHandler, LoginHandler, LoginRequest}
 
 class FixedUsersHandlerTest extends WordSpec with Matchers with ScalaFutures {
   "FixedUsersHandler" should {

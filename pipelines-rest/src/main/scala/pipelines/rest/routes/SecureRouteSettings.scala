@@ -2,7 +2,7 @@ package pipelines.rest.routes
 
 import com.typesafe.config.Config
 import javax.crypto.spec.SecretKeySpec
-import pipelines.rest.jwt.Hmac256
+import pipelines.users.jwt.Hmac256
 
 case class SecureRouteSettings(loginPage: String, realm: String, secret: SecretKeySpec)
 

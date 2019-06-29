@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.ExpectedWebSocketRequestRejection
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import pipelines.rest.DevConfig
-import pipelines.rest.jwt.Claims
 import pipelines.rest.routes.BaseRoutesTest
+import pipelines.users.jwt.Claims
 import pipelines.{Env, Using, socket}
 
 import scala.collection.mutable.ListBuffer

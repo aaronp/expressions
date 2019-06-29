@@ -1,13 +1,14 @@
 package pipelines.mongo
 
 import pipelines.mongo.audit.AuditServiceMongoSpec
-import pipelines.mongo.users.{RefDataMongoSpec, UserServiceMongoSpec, UserAuthServiceSpec}
+import pipelines.mongo.users.{AuthenticationServiceSpec, LoginHandlerMongoTest, RefDataMongoSpec, UserServiceMongoSpec}
 
 class PipelinesMongoTest
     extends BasePipelinesMongoSpec
+    with LoginHandlerMongoTest
     with MongoConnectSpec
     with AuditServiceMongoSpec
     with RefDataMongoSpec
     with UserServiceMongoSpec
-    with UserAuthServiceSpec
+    with AuthenticationServiceSpec
     with LowPriorityMongoImplicitsSpec

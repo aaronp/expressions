@@ -1,16 +1,15 @@
 package pipelines.rest.routes
 import java.time.{ZoneId, ZonedDateTime}
 
-import akka.http.scaladsl.server._
-import akka.http.scaladsl.model.{headers, _}
 import akka.http.scaladsl.model.headers.{Authorization, HttpChallenges, OAuth2BearerToken, RawHeader}
+import akka.http.scaladsl.model.{headers, _}
 import akka.http.scaladsl.server.Directives.respondWithHeader
 import akka.http.scaladsl.server._
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.jwt.JsonWebToken.JwtError
-import pipelines.rest.jwt.{Claims, JsonWebToken}
 import javax.crypto.spec.SecretKeySpec
 import pipelines.core.Redirection
+import pipelines.users.jwt.JsonWebToken.JwtError
+import pipelines.users.jwt.{Claims, JsonWebToken}
 
 /**
   * Mixing in this trait will offer an 'authenticated' directive to allow routes to require authentication.

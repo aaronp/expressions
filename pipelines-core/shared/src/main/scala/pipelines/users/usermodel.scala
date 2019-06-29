@@ -24,10 +24,23 @@ object UserDetails extends JavaTimeDecoders with JavaTimeEncoders {
   implicit def decoder                             = deriveDecoder[UserDetails]
 }
 
-final case class CreateUserRequest(userName: UserName, email: Email, hashedPassword: String)
+final case class RegisteredUser(id: String, userName: UserName, email: Email, hashedPassword: String)
+object RegisteredUser {
+  implicit val encoder: ObjectEncoder[RegisteredUser] = io.circe.generic.semiauto.deriveEncoder[RegisteredUser]
+  implicit val decoder: Decoder[RegisteredUser]       = io.circe.generic.semiauto.deriveDecoder[RegisteredUser]
+
+}
+
+final case class CreateUserRequest(userName: UserName, email: Email, hashedPassword: String) {
+  def isValid(): Boolean = {
+    userName.nonEmpty && InvalidEmailAddress.validate(email) && hashedPassword.nonEmpty
+  }
+}
 object CreateUserRequest {
+  val userNameField                                      = "userName"
+  val emailField                                         = "email"
   implicit def encoder: ObjectEncoder[CreateUserRequest] = deriveEncoder[CreateUserRequest]
-  implicit def decoder = deriveDecoder[CreateUserRequest]
+  implicit def decoder                                   = deriveDecoder[CreateUserRequest]
 }
 
 final case class CreateUserResponse(ok: Boolean, jwtToken: Option[String])

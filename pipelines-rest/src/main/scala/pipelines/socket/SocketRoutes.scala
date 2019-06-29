@@ -1,8 +1,8 @@
 package pipelines.socket
 
 import akka.http.scaladsl.server.Route
-import pipelines.rest.jwt.Claims
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings}
+import pipelines.users.jwt.Claims
 
 /**
   * Exposes a means to create (or reuse) a socket for the authenticated user

@@ -1,4 +1,5 @@
-package pipelines.rest.jwt
+package pipelines.users.jwt
+
 import java.util.Base64
 
 import io.circe

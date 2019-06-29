@@ -2,7 +2,7 @@ package pipelines.rest.users
 
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.users.LoginRequest
+import pipelines.users.{LocalUsers, LoginHandler, LoginRequest}
 import pipelines.{BaseCoreTest, WithTempDir}
 
 class LocalUsersTest extends BaseCoreTest with ScalaFutures {

@@ -7,7 +7,34 @@ import pipelines.users.jvm.UserHash
 
 trait UserServiceMongoSpec extends BasePipelinesMongoSpec {
 
-  "UserServiceMongo" should {
+  "UserServiceMongo.find" should {
+    "find users by email or password" in {
+      WithScheduler { implicit s =>
+        val usersCollectionName = s"users-${System.currentTimeMillis}"
+        val config              = configForCollection(usersCollectionName)
+        val settings            = CollectionSettings(config, usersCollectionName)
+        val userService         = UserServiceMongo(settings, UserHash(config)).futureValue
+
+        try {
+
+          Given("A new user 'dave'")
+          val daveReq = CreateUserRequest("dave", s"d@ve.com", "password")
+          // this should succeed:
+          userService.createUser(daveReq).futureValue
+
+          val Some(foundByName)  = userService.findUser("dave").futureValue
+          val Some(foundByEmail) = userService.findUser("d@ve.com").futureValue
+          foundByName shouldBe foundByEmail
+          foundByEmail.id.length should be > 5
+          foundByName.id shouldBe foundByEmail.id
+          foundByName.id should not be (empty)
+        } finally {
+          userService.users.drop().monix.completedL.runToFuture.futureValue
+        }
+      }
+    }
+  }
+  "UserServiceMongo.createUser" should {
     "not be able to create a user w/ the same name or email" in {
       WithScheduler { implicit s =>
         val usersCollectionName = s"users-${System.currentTimeMillis}"

@@ -16,20 +16,26 @@ trait UserEndpoints extends BaseEndpoint {
     )
   }
 
-  def loginRequest(implicit req: JsonRequest[LoginRequest]): Request[(LoginRequest, Option[String])] = {
-    post(path / "users" / "login", jsonRequest[LoginRequest](Option("Basic user login request")), redirectHeader)
+  /**
+    * POST /users/login route for ... logging in existing users (see 'LoginHandler' for implementations)
+    */
+  object userLogin {
+    def loginRequest(implicit req: JsonRequest[LoginRequest]): Request[(LoginRequest, Option[String])] = {
+      post(path / "users" / "login", jsonRequest[LoginRequest](Option("Basic user login request")), redirectHeader)
+    }
+
+    /**
+      * Get the counter current value.
+      * Uses the HTTP verb “GET” and URL path “/current-value”.
+      * The response entity is a JSON document representing the counter value.
+      */
+    def loginEndpoint(implicit req: JsonRequest[LoginRequest], resp: JsonResponse[LoginResponse]): Endpoint[(LoginRequest, Option[String]), LoginResponse] =
+      endpoint(loginRequest, loginResponse)
+
   }
 
-  def loginResponse(implicit resp: JsonResponse[LoginResponse]): Response[LoginResponse] =
+  protected def loginResponse(implicit resp: JsonResponse[LoginResponse]): Response[LoginResponse] =
     jsonResponse[LoginResponse](Option("A login response which will also include an X-Access-Token header to use in subsequent requests"))
-
-  /**
-    * Get the counter current value.
-    * Uses the HTTP verb “GET” and URL path “/current-value”.
-    * The response entity is a JSON document representing the counter value.
-    */
-  def loginEndpoint(implicit req: JsonRequest[LoginRequest], resp: JsonResponse[LoginResponse]): Endpoint[(LoginRequest, Option[String]), LoginResponse] =
-    endpoint(loginRequest, loginResponse)
 
   /** Confirm a new user via a GET request w/ a specific token - presumably having followed a link from an email
     */
