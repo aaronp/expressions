@@ -109,14 +109,14 @@ object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.t
       import c._
 
       val stringMap = Map(
-        "name" -> name,
-        "email" -> email,
-        "roles" -> roleStr,
+        "name"        -> name,
+        "email"       -> email,
+        "roles"       -> roleStr,
         "permissions" -> permissionsStr,
-        "iss"  -> iss,
-        "sub"  -> sub,
-        "aud"  -> aud,
-        "jti"  -> jti
+        "iss"         -> iss,
+        "sub"         -> sub,
+        "aud"         -> aud,
+        "jti"         -> jti
       ).filter {
           case (_, null) => false
           case (_, "")   => false

@@ -12,14 +12,14 @@ trait LoginHandlerMongoTest extends BasePipelinesMongoSpec {
   "LoginHandlerMongo" should {
     "be able to log in a newly created user" in {
       WithScheduler { implicit sched =>
-        val authService: AuthenticationService = {
+        val authService: UserRolesService = {
           val usersCollectionName = s"users-${System.currentTimeMillis}"
           val rolesCollectionName = s"roles-${System.currentTimeMillis}"
 
           val rolesSettings = CollectionSettings(configForCollection(rolesCollectionName, basedOn = "roles"), rolesCollectionName)
           val userSettings  = CollectionSettings(configForCollection(usersCollectionName, basedOn = "userRoles"), usersCollectionName)
 
-          AuthenticationService(userSettings, rolesSettings).futureValue
+          UserRolesService(userSettings, rolesSettings).futureValue
         }
 
         val users = {

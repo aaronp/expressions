@@ -8,7 +8,7 @@ import pipelines.users.{AuthModel, UserRoles}
 /**
   * Contains the info for logging in/updating users, as well as their roles
   */
-case class AuthenticationService(authRepo: RefDataMongo[AuthModel], userRoles: RefDataMongo[UserRoles]) {
+case class UserRolesService(authRepo: RefDataMongo[AuthModel], userRoles: RefDataMongo[UserRoles]) {
   private[users] def authCollection = authRepo.repo.collection
   private[users] def userCollection = userRoles.repo.collection
 
@@ -32,19 +32,19 @@ case class AuthenticationService(authRepo: RefDataMongo[AuthModel], userRoles: R
   }
 }
 
-object AuthenticationService {
-  def apply(rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[AuthenticationService] = {
+object UserRolesService {
+  def apply(rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
     val userRoles: CollectionSettings = CollectionSettings(rootConfig, "userRoles")
     val roles                         = CollectionSettings(rootConfig, "roles")
     apply(userRoles, roles)
   }
-  def apply(users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[AuthenticationService] = {
+  def apply(users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
     val second = RefDataMongo[UserRoles](users)
     for {
       authService <- RefDataMongo[AuthModel](roles)
       userService <- second
     } yield {
-      new AuthenticationService(authService, userService)
+      new UserRolesService(authService, userService)
     }
   }
 }

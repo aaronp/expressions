@@ -11,10 +11,10 @@ object AuthModel {
   implicit val decoder = io.circe.generic.semiauto.deriveDecoder[AuthModel]
 }
 
-case class UserAuth(userId: String, roles: Set[String])
-object UserAuth {
-  implicit val encoder = io.circe.generic.semiauto.deriveEncoder[UserAuth]
-  implicit val decoder = io.circe.generic.semiauto.deriveDecoder[UserAuth]
+case class SetRolesForUserRequest(version: Int, userId: String, roles: Set[String])
+object SetRolesForUserRequest {
+  implicit val encoder = io.circe.generic.semiauto.deriveEncoder[SetRolesForUserRequest]
+  implicit val decoder = io.circe.generic.semiauto.deriveDecoder[SetRolesForUserRequest]
 }
 
 case class UserRoles(rolesByUserId: Map[String, Set[String]])

@@ -49,14 +49,14 @@ final class AuditServiceMongo(private[audit] val mongoDb: MongoDatabase, val col
   }
 
   def forVersion(revision: Int): Future[Option[AuditVersion]] = {
-    val filter = Filters.equal("revision", revision)
+    val filter = Filters.equal(AuditVersion.RevisionField, revision)
     val first  = collection.find(filter).first().headOption()
     first.map(_.flatMap(asAuditVersion))
   }
 
   def latest(): Future[Option[AuditVersion]] = {
-    val sort  = Sorts.descending("revision")
-    val filt  = Filters.exists("revision")
+    val sort  = Sorts.descending(AuditVersion.RevisionField)
+    val filt  = Filters.exists(AuditVersion.RevisionField)
     val first = collection.find().sort(sort).first().headOption()
     first.map(_.flatMap(asAuditVersion))
   }
@@ -97,13 +97,19 @@ final class AuditServiceMongo(private[audit] val mongoDb: MongoDatabase, val col
 
   def maxVersion(): Future[Option[Int]] = {
     def asRevision(doc: Document): Option[Int] = {
-      BsonUtil.fromBson(doc).toOption.flatMap { json =>
-        json.as[RevisionProjection].toOption.map(_.revision)
+      for {
+        json       <- BsonUtil.fromBson(doc).toOption
+        jsonObj    <- json.asObject
+        version    <- jsonObj.toMap.get("version")
+        projection <- version.as[RevisionProjection].toOption
+      } yield {
+        projection.revision
       }
     }
-    val proj  = Projections.include("revision")
-    val sort  = Sorts.descending("revision")
-    val filt  = Filters.exists("revision")
+
+    val proj  = Projections.include(AuditVersion.RevisionField)
+    val sort  = Sorts.descending(AuditVersion.RevisionField)
+    val filt  = Filters.exists(AuditVersion.RevisionField)
     val first = collection.find().projection(proj).sort(sort).first().headOption()
     first.map(_.flatMap(asRevision))
   }
@@ -156,18 +162,18 @@ object AuditServiceMongo extends LowPriorityMongoImplicits with StrictLogging {
     import io.circe.literal._
 
     val beforeCriteria = before.map { time =>
-      Filters.lte("createdAt", time.toInstant.toEpochMilli.asBson)
+      Filters.lte(AuditVersion.CreatedAtField, time.toInstant.toEpochMilli.asBson)
     }
     val afterCriteria = after.map { time =>
-      Filters.gte("createdAt", time.toInstant.toEpochMilli.asBson)
+      Filters.gte(AuditVersion.CreatedAtField, time.toInstant.toEpochMilli.asBson)
     }
 
     val userCriteria = changedByUserId.map { userId =>
-      Filters.equal("userId", userId)
+      Filters.equal(AuditVersion.UserIdField, userId)
     }
 
     val revisionCriteria = revision.map { v =>
-      Filters.equal("revision", v)
+      Filters.equal(AuditVersion.RevisionField, v)
     }
 
     List(beforeCriteria, afterCriteria, userCriteria, revisionCriteria).flatten match {
