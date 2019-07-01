@@ -15,14 +15,6 @@ case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSetti
     with PushEndpoints
     with SocketSchemas {
 
-  def authWithQuery: Directive[(Claims, Uri.Query)] = {
-    authenticated.tflatMap { user =>
-      extractRequest.map { r =>
-        val q: Uri.Query = r.uri.query()
-        (user._1, q)
-      }
-    }
-  }
   def cancelRoute: Route = {
     val authCancel: Directive[(Claims, Uri.Query)] = push.pushEndpointCancel.request.flatMap { _ =>
       authWithQuery
@@ -33,21 +25,26 @@ case class PushRoutes(service: PipelineService, secureSettings: SecureRouteSetti
         val criteria: MetadataCriteria = MetadataCriteria(metadata)
         val found: Seq[DataSource]     = service.sources.find(criteria)
 
+        // TODO - cancel
+        ???
         val pec: Endpoint[Unit, Unit] = push.pushEndpointCancel
         pec.response(Unit)
     }
   }
   def pushPostRoute = {
     push.pushEndpointPost.implementedBy { _ =>
-      }
+      ???
+    }
   }
   def pushGetRoute = {
     push.pushEndpointGet.implementedBy { x =>
-      }
+      ???
+    }
   }
   def errorRoute = {
     push.pushEndpointError.implementedBy { msgOpt =>
       val msg = msgOpt.getOrElse("User-invoked error")
+      ???
 
     }
   }

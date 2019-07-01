@@ -8,6 +8,8 @@ import io.circe.generic.semiauto._
 import io.circe.java8.time._
 import io.circe.{Decoder, Encoder, Json, ObjectEncoder}
 
+import scala.collection.mutable.ListBuffer
+
 /**
   *
   * @param defaultHomePage
@@ -32,8 +34,21 @@ object RegisteredUser {
 }
 
 final case class CreateUserRequest(userName: UserName, email: Email, hashedPassword: String) {
-  def isValid(): Boolean = {
-    userName.nonEmpty && InvalidEmailAddress.validate(email) && hashedPassword.nonEmpty
+  def isValid(): Boolean = validationErrors.isEmpty
+
+  def validationErrors(): List[String] = {
+    val errors = ListBuffer[String]()
+    if (userName.isEmpty) {
+      errors += "No username specified"
+    }
+    if (!InvalidEmailAddress.isValid(email)) {
+      errors += s"Invalid email address '${email}'"
+    }
+    if (hashedPassword.isEmpty) {
+      errors += "Password not set"
+    }
+
+    errors.toList
   }
 }
 object CreateUserRequest {
@@ -43,10 +58,16 @@ object CreateUserRequest {
   implicit def decoder                                   = deriveDecoder[CreateUserRequest]
 }
 
-final case class CreateUserResponse(ok: Boolean, jwtToken: Option[String])
+final case class CreateUserResponse(ok: Boolean, jwtToken : Option[String], error : Option[String])
 object CreateUserResponse {
   implicit def encoder = deriveEncoder[CreateUserResponse]
   implicit def decoder = deriveDecoder[CreateUserResponse]
+}
+
+final case class UserStatusResponse(jwtToken: String, userName: String, userId: String, roles: Set[String], permissions: Set[String], loggedInAtUTC: Long)
+object UserStatusResponse {
+  implicit val encoder: ObjectEncoder[UserStatusResponse] = io.circe.generic.semiauto.deriveEncoder[UserStatusResponse]
+  implicit val decoder: Decoder[UserStatusResponse]       = io.circe.generic.semiauto.deriveDecoder[UserStatusResponse]
 }
 
 final case class UpdateUserRequest(userOrEmail: Either[UserName, Email], details: UserDetails)
@@ -89,6 +110,12 @@ final case class LoginRequest(user: UserName, password: String)
 object LoginRequest {
   implicit def encoder = deriveEncoder[LoginRequest]
   implicit def decoder = deriveDecoder[LoginRequest]
+}
+
+final case class UserReminderRequest(user: UserName)
+object UserReminderRequest {
+  implicit val encoder: ObjectEncoder[UserReminderRequest] = io.circe.generic.semiauto.deriveEncoder[UserReminderRequest]
+  implicit val decoder: Decoder[UserReminderRequest]       = io.circe.generic.semiauto.deriveDecoder[UserReminderRequest]
 }
 
 final case class LoginResponse(ok: Boolean, jwtToken: Option[String], redirectTo: Option[String])

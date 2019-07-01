@@ -2,8 +2,8 @@ package pipelines.mongo.users
 
 import pipelines.WithScheduler
 import pipelines.audit.AuditVersion
+import pipelines.auth.{AuthModel, UserRoles}
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
-import pipelines.users.{AuthModel, UserRoles}
 
 trait UserRolesServiceSpec extends BasePipelinesMongoSpec {
 
@@ -42,7 +42,7 @@ trait UserRolesServiceSpec extends BasePipelinesMongoSpec {
               "new user carl" -> Set("guestRole")
             )
           )
-          userService.userRoles
+          userService.userRoleRepo
             .updateWith("another user") {
               case None      => baseUsers
               case Some(old) => old.copy(rolesByUserId = old.rolesByUserId ++ baseUsers.rolesByUserId)
@@ -76,7 +76,7 @@ trait UserRolesServiceSpec extends BasePipelinesMongoSpec {
           }
 
           When("The users are updated")
-          userService.userRoles
+          userService.userRoleRepo
             .updateWith("yet another user") {
               case Some(old) => old.copy(rolesByUserId = old.rolesByUserId.updated("admin dave", Set("guestRole", "newRole")))
             }
@@ -89,14 +89,14 @@ trait UserRolesServiceSpec extends BasePipelinesMongoSpec {
           }
 
           val authChanges: Seq[AuditVersion] = userService.authRepo.repo.find().toListL.runSyncUnsafe(testTimeout)
-          val userChanges: Seq[AuditVersion] = userService.userRoles.repo.find().toListL.runSyncUnsafe(testTimeout)
+          val userChanges: Seq[AuditVersion] = userService.userRoleRepo.repo.find().toListL.runSyncUnsafe(testTimeout)
 
           authChanges.map(x => (x.userId, x.revision)).toList shouldBe List("admin user"   -> 1, "new admin user"   -> 2)
           userChanges.map(x => (x.userId, x.revision)).toList shouldBe List("another user" -> 1, "yet another user" -> 2)
 
         } finally {
           userService.authCollection.drop()
-          userService.userCollection.drop()
+          userService.userRolesCollection.drop()
         }
       }
     }

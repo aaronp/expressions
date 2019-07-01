@@ -17,4 +17,4 @@ export JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.ssl=false"
 
 echo "Starting w/ $JVM_ARGS on $IPADDR with $# args $@ (first is '$1')"
 
-java ${JVM_ARGS} -cp /app/lib/app.jar:/app/config pipelines.rest.Main $@
+java ${JVM_ARGS} -cp /app/lib/app.jar:/app/config pipelines.server.PipelinesMain $@ pipelines-docker.conf

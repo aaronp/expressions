@@ -19,22 +19,27 @@ import scala.util.Try
   * (If you change/rename this, be sure to update pipelines-deploy/src/main/resources/boot.sh and project/Build.scala)
   *
   */
-object Main extends ConfigApp with StrictLogging {
+object RestMain extends ConfigApp with StrictLogging {
   type Result = RunningServer
 
   override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
 
   def run(rootConfig: Config): RunningServer = {
-    val config             = ensureCerts(rootConfig)
-    val settings: Settings = Settings(config)
-    val service            = PipelineService()(settings.env.ioScheduler)
+    val config   = ensureCerts(rootConfig)
+    val settings = Settings(config)
+    val service  = PipelineService()(settings.env.ioScheduler)
+
+    logger.warn(s"Starting with\n${settings}\n\n")
+
     run(settings, service)
   }
 
   def run(settings: Settings, service: PipelineService): RunningServer = {
     val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
     val socketSettings     = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
-    RunningServer(settings, sslConf, socketSettings.routes)
+
+    val login = settings.loginRoutes(sslConf).routes
+    RunningServer(settings, sslConf, Seq(login, socketSettings.routes))
   }
 
   def certPath(config: Config) = config.getString("pipelines.tls.certificate")
@@ -47,6 +52,24 @@ object Main extends ConfigApp with StrictLogging {
     } else {
       config
     }
+  }
+
+  /** @param config the config used to start this app
+    * @param c1ass  the main class running
+    * @return a pretty-print of the config keys/values (minus sensitive ones) of our wejo config and from where those values were loaded
+    */
+  def startupLog(config: Config, c1ass: Class[_] = getClass): String = {
+    val appName = c1ass.getSimpleName.filter(_.isLetter)
+
+    val pipelinesConf = config
+      .getConfig("pipelines")
+      .summary()
+      .lines
+      .map { line =>
+        s"\tpipelines.${line}"
+      }
+      .mkString("\n")
+    s"Running ${appName} with: \n${pipelinesConf}\n\n"
   }
 
   /**

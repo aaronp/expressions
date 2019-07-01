@@ -7,7 +7,6 @@ case class AppState(loginResponseOpt: Option[LoginResponse] = None) {
 
   def currentToken(): Option[String] = {
     val token = dom.window.sessionStorage.getItem("jwtToken")
-    dom.window.console.log("jwtToken from session storage is:" + token)
     Option(token).filterNot(_.isEmpty).orElse {
       loginResponseOpt.flatMap(_.jwtToken)
     }

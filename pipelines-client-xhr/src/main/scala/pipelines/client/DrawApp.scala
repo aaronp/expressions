@@ -7,8 +7,9 @@ import geometry._
 import org.scalajs.dom
 import org.scalajs.dom.document
 import scalatags.JsDom.all._
+
 import scala.collection.mutable.ArrayBuffer
-import scala.scalajs.js.annotation.JSExport
+import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
 //@JSExportTopLevel("DrawApp")
 /**
@@ -16,7 +17,7 @@ import scala.scalajs.js.annotation.JSExport
   * http://www.lihaoyi.com/hands-on-scala-js/
   * https://www.w3resource.com/html5-canvas/html5-canvas-lines.php
   */
-@JSExport
+@JSExportTopLevel("DrawApp")
 object DrawApp extends HtmlUtils {
   var lastLogged = 0L
 

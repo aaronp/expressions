@@ -151,8 +151,9 @@ object GenCerts extends StrictLogging {
         import eie.io._
         val extractDir = Properties.userDir.asPath
         val dir        = extractScriptsFromJar(pathToJar, extractDir)
-        val scriptPath = dir.resolve(s"scripts/$script")
-        logger.info(s"Extracted $script to ${scriptPath.toAbsolutePath}")
+//        val scriptPath = dir.resolve(s"scripts/$script")
+        val scriptPath = dir.resolve(script)
+        logger.info(s"Extracted $script to ${scriptPath.toAbsolutePath}: ${scriptPath.toAbsolutePath.renderTree()}}")
         scriptPath
       case _ => Paths.get(location.toURI)
     }

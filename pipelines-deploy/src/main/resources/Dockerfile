@@ -21,6 +21,7 @@ VOLUME /app/data /app/config /app/logs /app/heapdump /app/web
 
 ADD logback.xml /app/config/logback.xml
 ADD application.conf /app/config/application.conf
+ADD pipelines-docker.conf /app/config/pipelines-docker.conf
 ADD web /app/web
 ADD app.jar /app/lib/app.jar
 ADD boot.sh /app/boot.sh

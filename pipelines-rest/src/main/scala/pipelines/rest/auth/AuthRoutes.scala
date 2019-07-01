@@ -1,13 +1,10 @@
 package pipelines.rest.auth
 
+import pipelines.auth.{AuthEndpoints, AuthSchemas}
 import pipelines.rest.routes.BaseCirceRoutes
-import pipelines.users.{AuthEndpoints, AuthSchemas, UserAuthEndpoints}
 
-class AuthRoutes() extends AuthEndpoints with AuthSchemas with UserAuthEndpoints with BaseCirceRoutes {
+class AuthRoutes() extends AuthEndpoints with AuthSchemas with BaseCirceRoutes {
 
-  def authRoute = {
-    getUserAuth.getEndpoint.implementedBy { userId =>
-      ???
-    }
-  }
+  def routes = Nil
+
 }

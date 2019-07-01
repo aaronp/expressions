@@ -7,7 +7,7 @@ import pipelines.rest.routes.StaticFileRoutes.fromRootConfig
 object DevConfig {
 
   import args4c.implicits._
-  def apply(): Config = Array("dev.conf").asConfig(Main.defaultConfig()).resolve()
+  def apply(): Config = Array("dev.conf").asConfig(RestMain.defaultConfig()).resolve()
 
   def secureSettings(): SecureRouteSettings = SecureRouteSettings.fromRoot(apply())
 

@@ -9,22 +9,22 @@ import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.audit.AuditVersion
+import pipelines.auth.{AuthModel, UserRoles}
 import pipelines.mongo.audit.AuditServiceMongo
 import pipelines.mongo.{CollectionSettings, LowPriorityMongoImplicits}
-import pipelines.users.AuthModel
 
 import scala.concurrent.duration.FiniteDuration
 
 /**
   * Wraps an [[AuditServiceMongo]] to persist wrapped, versioned [[T]]s which also keeps a handle on the latest 'T'.
   *
-  * This was written to keep track of our [[AuthModel]] and [[pipelines.users.UserRoles]] as the 'T'.
+  * This was written to keep track of our [[AuthModel]] and [[UserRoles]] as the 'T'.
   *
   * This will need to just be a normal query
   *
   * @param repo a handle on where the [[T]] is stored
   */
-final class RefDataMongo[T: Encoder: Decoder](val repo: AuditServiceMongo, pollFreq: FiniteDuration)(implicit ioSched: Scheduler)
+final class RefDataMongo[T: Encoder: Decoder](val repo: AuditServiceMongo, pollFreq: FiniteDuration)(implicit val ioScheduler: Scheduler)
     extends LowPriorityMongoImplicits
     with AutoCloseable {
 

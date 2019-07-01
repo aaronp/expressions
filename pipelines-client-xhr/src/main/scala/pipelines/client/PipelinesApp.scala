@@ -35,41 +35,6 @@ object PipelinesApp extends HtmlUtils {
         dom.window.alert(err.toString)
     }
   }
-
-  @JSExportTopLevel("valueOf")
-  def valueOf(id: String): String = {
-    valueOf(id, document.getElementById(id))
-  }
-
-  @JSExportTopLevel("loginOnKeyUp")
-  def loginOnKeyUp(userInputId: String, pwdInputId: String, e: KeyboardEvent) = {
-    if (e.keyCode == 13) {
-      login(userInputId, pwdInputId)
-    }
-  }
-
-  @JSExportTopLevel("login")
-  def login(userInputId: String, pwdInputId: String) = {
-
-    val user    = valueOf(userInputId)
-    val pwd     = valueOf(pwdInputId)
-    val request = LoginRequest(user, pwd)
-
-    val redirectUrl = dom.window.document.location.search match {
-      case ParseRedirect(url) => url
-      case _                  => ""
-    }
-
-    dom.window.console.log("search:" + dom.window.document.location.search + ", redirectUrl is " + redirectUrl)
-
-    val loginResponseFuture: Future[LoginResponse] = PipelinesXhr.userLogin.loginEndpoint.apply(request, Option(redirectUrl).filterNot(_.isEmpty))
-    loginResponseFuture.onComplete {
-      case Success(response) => PipelinesXhr.onLogin(response)
-      case Failure(err) =>
-        dom.window.alert(err.toString)
-    }
-  }
-
   @JSExportTopLevel("renderQuery")
   def renderQuery(queryButtonId: String, resultsDivId: String): Node = {
 

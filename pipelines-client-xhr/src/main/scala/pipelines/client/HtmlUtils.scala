@@ -3,14 +3,62 @@ package pipelines.client
 import java.util.UUID
 
 import org.scalajs.dom
-import org.scalajs.dom.raw.{Element, HTMLInputElement, HTMLTextAreaElement}
+import org.scalajs.dom.raw._
 import org.scalajs.dom.{document, html, window}
 
+import scala.collection.immutable
 import scala.util.control.NonFatal
 
 object HtmlUtils extends HtmlUtils
 
 trait HtmlUtils {
+
+  def elmById(id: String) = document.getElementById(id)
+
+  def childrenFor(html: HTMLElement): immutable.IndexedSeq[Node] = {
+    (0 until html.childNodes.length).map { i =>
+      html.childNodes.item(i)
+    }
+  }
+
+  /** @param messagesId the id for the element where the message should be set
+    * @param message the message to set
+    */
+  def setMessage(messagesId: String, message: String) = {
+    elmById(messagesId) match {
+      case x: HTMLTextAreaElement => x.value = message
+      case x: HTMLInputElement    => x.value = message
+      case other                  => sys.error(s"Element '$messagesId' is $other so can't set $message")
+    }
+  }
+
+  /**
+    * Thanks SO!
+    * https://stackoverflow.com/questions/503093/how-do-i-redirect-to-another-webpage
+    *
+    * @param page the page the URL to go to
+    */
+  def redirectTo(page: String) = {
+    log(s"""
+         |window.location.hostname=${window.location.hostname}
+         |window.location.host=${window.location.host}
+         |window.location.pathname=${window.location.pathname}
+         |window.location.search=${window.location.search}
+         |window.location.href=${window.location.href}
+       """.stripMargin)
+
+    window.location.replace(page)
+  }
+
+  /**
+    * Thanks SO!
+    * https://stackoverflow.com/questions/503093/how-do-i-redirect-to-another-webpage
+    *
+    * @param page the page the URL to go to
+    */
+  def gotoLink(page: String) = {
+    window.location.href = page
+  }
 
   def showAlert(text: String): Unit = {
     dom.window.alert(text)

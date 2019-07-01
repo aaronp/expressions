@@ -6,21 +6,20 @@ import com.typesafe.config.Config
 import pipelines.Env
 import pipelines.reactive.repo.rest.SourceRepoRoutes
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes}
-import pipelines.rest.users.UserRoutes
+import pipelines.rest.users.UserLoginRoutes
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
 
 import scala.compat.Platform
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
 
-  def userRoutes(sslConf: SSLConfig): UserRoutes = {
-    val handler = LoginHandler(rootConfig)
-    UserRoutes(
+  def loginRoutes(sslConf: SSLConfig, loginHandler: LoginHandler[Future] = LoginHandler(rootConfig)): UserLoginRoutes = {
+    UserLoginRoutes(
       secret = rootConfig.getString("pipelines.www.jwtSeed"),
       realm = Option(rootConfig.getString("pipelines.www.realmName")).filterNot(_.isEmpty)
-    )(handler.login)(ExecutionContext.global)
+    )(loginHandler.login)(ExecutionContext.global)
   }
 
   val secureSettings: SecureRouteSettings = SecureRouteSettings.fromRoot(rootConfig)
@@ -38,7 +37,7 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
       .getConfig("pipelines")
       .summaryEntries(obscure)
       .map { e =>
-        s"\t$e"
+        s"\tpipelines.$e"
       }
       .mkString(Platform.EOL)
     s"""$host:$port

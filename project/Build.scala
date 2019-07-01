@@ -4,8 +4,8 @@ import scala.sys.process._
 import sbt.IO
 
 object Build {
-  val MainRestClass = "pipelines.rest.Main"
-  val MainServerClass = "pipelines.server.Main"
+  val MainRestClass = "pipelines.rest.RestMain"
+  val MainServerClass = "pipelines.server.PipelinesMain"
 
   def docker(deployResourceDir: Path, //
              scriptDir: Path,         //

@@ -1,4 +1,4 @@
-package pipelines.users
+package pipelines.auth
 
 import pipelines.core.{BaseEndpoint, GenericMessageResult}
 

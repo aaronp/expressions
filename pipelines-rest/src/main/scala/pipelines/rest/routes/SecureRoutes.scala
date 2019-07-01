@@ -1,13 +1,25 @@
 package pipelines.rest.routes
 
 import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.server.Directive
+import akka.http.scaladsl.server.Directives.extractRequest
 import javax.crypto.spec.SecretKeySpec
+import pipelines.users.jwt.Claims
 
 class SecureRoutes(settings: SecureRouteSettings) extends AuthenticatedDirective {
 
   def loginPage                      = settings.loginPage
   override val realm: String         = settings.realm
   override val secret: SecretKeySpec = settings.secret
+
+  def authWithQuery: Directive[(Claims, Uri.Query)] = {
+    authenticated.tflatMap { user =>
+      extractRequest.map { r =>
+        val q: Uri.Query = r.uri.query()
+        (user._1, q)
+      }
+    }
+  }
 
   /**
     * @param intendedPath the original URI the user was trying to access

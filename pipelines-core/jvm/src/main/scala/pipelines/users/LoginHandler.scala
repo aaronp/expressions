@@ -10,7 +10,7 @@ import scala.concurrent.Future
 /**
   * A class which can return some user claims for a login request
   */
-trait LoginHandler {
+trait LoginHandler[F[_]] {
 
   /**
     * Handle a login
@@ -18,10 +18,17 @@ trait LoginHandler {
     * @param request
     * @return
     */
-  def login(request: LoginRequest): Future[Option[Claims]]
+  def login(request: LoginRequest): F[Option[Claims]]
 }
 
 object LoginHandler {
+
+  private def usersConfig(rootConfig: Config) = rootConfig.getConfig("pipelines.users")
+
+  def handlerClassName(rootConfig: Config): Class[LoginHandler[Future]] = {
+    val c1assName = usersConfig(rootConfig).getString("loginHandler")
+    Class.forName(c1assName).asInstanceOf[Class[LoginHandler[Future]]]
+  }
 
   /**
     * Create a 'LoginHandler' from the given configuration. A class implementing 'LoginHandler' should either have a no-args
@@ -30,14 +37,11 @@ object LoginHandler {
     * @param rootConfig the root config
     * @return a new login handler
     */
-  def apply(rootConfig: Config): LoginHandler = {
-    val usersConfig = rootConfig.getConfig("pipelines.users")
-    val c1assName   = usersConfig.getString("loginHandler")
-    val c1ass       = Class.forName(c1assName).asInstanceOf[Class[LoginHandler]]
-
+  def apply(rootConfig: Config): LoginHandler[Future] = {
     val configConstructorArgs = List(classOf[Config])
+    val c1ass                 = handlerClassName(rootConfig)
     c1ass.getConstructors.find(_.getParameterTypes.toList == configConstructorArgs) match {
-      case Some(ctr: Constructor[_]) => ctr.asInstanceOf[Constructor[LoginHandler]].newInstance(usersConfig)
+      case Some(ctr: Constructor[_]) => ctr.asInstanceOf[Constructor[LoginHandler[Future]]].newInstance(usersConfig(rootConfig))
       case None                      => c1ass.newInstance()
     }
 

@@ -16,7 +16,7 @@ import scala.util.Try
   *
   * @param userDir
   */
-class LocalUsers(userDir: Path, sessionDuration: FiniteDuration) extends LoginHandler {
+class LocalUsers(userDir: Path, sessionDuration: FiniteDuration) extends LoginHandler[Future] {
   import eie.io._
 
   def this(userConfig: Config) = {

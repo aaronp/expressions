@@ -3,11 +3,22 @@ package pipelines.rest.openapi
 import endpoints.openapi
 import endpoints.openapi.model.{Info, OpenApi}
 import pipelines.admin._
-import pipelines.audit.AuditEndpoints
+import pipelines.audit.{AuditEndpoints, VersionDetails}
+import pipelines.auth.{AuthEndpoints, AuthModel, SetRolesForUserRequest, UserRoles}
 import pipelines.core.GenericMessageResult
 import pipelines.reactive.ContentType
 import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceRepoEndpoints}
-import pipelines.users.{AuthEndpoints, AuthModel, UserAuthEndpoints, UserEndpoints}
+import pipelines.users.{
+  CreateUserRequest,
+  CreateUserResponse,
+  LoginEndpoints,
+  LoginRequest,
+  LoginResponse,
+  UserEndpoints,
+  UserReminderRequest,
+  UserRoleEndpoints,
+  UserStatusResponse
+}
 
 object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoints.circe.JsonSchemas {
   implicit def requestSchema: JsonSchema[GenerateServerCertRequest] = JsonSchema(implicitly, implicitly)
@@ -21,8 +32,9 @@ object Documentation //
     with CirceAdapter        //
     with SourceRepoEndpoints //
     with AdminEndpoints      //
+    with LoginEndpoints      //
     with UserEndpoints       //
-    with UserAuthEndpoints   //
+    with UserRoleEndpoints   //
     with AuthEndpoints       //
     with AuditEndpoints      // TODO !
     with openapi.JsonSchemaEntities {
@@ -43,15 +55,40 @@ object Documentation //
       )
     )
   }
+
   def userAuthDocs: List[Documentation.DocumentedEndpoint] = {
     List(
-      getUserAuth.getEndpoint(
-        genericResp
+      listUserRoles.getEndpoint(
+        document(Some(VersionDetails(1, 2, "user") -> UserRoles(Map("user" -> Set("role")))))
       ),
-      updateUserAuth.postEndpoint(
-        document(AuthModel(Map("role" -> Set("perm")))),
+      updateUserRoles.postEndpoint(
+        document(SetRolesForUserRequest(1, "user", Set("roles"))),
         genericResp
       )
+    )
+  }
+  def loginDocs: List[Documentation.DocumentedEndpoint] = {
+    List(
+      userLogin.loginEndpoint(
+        document(LoginRequest("user", "pwd")),
+        document(LoginResponse(true, Some("jwt"), Some("redirectx")))
+      )
+    )
+  }
+
+  def userDocs: List[Documentation.DocumentedEndpoint] = {
+//    val r: DocumentedRequest = confirmUser.confirmUserRequest
+    List(
+      createUser.createUserEndpoint( //
+                                    document(CreateUserRequest("name", "email", "pwd")), //
+                                    document(CreateUserResponse(true, Some("token"), None)) //
+      ),
+      resetUser.resetUserEndpoint(
+        document(UserReminderRequest("email")),
+        genericResp
+      ),
+      confirmUser.confirmEndpoint,
+      userStatus.statusEndpoint(document(UserStatusResponse("token", "user", "id", Set("roles"), Set("perms"), 123)))
     )
   }
 
@@ -79,7 +116,7 @@ object Documentation //
   }
 
   def documentedEndpoints: List[Documentation.DocumentedEndpoint] = {
-    repoEndpoints ++ adminEndpointDocs ++ authDocs ++ userAuthDocs
+    repoEndpoints ++ adminEndpointDocs ++ authDocs ++ userAuthDocs ++ userDocs ++ loginDocs
   }
 
   lazy val api: OpenApi = openApi(

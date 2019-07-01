@@ -26,6 +26,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 case class Claims(
     name: String = null,
+    userId: String = null,
     email: String = null,
     roleStr: String = null,
     permissionsStr: String = null,
@@ -40,6 +41,7 @@ case class Claims(
   def setRoles(first: String, theRest: String*): Claims = {
     setRoles(theRest.toSet + first)
   }
+  def withId(userId: String): Claims = copy(userId = userId)
 
   def setRoles(roles: Set[String]): Claims = {
     roles.foreach(r => require(!r.contains(",")))
@@ -78,9 +80,9 @@ case class Claims(
 
 object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.time.JavaTimeDecoders {
 
-  type EpochSeconds = Long
+  type EpochMillis = Long
 
-  type NumericDate = EpochSeconds
+  type NumericDate = EpochMillis
 
   def asNumericDate(d8: ZonedDateTime) = d8.toInstant.toEpochMilli
 
@@ -91,6 +93,7 @@ object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.t
       Right(
         new Claims(
           name = fld[String]("name", null),
+          userId = fld[String]("userId", null),
           email = fld[String]("email", null),
           roleStr = fld[String]("roles", null),
           permissionsStr = fld[String]("permissions", null),
@@ -110,6 +113,7 @@ object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.t
 
       val stringMap = Map(
         "name"        -> name,
+        "userId"      -> userId,
         "email"       -> email,
         "roles"       -> roleStr,
         "permissions" -> permissionsStr,

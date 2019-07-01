@@ -1,4 +1,4 @@
-package pipelines.users
+package pipelines.auth
 
 trait AuthSchemas extends endpoints.circe.JsonSchemas {
 

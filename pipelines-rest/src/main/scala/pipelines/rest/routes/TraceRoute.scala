@@ -35,9 +35,9 @@ object TraceRoute {
   def pretty(response: RouteResult) = {
     response match {
       case Complete(HttpResponse(status, headers, entity, _)) if status.intValue == 200 =>
-        fmt(headers).mkString(s"${entity.getContentType} : [", ",", "]")
+        fmt(headers).mkString(s"${entity.getContentType} OK : [", ",", "]")
       case Complete(HttpResponse(status, headers, entity, _)) =>
-        fmt(headers).mkString(s"${status.intValue} ${entity.getContentType} : [", ",", "]")
+        fmt(headers).mkString(s"status=${status.intValue} (${status.reason}) ${entity.getContentType} : [", ",", "]")
       case other => other.toString
     }
   }

@@ -4,10 +4,10 @@ import endpoints.algebra.Documentation
 import endpoints.xhr
 import org.scalajs.dom
 import org.scalajs.dom.XMLHttpRequest
-import pipelines.core.Redirection
+import pipelines.core.{CoreSchemas, Redirection}
 import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.{ListRepoSourcesResponse, RepoSchemas, SourceRepoEndpoints}
-import pipelines.users.{LoginResponse, UserAuthEndpoints, UserEndpoints, UserSchemas}
+import pipelines.users.{LoginEndpoints, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
 import scala.concurrent.Future
 import scala.scalajs.js
@@ -15,15 +15,16 @@ import scala.scalajs.js
 object PipelinesXhr
     extends xhr.future.Endpoints
     with xhr.circe.JsonSchemaEntities
+    with LoginEndpoints
     with UserEndpoints
-    with UserAuthEndpoints
+    with UserRoleEndpoints
     with SourceRepoEndpoints
     with RepoSchemas
     with UserSchemas
+    with CoreSchemas
     with PushEndpoints {
 
   def onLogin(response: LoginResponse) = {
-    dom.window.console.log(s"got response $response")
     state = state.withResponse(response)
   }
 

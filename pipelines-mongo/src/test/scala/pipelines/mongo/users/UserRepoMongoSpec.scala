@@ -5,7 +5,7 @@ import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
 import pipelines.users.CreateUserRequest
 import pipelines.users.jvm.UserHash
 
-trait UserServiceMongoSpec extends BasePipelinesMongoSpec {
+trait UserRepoMongoSpec extends BasePipelinesMongoSpec {
 
   "UserServiceMongo.find" should {
     "find users by email or password" in {
@@ -13,7 +13,7 @@ trait UserServiceMongoSpec extends BasePipelinesMongoSpec {
         val usersCollectionName = s"users-${System.currentTimeMillis}"
         val config              = configForCollection(usersCollectionName)
         val settings            = CollectionSettings(config, usersCollectionName)
-        val userService         = UserServiceMongo(settings, UserHash(config)).futureValue
+        val userService         = UserRepoMongo(settings, UserHash(config)).futureValue
 
         try {
 
@@ -40,7 +40,7 @@ trait UserServiceMongoSpec extends BasePipelinesMongoSpec {
         val usersCollectionName = s"users-${System.currentTimeMillis}"
         val config              = configForCollection(usersCollectionName)
         val settings            = CollectionSettings(config, usersCollectionName)
-        val userService         = UserServiceMongo(settings, UserHash(config)).futureValue
+        val userService         = UserRepoMongo(settings, UserHash(config)).futureValue
 
         try {
 
@@ -51,25 +51,17 @@ trait UserServiceMongoSpec extends BasePipelinesMongoSpec {
 
           When("We try to create him a second time")
           Then("It should fail")
-          val bang1 = intercept[Exception] {
-            userService.createUser(daveReq).futureValue
-          }
-          bang1.getMessage should include("duplicate key error collection")
-          bang1.getMessage should include("index: email_1 dup key: { : \"d@ve.com\" }")
+
+          val Left(error) = userService.createUser(daveReq).futureValue
+          error.message shouldBe "That user already exists"
 
           And("It should fail if just the email is different")
-          val bang2 = intercept[Exception] {
-            userService.createUser(daveReq.copy(email = "changed" + daveReq.email)).futureValue
-          }
-          bang2.getMessage should include("duplicate key error collection")
-          bang2.getMessage should include("index: userName_1 dup key: { : \"dave\" }")
+          val Left(bang2) = userService.createUser(daveReq.copy(email = "changed" + daveReq.email)).futureValue
+          bang2.message shouldBe "That user already exists"
 
           And("It should fail if just the name is different")
-          val bang3 = intercept[Exception] {
-            userService.createUser(daveReq.copy(userName = "changed" + daveReq.userName)).futureValue
-          }
-          bang3.getMessage should include("duplicate key error collection")
-          bang3.getMessage should include("index: email_1 dup key: { : \"d@ve.com\" }")
+          val Left(bang3) = userService.createUser(daveReq.copy(userName = "changed" + daveReq.userName)).futureValue
+          bang3.message shouldBe "That user already exists"
 
         } finally {
           userService.users.drop().monix.completedL.runToFuture.futureValue

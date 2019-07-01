@@ -15,26 +15,30 @@ import pipelines.ssl.SSLConfig
 import scala.concurrent.Future
 import scala.util.Try
 
+/**
+  * Represents our started REST service
+  *
+  * @param settings
+  * @param bindingFuture
+  */
 class RunningServer private (val settings: Settings, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
   override def close(): Unit = settings.env.close()
 }
 
 object RunningServer extends StrictLogging {
 
-  def apply(settings: Settings, sslConf: SSLConfig, otherRoutes: Route*): RunningServer = {
+  def apply(settings: Settings, sslConf: SSLConfig, routes: Seq[Route]): RunningServer = {
     import settings.env._
 
     val httpsRoutes: Route = {
       val theRest = settings.staticRoutes.route +:
         DocumentationRoutes.route +:
         settings.repoRoutes +:
-        otherRoutes
+        routes
 
-      makeRoutes(settings.userRoutes(sslConf).routes, theRest: _*)
+      makeRoutes(theRest)
     }
     val https: HttpsConnectionContext = loadHttps(sslConf).get
-
-    logger.warn(s"Starting with\n${settings}\n\n")
 
     val flow: Flow[HttpRequest, HttpResponse, NotUsed] = route2HandlerFlow(httpsRoutes)
     val httpsBindingFuture                             = Http().bindAndHandle(flow, settings.host, settings.port, connectionContext = https)
@@ -42,15 +46,13 @@ object RunningServer extends StrictLogging {
     new RunningServer(settings, bindingFuture)
   }
 
-  def makeRoutes(first: Route, theRest: Route*)(implicit routingSettings: RoutingSettings): Route = {
+  def makeRoutes(routes: Seq[Route])(implicit routingSettings: RoutingSettings): Route = {
     val route: Route = {
       import akka.http.scaladsl.server.Directives._
-
-      theRest.foldLeft(first)(_ ~ _)
+      routes.reduce(_ ~ _)
     }
 
     // TODO - instead of just logging, actually write down the requests/responses and expose through the front-end.
-    // perhaps just through kafka like any other topic
     Route.seal(TraceRoute.log.wrap(route))
   }
 

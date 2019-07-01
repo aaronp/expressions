@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, Location}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.AuthenticationFailedRejection
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsRejected
-import pipelines.rest.users.UserRoutes
+import pipelines.rest.users.{UserLoginRoutes, UserRoutes}
 import pipelines.users.jwt.JsonWebToken.CorruptJwtSecret
 import pipelines.users.jwt.{Claims, Hmac256, JsonWebToken}
 import pipelines.users.{LoginRequest, LoginResponse}
@@ -13,14 +13,14 @@ import pipelines.users.{LoginRequest, LoginResponse}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class UserRoutesTest extends BaseRoutesTest {
+class UserLoginRoutesTest extends BaseRoutesTest {
 
   "UserRoutes.route" should {
     // pass in a fixed 'now' time when the admin user logs in for this test
     val loginTime = ZonedDateTime.of(2019, 1, 2, 3, 4, 5, 6, ZoneId.of("UTC"))
 
     val adminClaims = Claims.after(5.minutes, loginTime).forUser("admin")
-    val loginRoute = UserRoutes("server secret") {
+    val loginRoute = UserLoginRoutes("server secret") {
       case LoginRequest("admin", "password") => Future.successful(Option(adminClaims))
       case _                                 => Future.successful(None)
     }

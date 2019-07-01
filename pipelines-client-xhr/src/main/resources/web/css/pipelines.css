@@ -1,13 +1,23 @@
 # see https://codepen.io/AlexBezuska/pen/gcubf
+
+html {
+  height: 100%;
+}
+
 body{
+  height: 100%;
   font-family: "Times New Roman", Times, serif;
-  background: #3FB8AF;
-  # background-color: lightblue;
+  # background: #3FB8AF;
+  background: grey;
 }
 
 * {-webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
-  box-sizing: border-box; }
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style-type:none;
+}
 
 .card {
   width: 550px;
@@ -71,3 +81,46 @@ input[type=email], input[type=number], input[type=password], input[type=tel], in
 
 .btn:hover {opacity: 1}
 
+
+# taken from https://codepen.io/wolframhempel/pen/d508753b29c3001c24218bf3a6b25141
+
+#wrapper{
+  height: 100%;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+#menuContainer{
+  width: 100%;
+  height: 10%;
+  top: 0;
+  left: 0;
+  background: black;
+}
+
+#menuContainer li{
+  display : inline;
+  cursor: move;
+  border-bottom: 1px solid #000;
+  border-top: 1px solid #333;
+  cursor: pointer;
+  padding: 10px 50px;
+  color: #BBB;
+  background: #1a1a1a;
+  font: 12px Arial, sans-serif;
+}
+
+#menuContainer li:hover{
+  background: #111;
+  color: #CCC;
+}
+
+#layoutContainer{
+  width: 100%;
+  height: 90%;
+  position:absolute;
+  top: 10%;
+  left: 0%;
+  box-shadow: -3px 0px 9px 0px rgba( 0, 0, 0, 0.4 );
+}

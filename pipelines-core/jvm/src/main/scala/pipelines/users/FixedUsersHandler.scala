@@ -15,7 +15,7 @@ import scala.util.Try
   *
   * @param userConfig
   */
-class FixedUsersHandler(userConfig: Config) extends LoginHandler with StrictLogging {
+class FixedUsersHandler(userConfig: Config) extends LoginHandler[Future] with StrictLogging {
   import args4c.implicits._
   val sessionDuration = userConfig.getDuration("sessionDuration", TimeUnit.MILLISECONDS).millis
   val usersByName     = userConfig.getConfig("fixed").collectAsMap()

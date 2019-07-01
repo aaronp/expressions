@@ -9,8 +9,9 @@ import scala.scalajs.js
 import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-// import scalatags.JsDom.all._
-
+/**
+  * Contains the functions for dealing w/ our layout
+  */
 object GoldenLayoutComponents extends HtmlUtils {
 
   @JSExportTopLevel("initialGoldenLayout")

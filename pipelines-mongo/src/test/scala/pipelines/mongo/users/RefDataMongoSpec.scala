@@ -3,8 +3,8 @@ package pipelines.mongo.users
 import java.time.ZonedDateTime
 
 import pipelines.WithScheduler
+import pipelines.auth.AuthModel
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
-import pipelines.users.AuthModel
 
 trait RefDataMongoSpec extends BasePipelinesMongoSpec {
 

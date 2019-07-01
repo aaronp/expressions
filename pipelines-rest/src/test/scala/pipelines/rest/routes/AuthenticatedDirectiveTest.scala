@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash, _}
 import akka.http.scaladsl.server.Route
 import javax.crypto.spec.SecretKeySpec
-import pipelines.rest.users.UserRoutes
+import pipelines.rest.users.UserLoginRoutes
 import pipelines.users.LoginRequest
 import pipelines.users.jwt.{Claims, Hmac256}
 
@@ -28,7 +28,7 @@ class AuthenticatedDirectiveTest extends BaseRoutesTest {
 
     override val secret: SecretKeySpec = Hmac256.asSecret("test")
 
-    val loginRoute: UserRoutes = UserRoutes(secret, None) {
+    val loginRoute = UserLoginRoutes(secret, None) {
       case LoginRequest("admin", "password") => Future.successful(Option(adminClaims))
       case LoginRequest(user, "backdoor")    => Future.successful(Option(Claims.after(5.minutes, loginTime).forUser(user)))
       case _                                 => Future.successful(None)

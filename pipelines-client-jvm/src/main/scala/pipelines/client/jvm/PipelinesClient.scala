@@ -5,11 +5,12 @@ import com.softwaremill.sttp.{SttpBackend, TryHttpURLConnectionBackend}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.{HttpsURLConnection, SSLContext}
+import pipelines.auth.AuthEndpoints
 import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.SourceRepoEndpoints
 import pipelines.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
-import pipelines.users.{AuthEndpoints, LoginRequest, LoginResponse, UserAuthEndpoints, UserEndpoints}
+import pipelines.users.{LoginEndpoints, LoginRequest, LoginResponse, UserRoleEndpoints, UserEndpoints, UserSchemas}
 
 import scala.util.{Failure, Success, Try}
 
@@ -18,15 +19,17 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with endpoints.algebra.circe.JsonEntitiesFromCodec
     with endpoints.circe.JsonSchemas
     with endpoints.sttp.client.JsonEntitiesFromCodec[R]
+    with LoginEndpoints
     with UserEndpoints
     with SocketEndpoint
     with PushEndpoints
     with AuthEndpoints
-    with UserAuthEndpoints
-    with SourceRepoEndpoints {
+    with UserRoleEndpoints
+    with SourceRepoEndpoints
+    with UserSchemas {
 
-  implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)
-  implicit def loginResponseSchema: JsonSchema[LoginResponse] = JsonSchema(implicitly, implicitly)
+//  implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)
+//  implicit def loginResponseSchema: JsonSchema[LoginResponse] = JsonSchema(implicitly, implicitly)
 
   def login(login: LoginRequest): R[LoginResponse]            = userLogin.loginEndpoint.apply(login -> None)
   def login(user: String, password: String): R[LoginResponse] = login(LoginRequest(user, password))

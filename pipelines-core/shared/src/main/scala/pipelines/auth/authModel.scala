@@ -1,10 +1,14 @@
-package pipelines.users
+package pipelines.auth
 
 import io.circe.{Decoder, ObjectEncoder}
 
 case class AuthModel(permissionsByRole: Map[String, Set[String]]) {
   def roles: Set[String]       = permissionsByRole.keySet
   def permissions: Set[String] = permissionsByRole.values.flatten.toSet
+
+  final def permissionsForRole(roleId : String): Set[String] = {
+    permissionsByRole.getOrElse(roleId, Set.empty)
+  }
 }
 object AuthModel {
   implicit val encoder = io.circe.generic.semiauto.deriveEncoder[AuthModel]

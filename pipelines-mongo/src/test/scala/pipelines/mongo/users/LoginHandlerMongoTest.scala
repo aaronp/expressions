@@ -26,7 +26,7 @@ trait LoginHandlerMongoTest extends BasePipelinesMongoSpec {
           val usersCollectionName = s"users-${System.currentTimeMillis}"
           val config              = configForCollection(usersCollectionName)
           val settings            = CollectionSettings(config, usersCollectionName)
-          UserServiceMongo(settings, UserHash(config)).futureValue
+          UserRepoMongo(settings, UserHash(config)).futureValue
         }
 
         try {
@@ -47,7 +47,7 @@ trait LoginHandlerMongoTest extends BasePipelinesMongoSpec {
 
         } finally {
           authService.authCollection.drop()
-          authService.userCollection.drop()
+          authService.userRolesCollection.drop()
         }
       }
 

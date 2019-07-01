@@ -18,7 +18,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
   "PipelinesClient.login" should {
     "reject invalid passwords" in {
       val client = {
-        val config = DevMain.devArgs.asConfig().resolve()
+        val config = DevRestMain.devArgs.asConfig().resolve()
         PipelinesClient(config).get
       }
 
@@ -32,7 +32,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
 
       val session = eventually {
         val Success(client) = {
-          val config = DevMain.devArgs.asConfig().resolve()
+          val config = DevRestMain.devArgs.asConfig().resolve()
           PipelinesClient(config)
         }
         val Success(connected) = client.newSession("admin", "password")
@@ -65,7 +65,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
       case _                =>
     }
     super.beforeAll()
-    val Some(started) = rest.Main.runMain(DevMain.devArgs)
+    val Some(started) = rest.RestMain.runMain(DevRestMain.devArgs)
     server = started
   }
 
