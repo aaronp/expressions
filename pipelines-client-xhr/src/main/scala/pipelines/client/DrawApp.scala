@@ -18,7 +18,8 @@ import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
   * https://www.w3resource.com/html5-canvas/html5-canvas-lines.php
   */
 @JSExportTopLevel("DrawApp")
-object DrawApp extends HtmlUtils {
+object DrawApp {
+  import HtmlUtils._
   var lastLogged = 0L
 
   @JSExport

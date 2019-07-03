@@ -61,6 +61,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
           event match {
             case Success(value: PipelineMatch) =>
               callbackMatches += value
+            case _ => ???
           }
         }
 

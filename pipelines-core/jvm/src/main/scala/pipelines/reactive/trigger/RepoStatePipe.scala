@@ -2,7 +2,7 @@ package pipelines.reactive.trigger
 
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.{Ack, Cancelable, Scheduler}
-import monix.reactive.subjects.ConcurrentSubject
+import monix.reactive.subjects.{ConcurrentSubject, Var}
 import monix.reactive.{Observable, Observer}
 import pipelines.reactive._
 
@@ -15,23 +15,24 @@ import scala.concurrent.Future
   * @param initialState
   * @param scheduler
   */
-class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit val scheduler: Scheduler) extends StrictLogging {
-
-  def connect(sourceCriteria: MetadataCriteria = MetadataCriteria(),
-              sinkCriteria: MetadataCriteria = MetadataCriteria(),
-              transforms: Seq[String] = Nil,
-              callback: TriggerCallback = TriggerCallback.Ignore): Future[Ack] = {
-    connect(sourceCriteria, sinkCriteria, transforms, false, callback)
-  }
+class RepoStatePipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit val scheduler: Scheduler) extends StrictLogging {
 
   def connect(sourceCriteria: MetadataCriteria,
               sinkCriteria: MetadataCriteria,
-              transforms: Seq[String],
-              retainTriggerAfterMatch: Boolean,
-              callback: TriggerCallback): Future[Ack] = {
+              transforms: Seq[String] = Nil,
+              retainTriggerAfterMatch: Boolean = false,
+              callback: TriggerCallback = TriggerCallback.Ignore): Future[Ack] = {
     connect(Trigger(sourceCriteria, sinkCriteria, transforms), retainTriggerAfterMatch, callback)
   }
 
+  /**
+    * Triggers a match between sources and sinks
+    *
+    * @param trigger
+    * @param retainTriggerAfterMatch
+    * @param callback
+    * @return
+    */
   def connect(trigger: Trigger, retainTriggerAfterMatch: Boolean, callback: TriggerCallback): Future[Ack] = {
     input.onNext(OnNewTrigger(trigger, retainTriggerAfterMatch, callback))
   }
@@ -43,29 +44,24 @@ class TriggerPipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, N
   }
 
   private val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
+  private val currentStateVar                                        = Var[RepoState](null)
+  def currentState()                                                 = Option(currentStateVar.apply())
   val input: Observer[TriggerInput]                                  = subject
   val output: Observable[(RepoState, TriggerInput, TriggerEvent)] = {
     val scanned = subject.scan((initialState, (null: TriggerInput), (null: TriggerEvent))) {
       case ((state, _, _), input) =>
         val (newState, result) = state.update(input)
+        logger.info(s"$input yields $result w/ state having ${newState.sources.size} sources, ${newState.sinks.size} sinks, and ${newState.triggers.size} triggers")
+        currentStateVar := newState
         (newState, input, result)
     }
     scanned.share
   }
 }
 
-object TriggerPipe {
+object RepoStatePipe {
 
-  def create(implicit scheduler: Scheduler) = {
-    val sources: Sources = Repo.sources(scheduler)
-    val sinks: Sinks     = Repo.sinks(scheduler)
-    val instance         = apply()
-
-    instance.subscribeToSources(sources.events)
-    instance.subscribeToSinks(sinks.events)
-    (sources, sinks, instance)
-  }
-  def apply(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit scheduler: Scheduler): TriggerPipe = {
-    new TriggerPipe(initialState)
+  def apply(initialState: RepoState = new RepoState(Map.empty, Nil, Nil, Nil))(implicit scheduler: Scheduler): RepoStatePipe = {
+    new RepoStatePipe(initialState)
   }
 }

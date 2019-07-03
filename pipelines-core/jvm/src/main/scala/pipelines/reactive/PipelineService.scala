@@ -8,7 +8,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.Pipeline
-import pipelines.reactive.trigger.{PipelineMatch, RepoState, TriggerEvent, TriggerPipe}
+import pipelines.reactive.trigger.{PipelineMatch, RepoState, TriggerEvent, RepoStatePipe}
 
 import scala.collection.concurrent
 
@@ -26,7 +26,7 @@ import scala.collection.concurrent
   * @param triggers
   * @param scheduler
   */
-class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: TriggerPipe)(implicit scheduler: Scheduler) extends StrictLogging {
+class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: RepoStatePipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
   private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
     logger.info(s"!>! Pipeline added $id : $pipeline")
@@ -97,19 +97,19 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
 
   def transformsById(): Map[String, Transform]               = state().fold(Map.empty[String, Transform])(_.transformsByName)
   def getOrCreateSource(source: DataSource): Seq[DataSource] = getOrCreateSource(MetadataCriteria(source.metadata), source)
-  def getOrCreateSource(criteria: MetadataCriteria, source: => DataSource): Seq[DataSource] = {
+  def getOrCreateSource(criteria: MetadataCriteria, source: => DataSource, callback: TriggerCallback = TriggerCallback.Ignore): Seq[DataSource] = {
     sources.find(criteria) match {
       case Seq() =>
-        val (newSource, _) = sources.add(source)
+        val (newSource, _) = sources.add(source, callback)
         Seq(newSource)
       case found => found
     }
   }
-  def getOrCreateSink(Sink: DataSink): Seq[DataSink] = getOrCreateSink(MetadataCriteria(Sink.metadata), Sink)
+  def getOrCreateSink(sink: DataSink): Seq[DataSink] = getOrCreateSink(MetadataCriteria(sink.metadata), sink)
   def getOrCreateSink(criteria: MetadataCriteria, Sink: => DataSink): Seq[DataSink] = {
-    Sinks.find(criteria) match {
+    sinks.find(criteria) match {
       case Seq() =>
-        val (newSink, _) = Sinks.add(Sink)
+        val (newSink, _) = sinks.add(Sink)
         Seq(newSink)
       case found => found
     }
@@ -118,7 +118,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Trig
 
 object PipelineService extends StrictLogging {
   def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
-    val (sources, sinks, trigger) = TriggerPipe.create(scheduler)
+    val (sources, sinks, trigger) = create(scheduler)
     val service                   = new PipelineService(sources, sinks, trigger)
 
     transforms.foreach {
@@ -129,5 +129,14 @@ object PipelineService extends StrictLogging {
     }
 
     service
+  }
+
+  private[reactive] def create(implicit scheduler: Scheduler): (Sources, Sinks, RepoStatePipe) = {
+    val sources: Sources = Repo.sources(scheduler)
+    val sinks: Sinks     = Repo.sinks(scheduler)
+    val pipe             = RepoStatePipe()
+    pipe.subscribeToSources(sources.events)
+    pipe.subscribeToSinks(sinks.events)
+    (sources, sinks, pipe)
   }
 }

@@ -1,18 +1,60 @@
 package pipelines.reactive
 
+import org.scalatest.concurrent.ScalaFutures
 import pipelines.{BaseCoreTest, WithScheduler}
 
-class PipelineServiceTest extends BaseCoreTest {
+import scala.collection.mutable.ListBuffer
 
-  "PipelineService.getOrCreateTransform" should {
-    "create a data source for some config" in {
+class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
+
+  "PipelineService.getOrCreateSink" should {
+
+    "link a sink which matches an existing source" in {
       WithScheduler { implicit scheduler =>
         val service = PipelineService()
-//
-//        service.getOrCreateTransform()
 
+        val received = ListBuffer[String]()
+        val sink = DataSink.foreach[String](Map("tag" -> "test")) { x =>
+          received += x
+          println(x)
+        }
+        val Seq(createdSink) = service.getOrCreateSink(sink)
+        service.sinks.size shouldBe 1
+        eventually {
+          service.triggers.currentState().get.sinks.size shouldBe 1
+        }
+
+        service.triggers.connect(MetadataCriteria("foo" -> "eq:bar"), MetadataCriteria("tag" -> "eq:test"), transforms = Seq("map"), retainTriggerAfterMatch = true).futureValue
+
+        eventually {
+          val st8 = service.triggers.currentState().get
+          st8.sinks.size shouldBe 1
+          st8.triggers.size shouldBe 1
+        }
+
+        service.triggers.addTransform("map", Transform.map((_: String).reverse)).futureValue
+
+        eventually {
+          val st8 = service.triggers.currentState().get
+          st8.sinks.size shouldBe 1
+          st8.triggers.size shouldBe 1
+          st8.transformsByName.keySet should contain ("map")
+        }
+
+
+        val src: DataSource.PushSource[String] = DataSource.createPush[String].apply(scheduler).addMetadata("foo", "bar")
+        val Seq(createdSource) = service.getOrCreateSource(src)
+
+        src.push("value")
+        src.complete()
+
+        eventually {
+          received should contain only("value")
+        }
       }
     }
+  }
+  "PipelineService.getOrCreateSource" should {
     "be able to register and connect to new sources" in {
       WithScheduler { implicit scheduler =>
         val service = PipelineService()

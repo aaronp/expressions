@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
   */
 case class RepoState private[trigger] (
     transformsByName: Map[String, Transform],
-    triggers: Seq[Trigger],
+    triggers: Seq[OnNewTrigger],
     sources: Seq[DataSource],
     sinks: Seq[DataSink]
 ) {
@@ -27,18 +27,18 @@ case class RepoState private[trigger] (
     s"Triggers(${transformsByName.size} transforms:${transformsByName.keySet.mkString(",")}, ${triggers.size} triggers, ${sources.size} sources, ${sinks.size} sinks)"
   }
 
-  def onAddTrigger(trigger: Trigger, retainTriggerAfterMatch: Boolean): (RepoState, TriggerEvent) = {
-    val newState = copy(triggers = trigger +: triggers)
+  def onAddTrigger(event: OnNewTrigger): (RepoState, TriggerEvent) = {
+    val newState = copy(triggers = event +: triggers)
     newState.triggerMatch() match {
-      case Seq() if retainTriggerAfterMatch =>
-        newState -> TriggerAdded(trigger)
+      case Seq() if event.retainTriggerAfterMatch =>
+        newState -> TriggerAdded(event.trigger)
       case Seq() =>
-        this -> UnmatchedTrigger(trigger, sources, sinks)
-      case Seq(only) if retainTriggerAfterMatch =>
+        this -> UnmatchedTrigger(event.trigger)
+      case Seq(only) if event.retainTriggerAfterMatch =>
         newState -> only
-      case Seq(only) =>
+      case Seq(only: PipelineMatch) =>
         this -> only
-      case matches if retainTriggerAfterMatch =>
+      case matches if event.retainTriggerAfterMatch =>
         newState -> MultipleMatchesOnTrigger(matches)
       case matches =>
         this -> MultipleMatchesOnTrigger(matches)
@@ -61,10 +61,10 @@ case class RepoState private[trigger] (
 
   def onSinkAdded(dataSink: DataSink): (RepoState, TriggerEvent) = {
     val allSinks = dataSink +: sinks
-    val matchedSinks = triggers.flatMap { trigger =>
+    val matchedSinks = triggers.flatMap { triggerEvent =>
       allSinks.flatMap { sink =>
-        if (trigger.matchesSink(sink)) {
-          Option(sink -> trigger)
+        if (triggerEvent.trigger.matchesSink(sink)) {
+          Option(sink -> triggerEvent.trigger)
         } else {
           None
         }
@@ -72,7 +72,7 @@ case class RepoState private[trigger] (
     }
 
     val event: TriggerEvent = if (matchedSinks.isEmpty) {
-      UnmatchedSink(dataSink, triggers)
+      UnmatchedSink(dataSink)
     } else {
       val allMatches: Seq[(DataSource, DataSink, Trigger)] = sources.flatMap { source =>
         matchedSinks.collect {
@@ -80,7 +80,7 @@ case class RepoState private[trigger] (
         }
       }
 
-      resolveMatches(allMatches, MatchedSinkWithNoSource(dataSink, triggers, sources)) { all =>
+      resolveMatches(allMatches, MatchedSinkWithNoSource(dataSink)) { all =>
         val validSources                         = all.map(_.source)
         val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSinkWithManySources(validSources, transforms, dataSink, all.head.trigger)
@@ -93,10 +93,10 @@ case class RepoState private[trigger] (
 
   def onSourceAdded(dataSource: DataSource): (RepoState, TriggerEvent) = {
     val allSources = dataSource +: sources
-    val matchedSources: Seq[(DataSource, Trigger)] = triggers.flatMap { trigger =>
+    val matchedSources: Seq[(DataSource, Trigger)] = triggers.flatMap { triggerEvent =>
       allSources.flatMap { source =>
-        if (trigger.matchesSource(source)) {
-          Option(source -> trigger)
+        if (triggerEvent.trigger.matchesSource(source)) {
+          Option(source -> triggerEvent.trigger)
         } else {
           None
         }
@@ -104,14 +104,14 @@ case class RepoState private[trigger] (
     }
 
     val event: TriggerEvent = if (matchedSources.isEmpty) {
-      UnmatchedSource(dataSource, triggers)
+      UnmatchedSource(dataSource)
     } else {
       val allMatches: Seq[(DataSource, DataSink, Trigger)] = sinks.flatMap { sink =>
         matchedSources.collect {
           case (source, trigger) if trigger.matchesSink(sink) => (source, sink, trigger)
         }
       }
-      resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource, triggers, sinks)) { all =>
+      resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource)) { all =>
         val validSinks                           = all.map(_.sink)
         val transforms: Seq[(String, Transform)] = all.head.transforms
         MatchedSourceWithManySinks(dataSource, transforms, validSinks, all.head.trigger)
@@ -126,12 +126,12 @@ case class RepoState private[trigger] (
     * @return the matches w/ the current sources, sinks and transforms
     */
   def triggerMatch(): Seq[PipelineMatch] = {
-    triggers.flatMap { trigger =>
+    triggers.flatMap { triggerEvent =>
       sources.flatMap {
-        case source if trigger.matchesSource(source) =>
+        case source if triggerEvent.trigger.matchesSource(source) =>
           val nested: Seq[Option[PipelineMatch]] = sinks.collect {
-            case sink if trigger.matchesSink(sink) =>
-              resolveTransformations(source, sink, trigger) match {
+            case sink if triggerEvent.trigger.matchesSink(sink) =>
+              resolveTransformations(source, sink, triggerEvent.trigger) match {
                 case ok: PipelineMatch => Some(ok)
                 case _                 => None
               }
@@ -183,7 +183,7 @@ case class RepoState private[trigger] (
 
     missingTransformOpt match {
       case None          => PipelineMatch(UUID.randomUUID, dataSource, transforms, sink, trigger)
-      case Some(missing) => MatchedSourceWithMissingTransforms(dataSource, sink, triggers, missing)
+      case Some(missing) => MatchedSourceWithMissingTransforms(dataSource, missing)
     }
   }
 
@@ -195,18 +195,17 @@ case class RepoState private[trigger] (
     } catch {
       case NonFatal(e) =>
         input.callback.onResult(Failure(e))
-        e.printStackTrace()
         throw e
     }
   }
   final def updateUnsafe(input: TriggerInput): (RepoState, TriggerEvent) = {
     input match {
-      case OnSourceAdded(source, _)                          => onSourceAdded(source)
-      case OnSourceRemoved(source, _)                        => onSourceRemoved(source) -> NoOpTriggerEvent
-      case OnSinkAdded(sink, _)                              => onSinkAdded(sink)
-      case OnSinkRemoved(sink, _)                            => onSinkRemoved(sink) -> NoOpTriggerEvent
-      case OnNewTransform(name, transform, replace, _)       => onAddTransform(name, transform, replace)
-      case OnNewTrigger(trigger, retainTriggerAfterMatch, _) => onAddTrigger(trigger, retainTriggerAfterMatch)
+      case OnSourceAdded(source, _)                    => onSourceAdded(source)
+      case OnSourceRemoved(source, _)                  => onSourceRemoved(source) -> NoOpTriggerEvent
+      case OnSinkAdded(sink, _)                        => onSinkAdded(sink)
+      case OnSinkRemoved(sink, _)                      => onSinkRemoved(sink) -> NoOpTriggerEvent
+      case OnNewTransform(name, transform, replace, _) => onAddTransform(name, transform, replace)
+      case event @ OnNewTrigger(_, _, _)               => onAddTrigger(event)
     }
   }
 }

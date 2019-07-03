@@ -14,25 +14,10 @@ myLayout.registerComponent( 'testComponent2', function( container, componentStat
 myLayout.init();
 
 
-var addMenuItem = function( title, text ) {
-    var element = document.createElement('li');
-    element.appendChild(document.createTextNode(text));
-    var menuContainer = document.getElementById("menuContainer");
-    menuContainer.appendChild(element);
-
-   var newItemConfig = {
-        title: title,
-        type: 'component',
-        componentName: 'testComponent',
-        componentState: { text: text }
-    };
-
-    myLayout.createDragSource( element, newItemConfig );
-};
-
 function setupMenu() {
 
-  addMenuItem( 'Add me!', 'You\'ve added me!' );
-  addMenuItem( 'Me too!', 'You\'ve added me too!' );
+
+  Menu.addMenuItem( 'Add me!', 'You\'ve added me!' , myLayout);
+  Menu.addMenuItem( 'Me too!', 'You\'ve added me too!', myLayout);
 
 }

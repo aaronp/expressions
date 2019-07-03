@@ -16,7 +16,6 @@ object DevRestMain extends StrictLogging {
   def devArgs: Array[String] =
     Array(
       "dev.conf", //
-      "pipelines.echoSocket=true", //
       "generateMissingCerts=true", //
       "pipelines.tls.hostname=localhost", //
       "pipelines.tls.certificate=target/certificates/cert.p12" //

@@ -71,10 +71,10 @@ case class TransformAlreadyExists(name: String, existing: Transform, attemptedTr
 sealed trait MismatchedMatch extends TriggerEvent {
   override def matches: Seq[PipelineMatch] = Nil
 }
-case class UnmatchedSource(dataSource: DataSource, availableTriggers: Seq[Trigger])                                        extends MismatchedMatch
-case class UnmatchedSink(sink: DataSink, availableTriggers: Seq[Trigger])                                                  extends MismatchedMatch
-case class UnmatchedTrigger(trigger: Trigger, availableSources: Seq[DataSource], availableSinks: Seq[DataSink])            extends MismatchedMatch
-case class MatchedSourceWithNoSink(dataSource: DataSource, availableTriggers: Seq[Trigger], availableSinks: Seq[DataSink]) extends MismatchedMatch
+case class UnmatchedSource(dataSource: DataSource)         extends MismatchedMatch
+case class UnmatchedSink(sink: DataSink)                   extends MismatchedMatch
+case class UnmatchedTrigger(trigger: Trigger)              extends MismatchedMatch
+case class MatchedSourceWithNoSink(dataSource: DataSource) extends MismatchedMatch
 
-case class MatchedSourceWithMissingTransforms(dataSource: DataSource, sink: DataSink, availableTriggers: Seq[Trigger], missingTransform: String) extends MismatchedMatch
-case class MatchedSinkWithNoSource(sink: DataSink, availableTriggers: Seq[Trigger], availableSources: Seq[DataSource])                           extends MismatchedMatch
+case class MatchedSourceWithMissingTransforms(dataSource: DataSource, missingTransform: String) extends MismatchedMatch
+case class MatchedSinkWithNoSource(sink: DataSink)                                              extends MismatchedMatch

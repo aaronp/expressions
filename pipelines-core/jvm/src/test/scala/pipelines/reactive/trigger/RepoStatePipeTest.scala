@@ -10,7 +10,7 @@ import pipelines.{BaseCoreTest, WithScheduler}
 
 import scala.collection.mutable.ListBuffer
 
-class TriggerPipeTest extends BaseCoreTest {
+class RepoStatePipeTest extends BaseCoreTest {
 
   "TriggerPipe" should {
     "match sources with sinks when a new trigger is added" in {
@@ -20,7 +20,7 @@ class TriggerPipeTest extends BaseCoreTest {
             }
           .asDataSink("user" -> "foo")
 
-        val (sources, sinks, pipe)                                    = TriggerPipe.create(sched)
+        val (sources, sinks, pipe)                                    = PipelineService.create(sched)
         val ref: Var[Option[(RepoState, TriggerInput, TriggerEvent)]] = Var(Option.empty)
         pipe.output.foreach { event: (RepoState, TriggerInput, TriggerEvent) =>
           ref := Option(event)
@@ -61,7 +61,7 @@ class TriggerPipeTest extends BaseCoreTest {
         secondDataSource.metadata("topic") shouldBe ("second")
 
         When("We connect a trigger to the sources")
-        val driver    = TriggerPipe()
+        val driver    = RepoStatePipe()
         val received  = ListBuffer[(RepoState, TriggerInput, TriggerEvent)]()
         val received2 = ListBuffer[(RepoState, TriggerInput, TriggerEvent)]()
 
@@ -80,7 +80,8 @@ class TriggerPipeTest extends BaseCoreTest {
           received2.size shouldBe 2
         }
         received.foreach {
-          case (_, _, UnmatchedSource(_, triggers)) => triggers should be(empty)
+          case (_, _, UnmatchedSource(_)) =>
+          case _ => ???
         }
         received.clear()
 
@@ -107,7 +108,7 @@ class TriggerPipeTest extends BaseCoreTest {
         received.clear()
 
         //
-        // Finally, let's connect some poop (I probably shouldn't swear in open source comments)!
+        // Finally, let's connect some poop (I probably shouldn't swear in fecking source comments :-)
         //
         When("We our trigger events listens to some sinks")
         val sinks = Sinks(sched)
@@ -126,8 +127,8 @@ class TriggerPipeTest extends BaseCoreTest {
           received.size shouldBe 1
         }
         locally {
-          val UnmatchedSink(_, triggers) = received.head._3
-          triggers should contain only (trigger)
+          val UnmatchedSink(_) = received.head._3
+//          triggers should contain only (trigger)
         }
         received.clear()
 

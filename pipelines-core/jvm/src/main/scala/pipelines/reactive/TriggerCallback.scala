@@ -4,7 +4,8 @@ import com.typesafe.scalalogging.StrictLogging
 import pipelines.Pipeline
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
 
-import scala.util.Try
+import scala.concurrent.Promise
+import scala.util.{Failure, Success, Try}
 
 trait TriggerCallback {
   def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit
@@ -30,7 +31,29 @@ object TriggerCallback {
     }
   }
 
-  def apply(onEvent: Try[TriggerEvent] => Unit) = new TriggerCallback {
+  case class PromiseCallback() extends TriggerCallback {
+    private val promise      = Promise[TriggerEvent]()
+    private val matchPromise = Promise[(PipelineMatch, Pipeline[_, _])]()
+    override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {
+      promise.complete(Try(mtch))
+      matchPromise.complete(Failure(new IllegalStateException(s"Triggered match could not create a pipeline: ${err}")))
+    }
+
+    override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_, _]): Unit = {
+      promise.complete(Try(mtch))
+      matchPromise.complete(Success(mtch -> pipeline))
+    }
+
+    override def onResult(response: Try[TriggerEvent]): Unit = {
+      promise.complete(response)
+      response match {
+        case Failure(err)   => matchPromise.complete(Failure(err))
+        case Success(other) => matchPromise.complete(Failure(new Exception("Event did not trigger a match:" + other)))
+      }
+    }
+  }
+
+  def apply(onEvent: Try[TriggerEvent] => Unit): TriggerCallback = new TriggerCallback {
     override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {}
 
     override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_, _]): Unit = {}

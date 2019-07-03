@@ -36,7 +36,6 @@ class SocketRoutes(settings: SecureRouteSettings, handleSocket: (Claims, ServerS
       val settings = SocketSettings(user.name, created)
       withSocketRoute(settings) {
         case (_, socket) => handleSocket(user, socket)
-
       }
     }
   }

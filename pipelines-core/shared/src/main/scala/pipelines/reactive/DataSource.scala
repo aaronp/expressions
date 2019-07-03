@@ -63,10 +63,10 @@ object DataSource {
     new PushSource[A](ContentType.of[A], input, output, metadata)
   }
 
-  def createPush[A: TypeTag]: Scheduler => DataSource = createPush[A](ContentType.of[A])
+  def createPush[A: TypeTag]: Scheduler => PushSource[A] = createPush[A](ContentType.of[A])
 
-  def createPush[A](contentType: ContentType): Scheduler => DataSource = {
-    val ns = { implicit sched: Scheduler =>
+  def createPush[A](contentType: ContentType): Scheduler => PushSource[A] = {
+    val ns: Scheduler => PushSource[A] = { implicit sched: Scheduler =>
       push[A](contentType)
     }
     ns

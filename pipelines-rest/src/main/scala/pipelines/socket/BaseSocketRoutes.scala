@@ -67,6 +67,9 @@ abstract class BaseSocketRoutes(val settings: SecureRouteSettings, private val c
 
 object BaseSocketRoutes {
 
+  /**
+    * Our in-memory cache of web-sockets by id
+    */
   class SocketCache() extends StrictLogging {
     private[this] var byName = Map[String, ServerSocket]()
     private[this] object StateLock
