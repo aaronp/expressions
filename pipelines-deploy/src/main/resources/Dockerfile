@@ -1,4 +1,5 @@
-FROM openjdk:8u191-jre-alpine
+FROM openjdk:13-ea-19-alpine
+#FROM openjdk:8u191-jre-alpine
 #FROM java
 
 # let's get bash, nss (see  https://github.com/docker-library/openjdk/issues/289)

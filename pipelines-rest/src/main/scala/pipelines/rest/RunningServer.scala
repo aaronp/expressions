@@ -27,33 +27,32 @@ class RunningServer private (val settings: Settings, val bindingFuture: Future[H
 
 object RunningServer extends StrictLogging {
 
-  def apply(settings: Settings, sslConf: SSLConfig, routes: Seq[Route]): RunningServer = {
+  def apply(settings: Settings, sslConf: SSLConfig, httpsRoutes: Route): RunningServer = {
     import settings.env._
-
-    val httpsRoutes: Route = {
-      val theRest = settings.staticRoutes.route +:
-        DocumentationRoutes.route +:
-        settings.repoRoutes +:
-        routes
-
-      makeRoutes(theRest)
-    }
-    val https: HttpsConnectionContext = loadHttps(sslConf).get
-
+    val https: HttpsConnectionContext                  = loadHttps(sslConf).get // let it throw, let it throw! can't hold me back anymore...
     val flow: Flow[HttpRequest, HttpResponse, NotUsed] = route2HandlerFlow(httpsRoutes)
     val httpsBindingFuture                             = Http().bindAndHandle(flow, settings.host, settings.port, connectionContext = https)
     val bindingFuture                                  = httpsBindingFuture
     new RunningServer(settings, bindingFuture)
   }
 
-  def makeRoutes(routes: Seq[Route])(implicit routingSettings: RoutingSettings): Route = {
-    val route: Route = {
-      import akka.http.scaladsl.server.Directives._
-      routes.reduce(_ ~ _)
-    }
+  def routeFor(settings: Settings, routes: Seq[Route]): Route = {
+    import settings.env._
+    val theRest = settings.staticRoutes.route +:
+      DocumentationRoutes.route +:
+      routes
 
+    makeRoutes(theRest)
+  }
+
+  def reduce(routes: Seq[Route]): Route = {
+    import akka.http.scaladsl.server.Directives._
+    routes.reduce(_ ~ _)
+  }
+
+  def makeRoutes(routes: Seq[Route])(implicit routingSettings: RoutingSettings): Route = {
     // TODO - instead of just logging, actually write down the requests/responses and expose through the front-end.
-    Route.seal(TraceRoute.log.wrap(route))
+    Route.seal(TraceRoute.log.wrap(reduce(routes)))
   }
 
   def loadHttps(sslConf: SSLConfig): Try[HttpsConnectionContext] = sslConf.newContext().map(ctxt => ConnectionContext.https(ctxt))

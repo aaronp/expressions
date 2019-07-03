@@ -1,13 +1,12 @@
 package pipelines.client
 
 import org.scalajs.dom
-import org.scalajs.dom.document
-import org.scalajs.dom.raw.{KeyboardEvent, Node}
-import pipelines.core.ParseRedirect
-import pipelines.users.{LoginRequest, LoginResponse}
+import org.scalajs.dom.raw.Node
+import pipelines.reactive.repo.ListRepoSourcesResponse
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.util.{Failure, Success}
 
@@ -15,14 +14,16 @@ import scala.util.{Failure, Success}
   */
 object PipelinesApp extends HtmlUtils {
 
+  def addChild(newItemConfig: js.Dynamic) = {
+    js.Dynamic.global.addLayoutChild(newItemConfig)
+  }
+
   @JSExportTopLevel("listSources")
-  def listSources(contentType: String) = {
-    dom.window.console.log("listSources " + contentType)
-    PipelinesXhr.listSources(Option(contentType).filterNot(_.isEmpty)).onComplete {
-      case Success(response) =>
-        dom.window.console.log(response.toString())
-      case Failure(err) =>
-        dom.window.alert(err.toString)
+  def listSources(queryParams: Map[String, String] = Map.empty): Future[ListRepoSourcesResponse] = {
+    dom.window.console.log(s"listSources w/ $queryParams")
+    PipelinesXhr.listSources(queryParams).map { response =>
+      dom.window.console.log(response.toString())
+      response
     }
   }
 
@@ -45,19 +46,6 @@ object PipelinesApp extends HtmlUtils {
     val queryButton = button("Query", `class` := "btn").render
     queryButton.onclick = (e: dom.MouseEvent) => {
       e.stopPropagation
-//      query(
-//        clientElementElementId = "clientId",
-//        groupElementId = "groupId",
-//        topicElementId = "topic",
-//        filterTextElementId = "query",
-//        filterExpressionIncludeMatchesId = "filterExpressionIncludeMatchesId",
-//        offsetElementId = "offset",
-//        rateLimitElementId = "rate",
-//        strategyElementId = "strategy",
-//        isBinaryStreamId = "isBinaryStreamId"
-//      ) { msg =>
-//        results.appendChild(div(span(msg.data.toString), br()).render)
-//      }
     }
 
     val clearButton = button("Clear", `class` := "btn").render

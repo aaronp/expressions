@@ -11,13 +11,13 @@ import com.typesafe.scalalogging.StrictLogging
   */
 trait TraceRoute {
   def onRequest(request: HttpRequest): Unit
-  def onResponse(request: HttpRequest, requestTime: Long, response: RouteResult): Unit
+  def onResponse(request: HttpRequest, delta: Long, response: RouteResult): Unit
 
   final def wrap: Directive0 = extractRequestContext.tflatMap { ctxt =>
     onRequest(ctxt._1.request)
     val started = System.currentTimeMillis
     mapRouteResult { result: RouteResult =>
-      onResponse(ctxt._1.request, started, result)
+      onResponse(ctxt._1.request, System.currentTimeMillis - started, result)
       result
     }
   }
@@ -73,8 +73,7 @@ object TraceRoute {
     }
 
     private val blacklist = Set(".js", ".html", ".css", ".webmanifest", ".png")
-    override def onResponse(request: HttpRequest, requestTime: Long, response: RouteResult): Unit = {
-      val diff         = System.currentTimeMillis - requestTime
+    override def onResponse(request: HttpRequest, diff: Long, response: RouteResult): Unit = {
       val responseText = pretty(response)
       val input        = pretty(request)
       if (blacklist.exists(input.contains)) {

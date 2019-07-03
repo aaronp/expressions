@@ -43,7 +43,7 @@ git.remoteRepo := s"git@github.com:$username/$repo.git"
 ghpagesNoJekyll := true
 
 val typesafeConfig: ModuleID = "com.typesafe"      % "config"  % "1.3.3"
-val args4cModule: ModuleID   = "com.github.aaronp" %% "args4c" % "0.6.2"
+val args4cModule: ModuleID   = "com.github.aaronp" %% "args4c" % "0.6.6"
 
 val logging = List("com.typesafe.scala-logging" %% "scala-logging" % "3.9.2", "ch.qos.logback" % "logback-classic" % "1.2.3")
 

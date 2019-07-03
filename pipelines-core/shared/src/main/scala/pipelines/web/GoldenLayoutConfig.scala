@@ -4,13 +4,21 @@ import io.circe.Decoder.Result
 import io.circe._
 
 // type is 'row', 'column' or 'stack'
-case class GoldenLayoutConfig(`type`: String, content: List[GoldenLayoutConfig], componentName: String, componentState: Json) {
-  def +:(child: GoldenLayoutConfig) = copy(content = child +: content)
-  def :+(child: GoldenLayoutConfig) = copy(content = content :+ child)
+case class GoldenLayoutSettings(selectionEnabled : Boolean)
+object GoldenLayoutSettings {
+  implicit val encoder: ObjectEncoder[GoldenLayoutSettings] = io.circe.generic.semiauto.deriveEncoder[GoldenLayoutSettings]
+  implicit val decoder: Decoder[GoldenLayoutSettings] = io.circe.generic.semiauto.deriveDecoder[GoldenLayoutSettings]
 
-  def toConfigJson: Json = {
+}
+
+case class GoldenLayoutConfig(`type`: String, content: List[GoldenLayoutConfig], componentName: String, componentState: Json) {
+  def +:(child: GoldenLayoutConfig): GoldenLayoutConfig = copy(content = child +: content)
+  def :+(child: GoldenLayoutConfig): GoldenLayoutConfig = copy(content = content :+ child)
+
+  def toConfigJson(settings : GoldenLayoutSettings = GoldenLayoutSettings(true)): Json = {
+    import io.circe.syntax._
     val me = GoldenLayoutConfig.encoder(this)
-    Json.obj("content" -> Json.arr(me))
+    Json.obj("content" -> Json.arr(me), "settings" -> settings.asJson)
   }
 }
 
@@ -21,12 +29,14 @@ object GoldenLayoutConfig {
   def component(componentName: String, componentState: Json = Json.Null) = new GoldenLayoutConfig("component", Nil, componentName, componentState)
 
   implicit val encoder: ObjectEncoder[GoldenLayoutConfig] = io.circe.generic.semiauto.deriveEncoder[GoldenLayoutConfig].mapJsonObject { json =>
-    json.filter {
+    val obj = json.filter {
       case ("componentName", name) => name.asString.fold(false)(_.nonEmpty)
       case ("content", content)    => content.asArray.fold(false)(_.nonEmpty)
       case ("componentState", st8) => !st8.isNull
       case _                       => true
     }
+
+    obj
   }
   implicit object decoder extends Decoder[GoldenLayoutConfig] {
     override def apply(c: HCursor): Result[GoldenLayoutConfig] = {

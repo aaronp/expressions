@@ -2,6 +2,7 @@ package pipelines.rest
 
 import java.nio.file.Path
 
+import akka.http.scaladsl.server.Route
 import args4c.ConfigApp
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
@@ -39,7 +40,15 @@ object RestMain extends ConfigApp with StrictLogging {
     val socketSettings     = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
 
     val login = settings.loginRoutes(sslConf).routes
-    RunningServer(settings, sslConf, Seq(login, socketSettings.routes))
+
+    val service    = PipelineService()(settings.env.ioScheduler)
+    val repoRoutes = settings.repoRoutes(service)
+
+    val route: Route = {
+      import settings.env._
+      RunningServer.makeRoutes(Seq(login, repoRoutes, socketSettings.routes))
+    }
+    RunningServer(settings, sslConf, route)
   }
 
   def certPath(config: Config) = config.getString("pipelines.tls.certificate")

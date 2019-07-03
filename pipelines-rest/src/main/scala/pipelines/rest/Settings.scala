@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Route
 import args4c.obscurePassword
 import com.typesafe.config.Config
 import pipelines.Env
+import pipelines.reactive.PipelineService
 import pipelines.reactive.repo.rest.SourceRepoRoutes
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes}
 import pipelines.rest.users.UserLoginRoutes
@@ -26,9 +27,7 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
 
   val staticRoutes: StaticFileRoutes = StaticFileRoutes(rootConfig.getConfig("pipelines.www"), secureSettings)
 
-  def repoRoutes: Route = {
-    SourceRepoRoutes(secureSettings).routes
-  }
+  def repoRoutes(service: PipelineService): Route = SourceRepoRoutes(service, secureSettings).routes
 
   override def toString: String = {
     import args4c.implicits._

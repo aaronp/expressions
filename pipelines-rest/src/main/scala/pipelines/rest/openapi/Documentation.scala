@@ -108,7 +108,7 @@ object Documentation //
   def repoEndpoints: List[Documentation.DocumentedEndpoint] = {
     val optionalType = Option(ContentType.of[Option[Int]])
     List(
-      sources.list(document(ListRepoSourcesRequest(optionalType))),
+      sources.listEndpoint(document(ListRepoSourcesRequest(optionalType))),
       transforms.list(document(Option("type"))),
       types.list(document(Seq("a", "b")))
       //, repo.repoEndpoint(document(ListRepoSourcesRequest(optionalType)), document(ListRepoSourcesResponse(Seq(ListedDataSource("source", optionalType)))))

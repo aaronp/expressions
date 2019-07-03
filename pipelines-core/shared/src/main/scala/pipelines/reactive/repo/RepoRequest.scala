@@ -57,7 +57,7 @@ object DataTransform {
   implicit val decoder: Decoder[DataTransform]       = deriveDecoder[DataTransform]
 }
 
-final case class ListedDataSource(name: String, contentType: Option[ContentType])
+final case class ListedDataSource(name: String, metadata: Map[String, String], contentType: Option[ContentType])
 
 object ListedDataSource {
   implicit val encoder: ObjectEncoder[ListedDataSource] = deriveEncoder[ListedDataSource]
@@ -85,7 +85,9 @@ object ListRepoSourcesRequest {
   implicit val decoder: Decoder[ListRepoSourcesRequest]       = deriveDecoder[ListRepoSourcesRequest]
 }
 
-case class ListRepoSourcesResponse(sources: Seq[ListedDataSource]) extends RepoResponse
+case class ListRepoSourcesResponse(sources: Seq[ListedDataSource]) extends RepoResponse {
+  def metadataKeys: Set[String] = sources.map(_.metadata.keySet).toSet.flatten
+}
 object ListRepoSourcesResponse {
   implicit val encoder: ObjectEncoder[ListRepoSourcesResponse] = deriveEncoder[ListRepoSourcesResponse]
   implicit val decoder: Decoder[ListRepoSourcesResponse]       = deriveDecoder[ListRepoSourcesResponse]

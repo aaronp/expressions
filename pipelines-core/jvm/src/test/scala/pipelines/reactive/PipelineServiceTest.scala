@@ -8,7 +8,6 @@ import scala.collection.mutable.ListBuffer
 class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
 
   "PipelineService.getOrCreateSink" should {
-
     "link a sink which matches an existing source" in {
       WithScheduler { implicit scheduler =>
         val service = PipelineService()
@@ -67,6 +66,8 @@ class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
         val Seq(existing) = service.getOrCreateSource(DataSource.push[String](Map("user" -> "dave")))
         service.sourceMetadata().size shouldBe 2
         existing shouldBe source
+
+        service.sources.list()
       }
     }
   }

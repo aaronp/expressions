@@ -9,7 +9,7 @@ import pipelines.manual.PushEndpoints
 import pipelines.reactive.repo.{ListRepoSourcesResponse, RepoSchemas, SourceRepoEndpoints}
 import pipelines.users.{LoginEndpoints, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 
 object PipelinesXhr
@@ -33,9 +33,15 @@ object PipelinesXhr
     AppState()
   }
 
-  def listSources(contentType: Option[String]): Future[ListRepoSourcesResponse] = {
-    sources.list(ListRepoSourcesResponseSchema).apply(contentType)
+  def listSources(queryParams: Map[String, String]): Future[ListRepoSourcesResponse] = {
+    val endpoint = sources.listEndpoint(ListRepoSourcesResponseSchema) match {
+      case wrapped: WrappedEndpoint[Unit, ListRepoSourcesResponse] =>
+        wrapped.copy(request = wrapped.request.copy(additionalQueryParams = queryParams))
+      case other => sys.error(s"endpoint was $other")
+    }
+    endpoint()
   }
+
   def listAllTypes(): Future[PipelinesXhr.types.TypesResponse] = {
     types.list(TypesSchema).apply()
   }
@@ -56,23 +62,52 @@ object PipelinesXhr
                               response: js.Function1[XMLHttpRequest, Either[Exception, B]],
                               summary: Documentation,
                               description: Documentation,
-                              tags: List[String]): PipelinesXhr.Endpoint[A, B] = {
+                              tags: List[String]): WrappedEndpoint[A, B] = {
 
-    val wrappedRequest = new Request[A] {
-      override def apply(a: A): (XMLHttpRequest, Option[js.Any]) = {
-        val request @ (xhr, _) = originalRequest(a)
-        dom.window.console.log(s"Making request $a, token is ${state.currentToken}")
-        //xhr.setRequestHeader("Content-Type", "application/json")
-        state.currentToken.foreach { jwtToken =>
-          xhr.setRequestHeader("Authorization", s"Bearer $jwtToken")
-          xhr.setRequestHeader("X-Access-Token", jwtToken)
-        }
-        request
+    val wrappedRequest = WrappedRequest[A, B](originalRequest, response, summary, description, tags)
+    WrappedEndpoint(wrappedRequest, wrapResponse(response), summary, description, tags)
+  }
+
+  case class WrappedRequest[A, B](originalRequest: PipelinesXhr.Request[A],
+                                  response: js.Function1[XMLHttpRequest, Either[Exception, B]],
+                                  summary: Documentation,
+                                  description: Documentation,
+                                  tags: List[String],
+                                  additionalQueryParams: Map[String, String] = Map.empty)
+      extends Request[A] {
+    override def apply(a: A): (XMLHttpRequest, Option[js.Any]) = {
+      val request @ (xhr, _) = originalRequest(a)
+      dom.window.console.log(s"Making request $a, token is ${state.currentToken}")
+      //xhr.setRequestHeader("Content-Type", "application/json")
+      state.currentToken.foreach { jwtToken =>
+        xhr.setRequestHeader("Authorization", s"Bearer $jwtToken")
+        xhr.setRequestHeader("X-Access-Token", jwtToken)
       }
-      override def href(a: A): String = originalRequest.href(a)
-    }
 
-    super.endpoint(wrappedRequest, wrapResponse(response), summary, description, tags)
+      request
+    }
+    override def href(a: A): String = {
+      val url = originalRequest.href(a)
+
+      url
+    }
+  }
+
+  case class WrappedEndpoint[A, B](
+      request: WrappedRequest[A, B],
+      response: Response[B],
+      summary: Documentation,
+      description: Documentation,
+      tags: List[String]
+  ) extends Endpoint[A, B](request) {
+    override def apply(a: A) = {
+      val promise = Promise[B]()
+      performXhr(request, response, a)(
+        _.fold(exn => { promise.failure(exn); () }, b => { promise.success(b); () }),
+        xhr => { promise.failure(new Exception(xhr.responseText)); () }
+      )
+      promise.future
+    }
   }
 
   def wrapResponse[B](response: js.Function1[XMLHttpRequest, Either[Exception, B]])(xhr: XMLHttpRequest) = {

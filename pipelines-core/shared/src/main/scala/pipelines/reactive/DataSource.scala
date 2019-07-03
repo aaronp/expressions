@@ -28,6 +28,8 @@ trait DataSource extends HasMetadata {
 
   def addMetadata(entries: Map[String, String]): T
 
+  def metadataWithContentType: Map[String, String] = metadata.updated("contentType", contentType.toString)
+
   /** @return the content type of this data source
     */
   def contentType: ContentType

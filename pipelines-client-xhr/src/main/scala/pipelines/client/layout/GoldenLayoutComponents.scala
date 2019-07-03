@@ -21,9 +21,7 @@ object GoldenLayoutComponents extends HtmlUtils {
     val col    = GoldenLayoutConfig.column() :+ test("testComponent", "B") :+ test("testComponent2", "C")
     val layout = GoldenLayoutConfig.row() :+ test("testComponent", "A") :+ col
 
-    log(layout.toConfigJson.spaces2)
-
-    layout.toConfigJson.spaces2
+    layout.toConfigJson().spaces2
   }
 
   @JSExportTopLevel("renderExample")

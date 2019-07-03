@@ -8,7 +8,8 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.Pipeline
-import pipelines.reactive.trigger.{PipelineMatch, RepoState, TriggerEvent, RepoStatePipe}
+import pipelines.reactive.repo.{ListRepoSourcesResponse, ListedDataSource}
+import pipelines.reactive.trigger.{PipelineMatch, RepoState, RepoStatePipe, TriggerEvent}
 
 import scala.collection.concurrent
 
@@ -31,6 +32,15 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Repo
   private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
     logger.info(s"!>! Pipeline added $id : $pipeline")
     pipelinesById.put(id, pipeline)
+  }
+
+  def listSources(queryParams: Map[String, String]): ListRepoSourcesResponse = {
+    val criteria = MetadataCriteria(queryParams)
+
+    val results = sources.list().withFilter(ds => criteria.matches(ds.metadataWithContentType)).map { found: DataSource =>
+      new ListedDataSource(found.id.getOrElse(""), found.metadataWithContentType, Option(found.contentType))
+    }
+    ListRepoSourcesResponse(results)
   }
 
   private var latest = Var(Option.empty[(RepoState, TriggerInput, TriggerEvent)])(scheduler)

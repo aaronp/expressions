@@ -2,18 +2,28 @@ package pipelines.reactive.repo.rest
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import pipelines.reactive.ContentType
 import pipelines.reactive.repo._
+import pipelines.reactive.{ContentType, PipelineService}
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, SecureRoutes}
 
-case class SourceRepoRoutes(secureSettings: SecureRouteSettings) extends SecureRoutes(secureSettings) with SourceRepoEndpoints with RepoSchemas with BaseCirceRoutes {
+case class SourceRepoRoutes(pipelineService: PipelineService, secureSettings: SecureRouteSettings)
+    extends SecureRoutes(secureSettings)
+    with SourceRepoEndpoints
+    with RepoSchemas
+    with BaseCirceRoutes {
 
   def listSourcesRoute: Route = {
     val wtf = implicitly[JsonResponse[ListRepoSourcesResponse]]
-    sources.list(wtf).implementedBy { contentTypeOpt =>
-      val request = ListRepoSourcesRequest(contentTypeOpt.map(ContentType.apply))
-//      repository.listSources(request)
-      ???
+    extractUri { uri =>
+      authenticated { claims =>
+        sources.listEndpoint(wtf).implementedBy { _ =>
+          val queryParams = uri.query().toMap.mapValues { text =>
+            text.replaceAllLiterally("userId", claims.userId).replaceAllLiterally("userName", claims.name)
+          }
+
+          pipelineService.listSources(queryParams)
+        }
+      }
     }
   }
 

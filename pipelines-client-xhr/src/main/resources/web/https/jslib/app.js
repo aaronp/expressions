@@ -13,11 +13,10 @@ myLayout.registerComponent( 'testComponent2', function( container, componentStat
 });
 myLayout.init();
 
-
 function setupMenu() {
+    Menu.initialise(myLayout);
+}
 
-
-  Menu.addMenuItem( 'Add me!', 'You\'ve added me!' , myLayout);
-  Menu.addMenuItem( 'Me too!', 'You\'ve added me too!', myLayout);
-
+function addLayoutChild(newItemConfig) {
+  return myLayout.root.contentItems[0].addChild(newItemConfig);
 }

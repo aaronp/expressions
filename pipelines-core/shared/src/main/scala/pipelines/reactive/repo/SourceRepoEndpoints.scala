@@ -16,11 +16,12 @@ trait SourceRepoEndpoints extends BaseEndpoint {
     * GET /repo/source?type=String
     */
   object sources {
-    def request: Request[Option[String]] = get(path / "repo" / "source" /? qs[Option[String]]("type"))
+//    def request: Request[Option[String]] = get(path / "repo" / "source" /? qs[Option[String]]("contentType"))
+    def request = get(path / "repo" / "source")
 
     def response(resp: JsonResponse[ListRepoSourcesResponse]): Response[ListRepoSourcesResponse] = jsonResponse[ListRepoSourcesResponse](Option("Lists registered sources"))(resp)
 
-    def list(resp: JsonResponse[ListRepoSourcesResponse]): Endpoint[Option[String], ListRepoSourcesResponse] = endpoint(request, response(resp))
+    def listEndpoint(resp: JsonResponse[ListRepoSourcesResponse]): Endpoint[Unit, ListRepoSourcesResponse] = endpoint(request, response(resp))
   }
 
   /** list the unique types
