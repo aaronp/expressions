@@ -53,8 +53,8 @@ object Menu {
   }
 
   @JSExport
-  def newMenuItemConfig(title: String, text: String) = {
-    val conf = ItemConfig(title, componentName = "testComponent", componentState = Json.obj("text" -> Json.fromString(text)))
+  def newMenuItemConfig(title: String, name: String, state: Json) = {
+    val conf = ItemConfig(title, componentName = name, componentState = state)
     import io.circe.syntax._
     conf.asJson.noSpaces
   }
@@ -99,7 +99,7 @@ object Menu {
     val menuContainer = elmById(css.MenuContainer)
 
     menuContainer.appendChild(newLi)
-    val c1 = newMenuItemConfig(title, text)
+    val c1 = newMenuItemConfig(title, "testComponent", Json.obj("text" -> Json.fromString(text)))
 
     layout.createDragSource(newLi, JSON.parse(c1))
   }
