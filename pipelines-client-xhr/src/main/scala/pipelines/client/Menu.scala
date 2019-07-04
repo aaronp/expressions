@@ -10,7 +10,7 @@ import scalatags.JsDom.all._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * <button >Dropdown</button>
@@ -65,11 +65,9 @@ object Menu {
     PipelinesXhr.userStatus.statusEndpoint.apply().onComplete {
       case Failure(_) =>
         addMenuItem("login", "please log in", myLayout) { e =>
-          log(s"login click: $e")
           redirectTo(PageNames.LoginPage)
         }
       case Success(status) =>
-        log(s"User status is $status")
         addMenuDropDown(s"User '${status.userName}'", status.userId, myLayout, true)
     }
 
@@ -132,7 +130,9 @@ object Menu {
             def newConfig = newMenuItemConfig(anchor.text, "testComponent", Json.obj("text" -> Json.fromString(text)))
 
             anchor.onclick = (e) => {
-              Option(layout.selectedItem) match {
+              val selectedOpt = Option(layout.selectedItem).filterNot(_ == null)
+              log("Selected is " + selectedOpt)
+              selectedOpt match {
                 case None           => GoldenLayoutComponents.addChild(newConfig)
                 case Some(selected) => selected.addChild(newConfig)
               }
