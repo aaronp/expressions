@@ -2,6 +2,7 @@ package pipelines.client.layout
 
 import io.circe.Json
 import pipelines.client.HtmlUtils
+import pipelines.client.source.{PushSourceComponent, PushSourceState}
 import pipelines.web.GoldenLayoutConfig
 import scalatags.Text.all._
 
@@ -19,7 +20,7 @@ object GoldenLayoutComponents extends HtmlUtils {
     def test(name: String, label: String): GoldenLayoutConfig = GoldenLayoutConfig.component(name, Json.obj("label" -> Json.fromString(label)))
 
     val col    = GoldenLayoutConfig.column() :+ test("testComponent", "B") :+ test("testComponent2", "C")
-    val layout = GoldenLayoutConfig.row() :+ test("testComponent", "A") :+ col
+    val layout = GoldenLayoutConfig.row() :+ test("pushSource", "A") :+ col
 
     layout.toConfigJson().spaces2
   }
@@ -45,6 +46,20 @@ object GoldenLayoutComponents extends HtmlUtils {
       p("Second component:"),
       p(json)
     ).render
+
+  }
+
+  @JSExportTopLevel("renderPushSource")
+  def renderPushSource(st8: js.Dynamic): String = {
+    val name         = st8.componentName
+    val json: String = JSON.stringify(st8)
+    import io.circe.syntax._
+    json.asJson.as[PushSourceState] match {
+      case Left(err) =>
+        sys.error(s"Couldn't parse '$json' as PushSourceState: $err")
+      case Right(state) =>
+        PushSourceComponent.render(state)
+    }
 
   }
 }

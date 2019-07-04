@@ -12,6 +12,12 @@ import pipelines.users.{LoginEndpoints, LoginResponse, UserEndpoints, UserRoleEn
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 
+/**
+  * The glue to our 'Endpoints' from XHR -- with a few convenience methods/functions thrown in.
+  *
+  * In particular we wrap the requests to ensure we use the JWT from our local storage (and also populate local storage
+  * on login)
+  */
 object PipelinesXhr
     extends xhr.future.Endpoints
     with xhr.circe.JsonSchemaEntities

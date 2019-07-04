@@ -56,8 +56,10 @@ object Menu {
   def newMenuItemConfig(title: String, name: String, state: Json) = {
     val conf = ItemConfig(title, componentName = name, componentState = state)
     import io.circe.syntax._
-    conf.asJson.noSpaces
+
+    JSON.parse(conf.asJson.noSpaces)
   }
+
   @JSExport
   def initialise(myLayout: GoldenLayout) = {
     PipelinesXhr.userStatus.statusEndpoint.apply().onComplete {
@@ -101,7 +103,7 @@ object Menu {
     menuContainer.appendChild(newLi)
     val c1 = newMenuItemConfig(title, "testComponent", Json.obj("text" -> Json.fromString(text)))
 
-    layout.createDragSource(newLi, JSON.parse(c1))
+    layout.createDragSource(newLi, c1)
   }
 
   /**
@@ -127,7 +129,7 @@ object Menu {
 
         child match {
           case anchor: HTMLAnchorElement =>
-            def newConfig = JSON.parse(newMenuItemConfig(anchor.text, anchor.textContent))
+            def newConfig = newMenuItemConfig(anchor.text, "testComponent", Json.obj("text" -> Json.fromString(text)))
 
             anchor.onclick = (e) => {
               Option(layout.selectedItem) match {
@@ -137,8 +139,8 @@ object Menu {
             }
           case _ =>
         }
-        val c1 = newMenuItemConfig(title, child.textContent)
-        layout.createDragSource(child, JSON.parse(c1))
+        val c1 = newMenuItemConfig(child.textContent, "testComponent", Json.obj("text" -> Json.fromString(text)))
+        layout.createDragSource(child, c1)
       }
 
       val btn: Button = {

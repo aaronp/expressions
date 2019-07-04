@@ -8,7 +8,10 @@ myLayout.registerComponent( 'testComponent', function( container, componentState
 });
 myLayout.registerComponent( 'testComponent2', function( container, componentState ){
     var content = renderExample2(componentState)
-    //container.props.glEventHub.emit( 'something-happend', {some: 'data' });
+    container.getElement().html( content );
+});
+myLayout.registerComponent( 'pushSource', function( container, componentState ){
+    var content = renderPushSource(componentState)
     container.getElement().html( content );
 });
 myLayout.init();
