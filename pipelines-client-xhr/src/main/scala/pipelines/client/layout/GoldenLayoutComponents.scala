@@ -15,12 +15,25 @@ import scala.scalajs.js.annotation.JSExportTopLevel
   */
 object GoldenLayoutComponents extends HtmlUtils {
 
+  def addChild(newItemConfig: js.Dynamic) = {
+    if (newItemConfig != null) {
+      js.Dynamic.global.addLayoutChild(newItemConfig)
+    }
+  }
+
   @JSExportTopLevel("initialGoldenLayout")
   def initialLayout() = {
     def test(name: String, label: String): GoldenLayoutConfig = GoldenLayoutConfig.component(name, Json.obj("label" -> Json.fromString(label)))
 
-    val col    = GoldenLayoutConfig.column() :+ test("testComponent", "B") :+ test("testComponent2", "C")
-    val layout = GoldenLayoutConfig.row() :+ test("pushSource", "A") :+ col
+    val col = GoldenLayoutConfig.column() :+ test("testComponent", "B") :+ test("testComponent2", "C")
+
+    val push = {
+      import io.circe.syntax._
+      val pushState = PushSourceState("default", "base", "pushy mc push-face", false, "pushSource").asJson
+      GoldenLayoutConfig.component("pushSource", pushState)
+    }
+
+    val layout = GoldenLayoutConfig.row() :+ push :+ col
 
     layout.toConfigJson().spaces2
   }
@@ -51,12 +64,17 @@ object GoldenLayoutComponents extends HtmlUtils {
 
   @JSExportTopLevel("renderPushSource")
   def renderPushSource(st8: js.Dynamic): String = {
-    val name         = st8.componentName
+//    val name         = st8.componentName
     val json: String = JSON.stringify(st8)
     import io.circe.syntax._
-    json.asJson.as[PushSourceState] match {
+    val pss = io.circe.parser.decode[PushSourceState](json)
+
+    log(s"pss json is ${pss}")
+    pss match {
       case Left(err) =>
-        sys.error(s"Couldn't parse '$json' as PushSourceState: $err")
+        log(s"Couldn't parse '$json' as PushSourceState: $err")
+        PushSourceComponent.render(PushSourceState("a", "b", "c", true, "pushSource"))
+
       case Right(state) =>
         PushSourceComponent.render(state)
     }

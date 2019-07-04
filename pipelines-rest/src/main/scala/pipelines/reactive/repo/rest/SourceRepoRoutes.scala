@@ -20,7 +20,6 @@ case class SourceRepoRoutes(pipelineService: PipelineService, secureSettings: Se
           val queryParams = uri.query().toMap.mapValues { text =>
             text.replaceAllLiterally("userId", claims.userId).replaceAllLiterally("userName", claims.name)
           }
-
           pipelineService.listSources(queryParams)
         }
       }

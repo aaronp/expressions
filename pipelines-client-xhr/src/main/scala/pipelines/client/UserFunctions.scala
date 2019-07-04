@@ -82,11 +82,9 @@ object UserFunctions extends HtmlUtils {
         setVisible(loginElmId, false)
         setVisible(logoutElmId, true).foreach { html =>
           val ahrefOpt = childrenFor(html).collectFirst {
-            case href: HTMLAnchorElement =>
-              log("It's an anchor!")
-              href
-            case href: HTMLLinkElement => href
-            case href: Node            => href
+            case href: HTMLAnchorElement => href
+            case href: HTMLLinkElement   => href
+            case href: Node              => href
           }
           ahrefOpt.foreach { a =>
             a.textContent = s"${userName} logout"

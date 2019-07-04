@@ -14,13 +14,8 @@ import scala.util.{Failure, Success}
   */
 object PipelinesApp extends HtmlUtils {
 
-  def addChild(newItemConfig: js.Dynamic) = {
-    js.Dynamic.global.addLayoutChild(newItemConfig)
-  }
-
   @JSExportTopLevel("listSources")
   def listSources(queryParams: Map[String, String] = Map.empty): Future[ListRepoSourcesResponse] = {
-    dom.window.console.log(s"listSources w/ $queryParams")
     PipelinesXhr.listSources(queryParams).map { response =>
       dom.window.console.log(response.toString())
       response

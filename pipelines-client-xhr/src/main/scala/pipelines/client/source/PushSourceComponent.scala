@@ -7,7 +7,7 @@ object PushSourceComponent {
 
     import io.circe.syntax._
 
-    div(
+    div(`class` := "pipeline-component")(
       h1("Push Source"),
       h2(st8.createdBy),
       h3(st8.id),

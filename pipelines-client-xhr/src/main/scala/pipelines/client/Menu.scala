@@ -143,15 +143,7 @@ object Menu {
         layout.createDragSource(child, c1)
       }
 
-      val btn: Button = {
-        val menuButton = button(`class` := css.MenuButton, title, i(`class` := "fa fa-caret-down", style := "padding-left:10px;")).render
-
-        menuButton.onclick = (e: dom.MouseEvent) => {
-          e.stopPropagation()
-        }
-
-        menuButton
-      }
+      val btn: Button = button(`class` := css.MenuButton, title, i(style := "padding-left:10px;", "V")).render
 
       div(`class` := css.DropDown, style := css.inlineStyle(rightAligned))(
         btn,
