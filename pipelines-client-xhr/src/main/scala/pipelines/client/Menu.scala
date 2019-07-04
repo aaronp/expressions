@@ -4,7 +4,7 @@ import io.circe.{Decoder, Json, ObjectEncoder}
 import org.scalajs.dom
 import org.scalajs.dom.html.{Button, Div}
 import org.scalajs.dom.raw._
-import pipelines.client.layout.GoldenLayout
+import pipelines.client.layout.{GoldenLayout, GoldenLayoutComponents}
 import scalatags.JsDom.all._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -133,7 +133,7 @@ object Menu {
 
             anchor.onclick = (e) => {
               Option(layout.selectedItem) match {
-                case None           => PipelinesApp.addChild(newConfig)
+                case None           => GoldenLayoutComponents.addChild(newConfig)
                 case Some(selected) => selected.addChild(newConfig)
               }
             }
