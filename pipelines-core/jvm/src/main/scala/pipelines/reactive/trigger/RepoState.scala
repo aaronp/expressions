@@ -64,7 +64,7 @@ case class RepoState private[trigger] (
     val matchedSinks = triggers.flatMap { triggerEvent =>
       allSinks.flatMap { sink =>
         if (triggerEvent.trigger.matchesSink(sink)) {
-          Option(sink -> triggerEvent.trigger)
+          Option(sink -> triggerEvent)
         } else {
           None
         }
@@ -74,9 +74,9 @@ case class RepoState private[trigger] (
     val event: TriggerEvent = if (matchedSinks.isEmpty) {
       UnmatchedSink(dataSink)
     } else {
-      val allMatches: Seq[(DataSource, DataSink, Trigger)] = sources.flatMap { source =>
+      val allMatches: Seq[(DataSource, DataSink, OnNewTrigger)] = sources.flatMap { source =>
         matchedSinks.collect {
-          case (sink, trigger) if trigger.matchesSource(source) => (source, sink, trigger)
+          case (sink, trigger) if trigger.trigger.matchesSource(source) => (source, sink, trigger)
         }
       }
 
@@ -93,10 +93,11 @@ case class RepoState private[trigger] (
 
   def onSourceAdded(dataSource: DataSource): (RepoState, TriggerEvent) = {
     val allSources = dataSource +: sources
-    val matchedSources: Seq[(DataSource, Trigger)] = triggers.flatMap { triggerEvent =>
+    val matchedSources: Seq[(DataSource, OnNewTrigger)] = triggers.flatMap { triggerEvent =>
       allSources.flatMap { source =>
+
         if (triggerEvent.trigger.matchesSource(source)) {
-          Option(source -> triggerEvent.trigger)
+          Option(source -> triggerEvent)
         } else {
           None
         }
@@ -106,9 +107,9 @@ case class RepoState private[trigger] (
     val event: TriggerEvent = if (matchedSources.isEmpty) {
       UnmatchedSource(dataSource)
     } else {
-      val allMatches: Seq[(DataSource, DataSink, Trigger)] = sinks.flatMap { sink =>
+      val allMatches: Seq[(DataSource, DataSink, OnNewTrigger)] = sinks.flatMap { sink =>
         matchedSources.collect {
-          case (source, trigger) if trigger.matchesSink(sink) => (source, sink, trigger)
+          case (source, trigger) if trigger.trigger.matchesSink(sink) => (source, sink, trigger)
         }
       }
       resolveMatches(allMatches, MatchedSourceWithNoSink(dataSource)) { all =>
@@ -131,7 +132,7 @@ case class RepoState private[trigger] (
         case source if triggerEvent.trigger.matchesSource(source) =>
           val nested: Seq[Option[PipelineMatch]] = sinks.collect {
             case sink if triggerEvent.trigger.matchesSink(sink) =>
-              resolveTransformations(source, sink, triggerEvent.trigger) match {
+              resolveTransformations(source, sink, triggerEvent) match {
                 case ok: PipelineMatch => Some(ok)
                 case _                 => None
               }
@@ -151,7 +152,7 @@ case class RepoState private[trigger] (
     * or a multi-match
     *
     */
-  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, Trigger)], onError: => TriggerEvent)(multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
+  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, OnNewTrigger)], onError: => TriggerEvent)(multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
     allMatches match {
       case Seq()                     => onError
       case Seq((src, sink, trigger)) => resolveTransformations(src, sink, trigger)
@@ -170,9 +171,9 @@ case class RepoState private[trigger] (
     }
   }
 
-  private def resolveTransformations(dataSource: DataSource, sink: DataSink, trigger: Trigger): TriggerEvent = {
+  private def resolveTransformations(dataSource: DataSource, sink: DataSink, trigger: OnNewTrigger): TriggerEvent = {
     // go through all the specified transforms and return either the resolved transformations or the Some of the first missing one
-    val (missingTransformOpt, transforms) = trigger.transforms.foldLeft((Option.empty[String], Seq[(String, Transform)]())) {
+    val (missingTransformOpt, transforms) = trigger.trigger.transforms.foldLeft((Option.empty[String], Seq[(String, Transform)]())) {
       case ((None, transforms), transformKey) =>
         transformsByName.get(transformKey) match {
           case None            => (Some(transformKey), Nil)

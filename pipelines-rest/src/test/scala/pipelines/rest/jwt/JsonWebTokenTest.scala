@@ -1,6 +1,7 @@
 package pipelines.rest.jwt
 import org.scalatest.{Matchers, WordSpec}
-import pipelines.users.jwt.{Claims, JsonWebToken}
+import pipelines.users.Claims
+import pipelines.users.jwt.JsonWebToken
 
 class JsonWebTokenTest extends WordSpec with Matchers {
 

@@ -2,15 +2,16 @@ package pipelines.rest
 
 import java.nio.file.Path
 
+import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Route
 import args4c.ConfigApp
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import pipelines.Localhost
-import pipelines.reactive.PipelineService
-import pipelines.socket.SocketRoutesSettings
+import pipelines.reactive.{PipelineService, tags}
 import pipelines.ssl.GenCerts.CertAuthSettings
 import pipelines.ssl.{GenCerts, SSLConfig}
+import pipelines.users.Claims
 
 import scala.util.Try
 
@@ -23,8 +24,13 @@ import scala.util.Try
 object RestMain extends ConfigApp with StrictLogging {
   type Result = RunningServer
 
-  override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
+  override protected val configKeyForRequiredEntries = "pipelines.rest.requiredConfig"
 
+  def queryParamsForUri(uri: Uri, claims: Claims): Map[String, String] = {
+    uri.query().toMap.mapValues { text =>
+      text.replaceAllLiterally(tags.UserId, claims.userId).replaceAllLiterally(tags.UserName, claims.name)
+    }
+  }
   def run(rootConfig: Config): RunningServer = {
     val config   = ensureCerts(rootConfig)
     val settings = Settings(config)
@@ -37,7 +43,6 @@ object RestMain extends ConfigApp with StrictLogging {
 
   def run(settings: Settings, service: PipelineService): RunningServer = {
     val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
-    val socketSettings     = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
 
     val login = settings.loginRoutes(sslConf).routes
 
@@ -46,7 +51,7 @@ object RestMain extends ConfigApp with StrictLogging {
 
     val route: Route = {
       import settings.env._
-      RunningServer.makeRoutes(Seq(login, repoRoutes, socketSettings.routes))
+      RunningServer.makeRoutes(Seq(login, repoRoutes))
     }
     RunningServer(settings, sslConf, route)
   }

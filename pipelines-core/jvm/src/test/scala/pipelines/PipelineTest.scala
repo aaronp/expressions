@@ -2,6 +2,7 @@ package pipelines
 
 import java.util.UUID
 
+import monix.execution.CancelableFuture
 import monix.reactive.Observable
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.reactive.{ContentType, DataSink, Transform}
@@ -22,10 +23,10 @@ class PipelineTest extends BaseCoreTest with ScalaFutures {
       WithScheduler { implicit scheduler =>
         val sink                           = DataSink.count()
         val Right(ints: Pipeline[_, Long]) = Pipeline.from(UUID.randomUUID, source, Nil, sink)
-        ints.result.futureValue shouldBe 3
+        ints.resultFuture.futureValue shouldBe 3
 
         val Right(strings: Pipeline[_, Long]) = Pipeline.from(UUID.randomUUID, source, Seq("asString" -> asString), sink)
-        strings.result.futureValue shouldBe 3
+        strings.resultFuture.futureValue shouldBe 3
       }
     }
   }
@@ -44,10 +45,11 @@ class PipelineTest extends BaseCoreTest with ScalaFutures {
         case (t, i) => s"step $i" -> t
       }
       val Right(newSource) = Pipeline.ChainStep.connect(source, transforms)
-      newSource.last.source.contentType shouldBe ContentType.of[Int]
+      newSource.last.output shouldBe ContentType.of[Int]
 
       WithScheduler { implicit scheduler =>
-        val list = newSource.last.source.asObservable.toListL.runSyncUnsafe(testTimeout)
+        val obs  = Pipeline.createPipeline(source, newSource.tail)
+        val list = obs.asObservable[Int].toListL.runSyncUnsafe(testTimeout)
         list shouldBe List(2, 4, 6)
       }
     }

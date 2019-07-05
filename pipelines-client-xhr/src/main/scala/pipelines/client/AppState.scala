@@ -3,7 +3,7 @@ package pipelines.client
 import org.scalajs.dom
 import pipelines.users.LoginResponse
 
-case class AppState(loginResponseOpt: Option[LoginResponse] = None) {
+case class AppState(loginResponseOpt: Option[LoginResponse]) {
 
   def currentToken(): Option[String] = {
     val token = dom.window.sessionStorage.getItem("jwtToken")
@@ -19,4 +19,15 @@ case class AppState(loginResponseOpt: Option[LoginResponse] = None) {
     }
     copy(loginResponseOpt = Option(loginResponse))
   }
+}
+
+object AppState {
+
+  def get() = state
+
+  def onLogin(response: LoginResponse) = {
+    state = state.withResponse(response)
+  }
+
+  private var state = AppState(None)
 }

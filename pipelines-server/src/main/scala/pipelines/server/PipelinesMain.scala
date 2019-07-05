@@ -1,21 +1,14 @@
 package pipelines.server
 
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.server.{Route, RouteResult}
 import args4c.ConfigApp
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.mongo.users.{LoginHandlerMongo, UserServiceMongo}
-import pipelines.reactive.{DataSource, PipelineService}
+import pipelines.reactive.PipelineService
 import pipelines.rest.RestMain.ensureCerts
-import pipelines.rest.RunningServer.reduce
-import pipelines.rest.openapi.DocumentationRoutes
-import pipelines.rest.routes.TraceRoute
-import pipelines.rest.users.{UserRoleRoutes, UserRoutes}
 import pipelines.rest.{RestMain, RunningServer, Settings}
-import pipelines.socket.SocketRoutesSettings
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
+import pipelines.users.mongo.LoginHandlerMongo
 
 import scala.concurrent.Future
 
@@ -36,7 +29,7 @@ object PipelinesMain extends ConfigApp with StrictLogging {
 
   override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
 
-  def run(rootConfig: Config) = {
+  def run(rootConfig: Config): Future[RunningServer] = {
     logger.info(RestMain.startupLog(rootConfig, getClass))
     val config             = ensureCerts(rootConfig)
     val settings: Settings = Settings(config)
@@ -50,83 +43,10 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     }
 
     loginHandlerFuture.map { loginHandler =>
-      start(settings, service, loginHandler)
+      val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
+      val route              = PipelineServerRoutes(sslConf, settings, service, loginHandler)
+      RunningServer(settings, sslConf, route)
     }
   }
 
-  def start(settings: Settings, service: PipelineService, loginHandler: LoginHandler[Future]): RunningServer = {
-    val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
-    val socketSettings     = SocketRoutesSettings(settings.rootConfig, settings.secureSettings, settings.env)
-
-    val pipelinesService = PipelineService()(settings.env.ioScheduler)
-
-    val route: Route = {
-      val login = settings.loginRoutes(sslConf, loginHandler).routes
-      val additionalRoutes: Seq[Route] = {
-        loginHandler match {
-          case mongo: LoginHandlerMongo =>
-            val userService: UserServiceMongo = new UserServiceMongo(mongo)
-            implicit val ec                   = settings.env.ioScheduler
-            val userRoutes                    = UserRoutes(userService, socketSettings.secureSettings)
-            val userRoleRoutes                = UserRoleRoutes(userService, socketSettings.secureSettings)
-            val repoRoutes                    = settings.repoRoutes(pipelinesService)
-            Seq(repoRoutes, userRoutes.routes, userRoleRoutes.routes)
-          case _ => Nil
-        }
-      }
-
-      import settings.env._
-      val repoRoutes: Seq[Route] = {
-        settings.staticRoutes.route +:
-          DocumentationRoutes.route +:
-          login +:
-          socketSettings.routes +:
-          additionalRoutes
-      }
-
-      def addSrc[A](src: DataSource.PushSource[A]) = {
-        val Seq(created: DataSource.PushSource[A]) = pipelinesService.getOrCreateSource(src)
-        pipelinesService.getOrCreateSource(created).ensuring(_.head == created, "getOrCreate should've returned the same source")
-        created
-      }
-      val usersRequests: DataSource.PushSource[HttpRequest] = {
-        addSrc(
-          DataSource
-            .createPush[HttpRequest]
-            .apply(settings.env.ioScheduler) //
-            .addMetadata("label", "http-requests"))
-      }
-      val usersResponses: DataSource.PushSource[(HttpRequest, Long, RouteResult)] = {
-        addSrc(
-          DataSource
-            .createPush[(HttpRequest, Long, RouteResult)]
-            .apply(settings.env.ioScheduler) //
-            .addMetadata("label", "http-request-response"))
-      }
-      val trace = TraceRoute
-        .onRequest { req: HttpRequest =>
-          try {
-            TraceRoute.log.onRequest(req)
-            usersRequests.push(req)
-          } catch {
-            case e: Throwable =>
-              logger.error("monika : " + e, e)
-          }
-        }
-        .onResponse {
-          case tuple @ (req, duration, resp) =>
-            try {
-              TraceRoute.log.onResponse(req, duration, resp)
-              usersResponses.push(tuple)
-            } catch {
-              case e: Throwable =>
-                logger.error("bang : " + e, e)
-            }
-        }
-
-      Route.seal(trace.wrap(reduce(repoRoutes)))
-    }
-
-    RunningServer(settings, sslConf, route)
-  }
 }

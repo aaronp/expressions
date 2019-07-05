@@ -10,9 +10,18 @@
     -->
     <link type="text/css" rel="stylesheet" href="/css/pipelines.css"/>
     <link type="text/css" rel="stylesheet" href="/css/menu.css"/>
+    <link type="text/css" rel="stylesheet" href="/css/modal.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/form.css">
 
     <link type="text/css" rel="stylesheet" href="/css/goldenlayout-base.css"/>
     <link type="text/css" rel="stylesheet" href="/css/goldenlayout-dark-theme.css"/>
+
+    <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.css"/>
+
+<!--
+    <link rel="stylesheet" type="text/css" href="/DataTables/datatables.min.css"/>
+    <script type="text/javascript" src="/DataTables/datatables.min.js"></script>
+-->
 
     <script type="text/javascript" src="/js/pipelines-deps.js"></script>
     <script type="text/javascript" src="/js/pipelines.js"></script>
@@ -20,11 +29,14 @@
     <script type="text/javascript" src="/jslib/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="/jslib/goldenlayout.min.js"></script>
     <script type="text/javascript" src="/jslib/app.js"></script>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
 </head>
 <body onload="setupMenu()">
-    <div id="wrapper">
-        <ul id="menuContainer" ></ul>
-        <div id="layoutContainer"></div>
-    </div>
+<div id="wrapper">
+    <ul id="menuContainer"></ul>
+    <div id="layoutContainer"></div>
+    <div id="modalsContainer" ></div>
+</div>
 </body>
 </html>

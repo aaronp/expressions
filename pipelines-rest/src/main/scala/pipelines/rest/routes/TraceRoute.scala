@@ -26,7 +26,7 @@ trait TraceRoute {
 
 object TraceRoute {
 
-  private val BlackListFmtHeader = Set("Last-Modified", "ETag")
+  private val BlackListFmtHeader = Set("Last-Modified", "ETag", "X-Access-Token")
   private def fmt(headers: Seq[HttpHeader]) = {
     headers.filterNot(h => BlackListFmtHeader.contains(h.name)) map { h =>
       s"${h.name}:${h.value}"
@@ -59,10 +59,10 @@ object TraceRoute {
     * }}}
     */
   object log extends TraceRoute with StrictLogging {
-    val BlackList = Set("/js/", "site.webmanifest", "favicon", ".css")
+    val RequestBlackList = Set("/js/", "/jslib/", "site.webmanifest", "favicon", ".css", ".html")
     override def onRequest(request: HttpRequest): Unit = {
       val uriStr = request.uri.toString
-      if (!BlackList.exists(uriStr.contains)) {
+      if (!RequestBlackList.exists(uriStr.contains)) {
         logger.debug(s"onRequest(${pretty(request)})")
       } else {
         logger.trace(s"onRequest(${pretty(request)})")
@@ -72,11 +72,11 @@ object TraceRoute {
 
     }
 
-    private val blacklist = Set(".js", ".html", ".css", ".webmanifest", ".png")
+    private val ResponseBlacklist = Set(".js", ".html", ".css", ".webmanifest", ".png", ".ico")
     override def onResponse(request: HttpRequest, diff: Long, response: RouteResult): Unit = {
       val responseText = pretty(response)
       val input        = pretty(request)
-      if (blacklist.exists(input.contains)) {
+      if (ResponseBlacklist.exists(input.contains)) {
         logger.trace(s"${input} took ${diff}ms to produce $responseText")
       } else {
         logger.info(s"${input} took ${diff}ms to produce $responseText")

@@ -5,13 +5,14 @@ import args4c.obscurePassword
 import com.typesafe.config.Config
 import pipelines.Env
 import pipelines.reactive.PipelineService
-import pipelines.reactive.repo.rest.SourceRepoRoutes
+import pipelines.reactive.rest.SourceRoutes
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes}
-import pipelines.rest.users.UserLoginRoutes
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
+import pipelines.users.rest.UserLoginRoutes
 
 import scala.compat.Platform
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
@@ -27,7 +28,11 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
 
   val staticRoutes: StaticFileRoutes = StaticFileRoutes(rootConfig.getConfig("pipelines.www"), secureSettings)
 
-  def repoRoutes(service: PipelineService): Route = SourceRepoRoutes(service, secureSettings).routes
+  val tokenValidityDuration: FiniteDuration = {
+    import args4c.implicits._
+    rootConfig.asFiniteDuration("pipelines.rest.socket.tokenValidityDuration")
+  }
+  def repoRoutes(service: PipelineService): Route = SourceRoutes(service, secureSettings).routes
 
   override def toString: String = {
     import args4c.implicits._
@@ -51,6 +56,6 @@ object Settings {
   def apply(rootConfig: Config): Settings = {
     val config = rootConfig.getConfig("pipelines")
     val env    = pipelines.Env()
-    new Settings(rootConfig, host = config.getString("host"), port = config.getInt("port"), env)
+    new Settings(rootConfig, host = config.getString("rest.host"), port = config.getInt("rest.port"), env)
   }
 }

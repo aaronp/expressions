@@ -3,7 +3,7 @@ package pipelines.client.jvm
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import javax.net.ssl.SSLContext
 import pipelines.Env
-import pipelines.socket.{ClientSocket, SocketSettings, WebsocketClient}
+import pipelines.rest.socket.{ClientSocket, SocketSettings, WebsocketClient}
 
 import scala.concurrent.Future
 

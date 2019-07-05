@@ -7,7 +7,7 @@ import pipelines.audit.{AuditEndpoints, VersionDetails}
 import pipelines.auth.{AuthEndpoints, AuthModel, SetRolesForUserRequest, UserRoles}
 import pipelines.core.GenericMessageResult
 import pipelines.reactive.ContentType
-import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceRepoEndpoints}
+import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceEndpoints}
 import pipelines.users.{
   CreateUserRequest,
   CreateUserResponse,
@@ -29,14 +29,14 @@ object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoi
   */
 object Documentation //
     extends openapi.Endpoints //
-    with CirceAdapter        //
-    with SourceRepoEndpoints //
-    with AdminEndpoints      //
-    with LoginEndpoints      //
-    with UserEndpoints       //
-    with UserRoleEndpoints   //
-    with AuthEndpoints       //
-    with AuditEndpoints      // TODO !
+    with CirceAdapter      //
+    with SourceEndpoints   //
+    with AdminEndpoints    //
+    with LoginEndpoints    //
+    with UserEndpoints     //
+    with UserRoleEndpoints //
+    with AuthEndpoints     //
+    with AuditEndpoints    // TODO !
     with openapi.JsonSchemaEntities {
 
   import OpenApiEncoder.JsonSchema._
@@ -108,8 +108,9 @@ object Documentation //
   def repoEndpoints: List[Documentation.DocumentedEndpoint] = {
     val optionalType = Option(ContentType.of[Option[Int]])
     List(
-      sources.listEndpoint(document(ListRepoSourcesRequest(optionalType))),
-      transforms.list(document(Option("type"))),
+      findSources.listEndpoint(document(ListRepoSourcesRequest(Map("meta" -> "data"), optionalType))),
+      pushSource.pushEndpoint(document(Map("any" -> "data")), genericResp),
+//      listTransforms.list(document(Option("type"))),
       types.list(document(Seq("a", "b")))
       //, repo.repoEndpoint(document(ListRepoSourcesRequest(optionalType)), document(ListRepoSourcesResponse(Seq(ListedDataSource("source", optionalType)))))
     )

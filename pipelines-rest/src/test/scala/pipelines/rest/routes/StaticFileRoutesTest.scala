@@ -33,14 +33,14 @@ class StaticFileRoutesTest extends BaseRoutesTest {
       val route = DevConfig.staticRoutes()
       Get("/") ~> route.route ~> check {
         val indexhtml = responseText
-        indexhtml should include("<link rel=\"stylesheet\" type=\"text/css\" href=\"css/pipelines.css\">")
+        indexhtml should include("<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/pipelines.css\">")
       }
     }
     "redirect to /index from the normal path" in {
       val route = DevConfig.staticRoutes()
       Get() ~> route.route ~> check {
         val indexhtml = responseText
-        indexhtml should include("<link rel=\"stylesheet\" type=\"text/css\" href=\"css/pipelines.css\">")
+        indexhtml should include("<link rel=\"stylesheet\" type=\"text/css\" href=\"/css/pipelines.css\">")
       }
     }
     "serve css routes" in {

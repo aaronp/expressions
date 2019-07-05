@@ -3,7 +3,6 @@ package pipelines.users
 import java.lang.reflect.Constructor
 
 import com.typesafe.config.Config
-import pipelines.users.jwt.Claims
 
 import scala.concurrent.Future
 

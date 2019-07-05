@@ -4,7 +4,6 @@ import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.users.jwt.Claims
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

@@ -18,7 +18,7 @@ class StreamRoutesTest extends BaseRoutesTest {
         expectedData.foreach(wsClient.sendMessage)
 
         val expectedHeartbeat = wsClient.expectMessage()
-        expectedHeartbeat.asTextMessage.getStrictText shouldBe pipelines.socket.socket.heartBeatTextMsg
+        expectedHeartbeat.asTextMessage.getStrictText shouldBe pipelines.rest.socket.socket.heartBeatTextMsg
 
         wsClient.sendCompletion()
         wsClient.expectCompletion()

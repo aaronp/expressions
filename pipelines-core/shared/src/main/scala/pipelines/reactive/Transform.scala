@@ -1,11 +1,9 @@
 package pipelines.reactive
 
-import java.nio.file.Path
-
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
 import monix.reactive.Observable
-import pipelines.socket.{AddressedMessage, AddressedTextMessage}
+import pipelines.rest.socket.{AddressedMessage, AddressedTextMessage}
 
 import scala.util.{Failure, Success, Try}
 
@@ -56,6 +54,12 @@ object Transform {
     }
   }
 
+  object keys {
+
+    val Dump = "dump"
+    val PushEventAsAddressedMessage = "pushEventAsAddressedMessage"
+  }
+
   def defaultTransforms(): Map[String, Transform] = {
 
     Map[String, Transform](
@@ -71,7 +75,8 @@ object Transform {
       "_4"                               -> tuples._4,
       "addressedTextAsJson"              -> sockets.addressedTextAsJson,
       "addressedMessageAsJson"           -> sockets.addressedAsJson,
-      "dump"                             -> dump("debug")
+      keys.PushEventAsAddressedMessage   -> Transform.map[PushEvent, AddressedMessage](PushEvent.asAddressedMessage),
+      keys.Dump                             -> dump("debug")
     )
   }
   import scala.reflect.runtime.universe.TypeTag
@@ -168,6 +173,7 @@ object Transform {
   def zipWithIndex[A: TypeTag]: FixedTransform[A, (A, Long)] = apply[A, (A, Long)](_.zipWithIndex)
 
   def flatMap[A: TypeTag, B: TypeTag](f: A => Observable[B]): FixedTransform[A, B] = apply[A, B](_.flatMap(f))
+  def filter[A: TypeTag](predicate: A => Boolean): FixedTransform[A, A]            = apply[A, A](_.filter(predicate))
 
   def stringToJson: FixedTransform[String, Try[Json]]   = map(s => io.circe.parser.parse(s).toTry)
   def jsonToString: FixedTransform[Json, String]        = map[Json, String](_.noSpaces)

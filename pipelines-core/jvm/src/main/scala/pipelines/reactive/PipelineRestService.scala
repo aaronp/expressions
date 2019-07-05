@@ -9,7 +9,7 @@ import monix.reactive.Observable
 import pipelines.Pipeline
 import pipelines.reactive.DataSource.PushSource
 import pipelines.reactive.PipelineRestService.Settings
-import pipelines.socket.AddressedTextMessage
+import pipelines.rest.socket.AddressedTextMessage
 
 import scala.collection.concurrent
 import scala.concurrent.Future
@@ -27,13 +27,23 @@ object PipelineRestService {
 
     underlying.triggers.addTransform("persisted", JVMTransforms.writeToZipped(persistUnder))
 
-    underlying.sinks.add(DataSink.count(Map("name"       -> "count")))
-    underlying.sinks.add(RegisterAsSourceSink(Map("name" -> "register", "prefix" -> "register"), underlying.sources))
+    underlying.sinks.add(DataSink.count(Map(tags.Name       -> "count")))
+    underlying.sinks.add(RegisterAsSourceSink(Map(tags.Name -> "register", "prefix" -> "register"), underlying.sources))
 
     new PipelineRestService(settings, underlying, ioScheduler)
   }
 }
 
+/**
+  * Puts some additional sugar on top of the PipelineService to adapt it for use by our REST endpoints ...
+  *
+  * whatever additional plumbing noise, or adapting types to be the REST DTOs should go here instead of bulking up the
+  * [[PipelineService]]
+  *
+  * @param settings
+  * @param underlying
+  * @param ioScheduler
+  */
 class PipelineRestService(val settings: Settings, val underlying: PipelineService, ioScheduler: Scheduler) {
 
   def sinks(): Seq[DataSink] = {
@@ -75,7 +85,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
     underlying.triggers.connect(sourceCriteria, sinkCriteria, transforms, false, callback)
   }
 
-  /**
+  /** Registers a transformation for 'name' which will combine the matching source with the 'joinLatest' against an input source.
     *
     * @param name the name of the new transformation
     * @param criteria the criteria used to find what should be a single unique data source with which to join
@@ -87,20 +97,7 @@ class PipelineRestService(val settings: Settings, val underlying: PipelineServic
                                      criteria: MetadataCriteria,
                                      replace: Boolean = false,
                                      callback: TriggerCallback = TriggerCallback.Ignore): Either[String, (Transform, Future[Ack])] = {
-    underlying.sources.find(criteria) match {
-      case Seq(only) =>
-        val newTransform = Transform.combineLatest(only)
-        val ack          = underlying.triggers.addTransform(name, newTransform, replace, callback)
-        Right(newTransform -> ack)
-      case Seq() =>
-        underlying.sources.list() match {
-          case Seq()     => Left(s"There are no registered sources to match")
-          case Seq(only) => Left(s"The source '${only.metadata.mkString("[", ",", "]")}' doesn't match")
-          case Seq(_, _) => Left(s"Neither of the 2 sources match")
-          case many      => Left(s"None of the ${many.size} sources match")
-        }
-      case many => Left(s"${many.size} of the ${underlying.sources.size} sources match")
-    }
+    underlying.getOrCreateJoinTransform(name, criteria, replace, callback)(Transform.combineLatest)
   }
 
   def getOrCreateDump(text: String) = underlying.triggers.addTransform(text, Transform.dump(text))

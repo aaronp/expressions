@@ -12,23 +12,27 @@ import scala.concurrent.Future
   */
 trait DataSource extends HasMetadata {
 
-  def ensuringId(): DataSource = {
-    if (metadata.contains("id")) {
-      this
-    } else {
-      addMetadata("id", UUID.randomUUID.toString)
-    }
-  }
-
   /** the type DataSource
     */
   type T <: DataSource
 
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
+  def ensuringId(id: => String = UUID.randomUUID.toString): T = ensuringMetadata(tags.Id, id)
+
+  def ensuringContentType(): T = ensuringMetadata(tags.ContentType, contentType.toString)
+
   def addMetadata(entries: Map[String, String]): T
 
-  def metadataWithContentType: Map[String, String] = metadata.updated("contentType", contentType.toString)
+  def ensuringMetadata(key: String, value: => String): T = {
+    if (metadata.contains(key)) {
+      this.asInstanceOf[T]
+    } else {
+      addMetadata(key, value)
+    }
+  }
+
+  def metadataWithContentType: Map[String, String] = metadata.updated(tags.ContentType, contentType.toString)
 
   /** @return the content type of this data source
     */
@@ -41,6 +45,8 @@ trait DataSource extends HasMetadata {
       sys.error(s"${this} wasn't able to provide an observable for its own content type '$contentType'")
     }
   }
+
+  override def toString = s"${getClass.getSimpleName}(${id.getOrElse("no-id")} of $contentType)"
 }
 
 object DataSource {
@@ -79,6 +85,14 @@ object DataSource {
     new PushSource[A](contentType, input, output, metadata)
   }
 
+  /**
+    *
+    * @param contentType the type produced by this source
+    * @param input a handle on the Observer who
+    * @param obs
+    * @param metadata
+    * @tparam A
+    */
   class PushSource[A](override val contentType: ContentType, val input: Observer[A], obs: Observable[A], override val metadata: Map[String, String]) extends DataSource {
     override type T = PushSource[A]
     def addMetadata(entries: Map[String, String]): T = {

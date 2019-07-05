@@ -12,6 +12,7 @@ EXPOSE 9010
 RUN mkdir -p /app/web && \
     mkdir -p /app/data && \
     mkdir -p /app/logs && \
+    mkdir -p /app/jfr && \
     mkdir -p /app/scripts && \
     mkdir -p /app/lib && \
     mkdir -p /app/heapdump/

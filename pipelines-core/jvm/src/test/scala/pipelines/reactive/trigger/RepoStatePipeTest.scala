@@ -81,7 +81,7 @@ class RepoStatePipeTest extends BaseCoreTest {
         }
         received.foreach {
           case (_, _, UnmatchedSource(_)) =>
-          case _ => ???
+          case _                          => ???
         }
         received.clear()
 

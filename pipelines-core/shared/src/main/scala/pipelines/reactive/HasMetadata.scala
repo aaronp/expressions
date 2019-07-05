@@ -19,10 +19,12 @@ trait HasMetadata {
     }
   }
 
-  def id: Option[String] = metadata.get("id")
+  def id: Option[String] = metadata.get(tags.Id)
+  def name : Option[String] = metadata.get(tags.Name)
 }
 
 object HasMetadata {
+
   def apply(map: Map[String, String]) = new HasMetadata {
     override def metadata: Map[String, String] = map
   }

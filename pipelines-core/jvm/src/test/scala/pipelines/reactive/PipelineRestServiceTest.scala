@@ -1,11 +1,12 @@
 package pipelines.reactive
 
+import monix.execution.CancelableFuture
 import org.scalatest.concurrent.ScalaFutures
 import pipelines._
 import pipelines.reactive.DataSource.PushSource
 import pipelines.reactive.PipelineRestService.Settings
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
-import pipelines.socket.AddressedTextMessage
+import pipelines.rest.socket.AddressedTextMessage
 
 import scala.collection.mutable.ListBuffer
 import scala.util.{Failure, Success, Try}
@@ -44,7 +45,12 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
         val (second, _) = service.getOrCreatePushSource(Map("source" -> "second"))
         service.sinks.map(_.metadata).flatMap(_.get("name")) should contain("count")
 
-        service.connect(MetadataCriteria(second.metadata), MetadataCriteria("name" -> "count"), Seq("before", "join", "after"))
+        //
+        // call the 'connect' which matches the 'second' source with the 'count' sink going via the 'before', 'join', and 'after' transforms
+        //
+        val sourceCriteria = MetadataCriteria(second.metadata)
+        val sinkCriteria   = MetadataCriteria("name" -> "count")
+        service.connect(sourceCriteria, sinkCriteria, Seq("before", "join", "after"))
 
         val pipeline = eventually {
           val Seq(found) = service.pipelines.values.toSeq
@@ -60,7 +66,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
 
         firstSrc.complete()
         secondSrc.complete()
-        pipeline.result.futureValue shouldBe 3
+        pipeline.resultFuture.futureValue shouldBe 3
       }
     }
 
@@ -82,7 +88,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
         WithScheduler { implicit sched =>
           val settings = Settings(dir, sched)
           Given("A new service")
-          val service = PipelineRestService(settings)
+          val service: PipelineRestService = PipelineRestService(settings)
 
           When("We register a trigger which connects sources which contain a 'autoconnect' set to 'true' with a 'count' sink via the filesystem")
           eventually {
@@ -108,7 +114,6 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
           }
           service.underlying.matchEvents.foreach {
             case (_, newConnection) =>
-              println(s"new match: ${newConnection.matches.size} matches")
               matches += newConnection
           }
 
@@ -153,7 +158,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
           pushSource.push(AddressedTextMessage("second", "value"))
           pushSource.complete()
 
-          pipeline.result.futureValue shouldBe 2
+          pipeline.resultFuture.futureValue shouldBe 2
         }
       }
     }

@@ -2,7 +2,7 @@ package pipelines.rest.jwt
 import java.time.{ZoneId, ZonedDateTime}
 
 import org.scalatest.{Matchers, WordSpec}
-import pipelines.users.jwt.Claims
+import pipelines.users.Claims
 
 import scala.concurrent.duration._
 

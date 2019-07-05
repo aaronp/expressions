@@ -24,16 +24,16 @@ class RepoTest extends BaseCoreTest {
         val OnSourceAdded(ds, _) = events.head
         ds.metadata shouldBe added.metadata
         events.clear()
-        sources.get(added.metadata("id")) shouldBe Some(added)
+        sources.forId(added.id.get) shouldBe Some(added)
 
-        sources.remove(added.metadata("id")).isDefined shouldBe true
+        sources.remove(added.id.get).isDefined shouldBe true
 
         eventually {
           events.size shouldBe 1
         }
         val OnSourceRemoved(ds2, _) = events.head
         ds2.metadata shouldBe added.metadata
-        sources.get(added.metadata("id")) shouldBe None
+        sources.forId(added.id.get) shouldBe None
       }
     }
   }

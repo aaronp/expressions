@@ -8,8 +8,9 @@ import akka.http.scaladsl.server._
 import com.typesafe.scalalogging.StrictLogging
 import javax.crypto.spec.SecretKeySpec
 import pipelines.core.Redirection
+import pipelines.users.Claims
 import pipelines.users.jwt.JsonWebToken.JwtError
-import pipelines.users.jwt.{Claims, JsonWebToken}
+import pipelines.users.jwt.JsonWebToken
 
 /**
   * Mixing in this trait will offer an 'authenticated' directive to allow routes to require authentication.
@@ -23,24 +24,49 @@ import pipelines.users.jwt.{Claims, JsonWebToken}
   */
 trait AuthenticatedDirective extends StrictLogging {
 
+  val `Sec-Websocket-Protocol` = "Sec-Websocket-Protocol"
+  val `Sec-WebSocket-Key`      = "Sec-WebSocket-Key"
+
+  val jwtHeaderOpt: Directive1[Option[String]] = Directives.optionalHeaderValue(extractCredentials)
+
+  /**
+    * Extracts the token specified in the wss protocol which was set via WebSocketTokenCache
+    */
+  val socketTokenOpt: Directive1[Option[String]]    = Directives.optionalHeaderValue(extractSocketToken)
+  val socketTokenKeyOpt: Directive1[Option[String]] = Directives.optionalHeaderValue(extractSocketKey)
+
+  protected def parseJwt(jwtTokenString: String): Either[JwtError, JsonWebToken] = {
+    JsonWebToken.forToken(jwtTokenString, secret)
+  }
+
+  def authFailedRejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenges.oAuth2(realm))
+  def authFailed          = Directives.reject(authFailedRejection)
+
+  def authRejectedRejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, HttpChallenges.oAuth2(realm))
+  def authRejected          = Directives.reject(authRejectedRejection)
+
   /**
     * Extracts the credentials from the request headers.
     * In case of absence of credentials rejects request
     */
   lazy val authenticatedEither: Directive1[Either[HttpResponse, Claims]] = {
-
-    Directives.optionalHeaderValue(extractCredentials).flatMap {
+    jwtHeaderOpt.flatMap {
       case Some(jwtTokenString) =>
-        val jwt: Either[JwtError, JsonWebToken] = JsonWebToken.forToken(jwtTokenString, secret)
-        jwt match {
+        parseJwt(jwtTokenString) match {
           case Right(jwt) if !isExpired(jwt) => onValidToken(jwtTokenString, jwt)
-          case Right(jwt)                    => onExpiredToken(jwt)
-          case Left(err)                     => onInvalidToken(err)
+          case Right(jwt)                    =>
+            //onExpiredToken(jwt)
+            logger.info(s"Expired token: $jwt")
+            authFailed
+          case Left(err) =>
+            logger.warn(s"Invalid token: $err")
+//            onInvalidToken(err)
+            authFailed
         }
       case None =>
-        onMissingToken
+        //onMissingToken
+        authRejected
     }
-
   }
 
   def authenticated: Directive[Tuple1[Claims]] = {
@@ -154,7 +180,21 @@ trait AuthenticatedDirective extends StrictLogging {
           case "x-access-token" => Some(header.value)
           case _                => None
         }
+    }
+  }
 
+  /**
+    * This heading is set when connecting a wss:// having specified the protocol
+    *
+    * @param header
+    * @return
+    */
+  private def extractSocketToken(header: HttpHeader): Option[String] = extractHeaderWithName(`Sec-Websocket-Protocol`, header)
+  private def extractSocketKey(header: HttpHeader): Option[String]   = extractHeaderWithName(`Sec-WebSocket-Key`, header)
+  private def extractHeaderWithName(expected: String, header: HttpHeader): Option[String] = {
+    header.name match {
+      case name if name.equalsIgnoreCase(expected) => Some(header.value)
+      case _                                       => None
     }
   }
 

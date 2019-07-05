@@ -1,13 +1,11 @@
 package pipelines.client.layout
 
-import io.circe.Json
-import pipelines.client.HtmlUtils
-import pipelines.client.source.{PushSourceComponent, PushSourceState}
+import org.scalajs.dom.Node
+import pipelines.client.source.PushSourceState
+import pipelines.client.{Constants, HtmlUtils}
 import pipelines.web.GoldenLayoutConfig
-import scalatags.Text.all._
 
 import scala.scalajs.js
-import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 /**
@@ -15,69 +13,52 @@ import scala.scalajs.js.annotation.JSExportTopLevel
   */
 object GoldenLayoutComponents extends HtmlUtils {
 
-  def addChild(newItemConfig: js.Dynamic) = {
+  /**
+    * Adds the component w/ the given 'newConfig' either to the currently selected component or just appends it to the
+    * layout.
+    *
+    * TODO: append it as a row or column of the biggest area, not just blindly
+    *
+    * @param layout
+    * @param newConfig
+    */
+  def addComponent(layout: GoldenLayout, newConfig: js.Dynamic): Unit = {
+    val selectedOpt = Option(layout.selectedItem).filterNot(_ == null)
+    selectedOpt match {
+      case None           => GoldenLayoutComponents.addChild(newConfig)
+      case Some(selected) => selected.addChild(newConfig)
+    }
+  }
+
+  def addDragSourceChild(layout: GoldenLayout, node: Node, newConfig: js.Dynamic): Unit = {
+    log(s"Adding drag source $newConfig")
+    layout.createDragSource(node, newConfig)
+
+    addComponent(layout, newConfig)
+  }
+
+  /**
+    * This exposes a callback into our manual 'addLayoutChild' in app.js
+    *
+    * @param newItemConfig
+    */
+  def addChild(newItemConfig: js.Dynamic): Unit = {
     if (newItemConfig != null) {
       js.Dynamic.global.addLayoutChild(newItemConfig)
     }
   }
 
   @JSExportTopLevel("initialGoldenLayout")
-  def initialLayout() = {
-    def test(name: String, label: String): GoldenLayoutConfig = GoldenLayoutConfig.component(name, Json.obj("label" -> Json.fromString(label)))
-
-    val col = GoldenLayoutConfig.column() :+ test("testComponent", "B") :+ test("testComponent2", "C")
-
-    val push = {
+  def initialLayout(): String = {
+    val push: GoldenLayoutConfig = {
       import io.circe.syntax._
-      val pushState = PushSourceState("default", "base", "pushy mc push-face", false, "pushSource").asJson
-      GoldenLayoutConfig.component("pushSource", pushState)
+      val pushState = PushSourceState().asJson
+      GoldenLayoutConfig.component(Constants.components.pushSource, pushState)
     }
 
-    val layout = GoldenLayoutConfig.row() :+ push :+ col
+    val layout = GoldenLayoutConfig.row() :+ push
 
     layout.toConfigJson().spaces2
   }
 
-  @JSExportTopLevel("renderExample")
-  def renderExample(st8: js.Dynamic): String = {
-    val name         = st8.componentName
-    val json: String = JSON.stringify(st8)
-
-    div(
-      h1(id := "title", st8.label.toString),
-      p(json)
-    ).render
-
-  }
-  @JSExportTopLevel("renderExample2")
-  def renderExample2(st8: js.Dynamic): String = {
-    val name         = st8.componentName
-    val json: String = JSON.stringify(st8)
-
-    div(
-      h2(id := "title", st8.label.toString),
-      p("Second component:"),
-      p(json)
-    ).render
-
-  }
-
-  @JSExportTopLevel("renderPushSource")
-  def renderPushSource(st8: js.Dynamic): String = {
-//    val name         = st8.componentName
-    val json: String = JSON.stringify(st8)
-    import io.circe.syntax._
-    val pss = io.circe.parser.decode[PushSourceState](json)
-
-    log(s"pss json is ${pss}")
-    pss match {
-      case Left(err) =>
-        log(s"Couldn't parse '$json' as PushSourceState: $err")
-        PushSourceComponent.render(PushSourceState("a", "b", "c", true, "pushSource"))
-
-      case Right(state) =>
-        PushSourceComponent.render(state)
-    }
-
-  }
 }

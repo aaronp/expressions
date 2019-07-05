@@ -23,10 +23,11 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
                                     nextObs: Observable[Event],
                                     addId: (A, String) => A,
                                     addEvent: (A, TriggerCallback) => Event,
-                                    removeEvent: (A, TriggerCallback) => Event)(implicit scheduler: Scheduler) {
+                                    removeEvent: (A, TriggerCallback) => Event)(implicit val scheduler: Scheduler) {
 
   private object Lock
-  private var byId = Map[String, A]()
+  private var byId   = Map[String, A]()
+  private var byName = Map[String, A]()
 
   def find(criteria: MetadataCriteria): Seq[A] = {
     byId.values.filter(x => criteria.matches(x.metadata)).toSeq
@@ -36,11 +37,17 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
 
   def size() = byId.size
 
-  def get(id: String): Option[A] = byId.get(id)
+  def forId(id: String): Option[A]     = byId.get(id)
+  def forName(name: String): Option[A] = byName.get(name)
 
   def remove(id: String, callback: TriggerCallback = TriggerCallback.Ignore): Option[Future[Ack]] = {
     val removed = Lock.synchronized {
-      val before = byId.get(id)
+      val before: Option[A] = byId.get(id)
+      before.foreach { value =>
+        value.name.foreach { name =>
+          byName = byName - name
+        }
+      }
       byId = byId - id
       before
     }
@@ -48,28 +55,34 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
       input.onNext(removeEvent(instance, callback))
     }
   }
-  def add(source: A, callback: TriggerCallback = TriggerCallback.Ignore): (A, Future[Ack]) = {
+  def add[T <: A](value: T, callback: TriggerCallback = TriggerCallback.Ignore): (T, Future[Ack]) = {
     val id: String  = UUID.randomUUID().toString
-    val idSource: A = addId(source, id)
+    val idSource: T = addId(value, id).asInstanceOf[T]
     Lock.synchronized {
       byId = byId.updated(id, idSource)
+      value.name.foreach { key =>
+        byName = byName.updated(key, idSource)
+      }
     }
     idSource -> input.onNext(addEvent(idSource, callback))
   }
 
   /** @return an infinite observable of all existing and future values
     */
-  def events: Observable[Event] = (Observable.fromIterable(byId.values).map(addEvent(_, TriggerCallback.Ignore)) ++ nextObs)
+  def events: Observable[Event] = {
+    val existingEvents = Observable.fromIterable(byId.values).map(addEvent(_, TriggerCallback.Ignore))
+    existingEvents ++ nextObs
+  }
 }
 
 object Repo {
   def sources(implicit scheduler: Scheduler): Repo[SourceEvent, DataSource] = {
     val (input: Observer[SourceEvent], output: Observable[SourceEvent]) = Pipe.publish[SourceEvent].multicast
-    new Repo[SourceEvent, DataSource](input, output, (src: DataSource, id: String) => src.addMetadata("id", id), OnSourceAdded.apply, OnSourceRemoved.apply)
+    new Repo[SourceEvent, DataSource](input, output, (src: DataSource, id: String) => src.ensuringId(id), OnSourceAdded.apply, OnSourceRemoved.apply)
   }
   def sinks(implicit scheduler: Scheduler): Repo[SinkEvent, DataSink] = {
     val (input: Observer[SinkEvent], output: Observable[SinkEvent]) = Pipe.publish[SinkEvent].multicast
-    new Repo[SinkEvent, DataSink](input, output, (sink: DataSink, id: String) => sink.addMetadata("id", id), OnSinkAdded.apply, OnSinkRemoved.apply)
+    new Repo[SinkEvent, DataSink](input, output, (sink: DataSink, id: String) => sink.ensuringId(id), OnSinkAdded.apply, OnSinkRemoved.apply)
   }
 
 }

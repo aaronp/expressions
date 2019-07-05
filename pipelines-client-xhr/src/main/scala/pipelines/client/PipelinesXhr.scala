@@ -2,14 +2,17 @@ package pipelines.client
 
 import endpoints.algebra.Documentation
 import endpoints.xhr
+import io.circe.Json
 import org.scalajs.dom
 import org.scalajs.dom.XMLHttpRequest
 import pipelines.core.{CoreSchemas, Redirection}
-import pipelines.manual.PushEndpoints
-import pipelines.reactive.repo.{ListRepoSourcesResponse, RepoSchemas, SourceRepoEndpoints}
-import pipelines.users.{LoginEndpoints, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
+import pipelines.reactive.PushEndpoints
+import pipelines.reactive.repo.{ListRepoSourcesResponse, PushSourceResponse, RepoSchemas, SourceEndpoints}
+import pipelines.rest.socket.SocketEndpoint
+import pipelines.users.{LoginEndpoints, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 
 /**
@@ -24,27 +27,42 @@ object PipelinesXhr
     with LoginEndpoints
     with UserEndpoints
     with UserRoleEndpoints
-    with SourceRepoEndpoints
+    with SourceEndpoints
+    with SocketEndpoint
     with RepoSchemas
     with UserSchemas
     with CoreSchemas
     with PushEndpoints {
 
-  def onLogin(response: LoginResponse) = {
-    state = state.withResponse(response)
+  def execContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+
+  /**
+    * dom.window.location.host -> localhost:80
+    * dom.window.location.hostname -> localhost
+    * dom.window.location.origin -> https://localhost:80
+    *
+    */
+  def createSocket() = socketState
+  private lazy val socketState = {
+    socketTokens.newToken.apply().map { tempToken =>
+      ClientSocketState(sockets.request.href(), tempToken)
+    }
   }
 
-  private var state = {
-    dom.window.console.log("Creating new app state")
-    AppState()
+  private implicit def asRichEndpoint[A, B](ep: PipelinesXhr.Endpoint[A, B]) = new {
+    def wrapped(): WrappedEndpoint[A, B] = ep match {
+      case wrapped: WrappedEndpoint[A, B] => wrapped
+      case other                          => sys.error(s"endpoint was $other")
+    }
+  }
+
+  def createSource(name: String, persist: Boolean, metadata: Map[String, String]): Future[PushSourceResponse] = {
+    val createIfMissing = Option(true)
+    pushSource.pushEndpoint.wrapped.addParams(metadata).apply((name, createIfMissing, Option(persist)), Json.Null)
   }
 
   def listSources(queryParams: Map[String, String]): Future[ListRepoSourcesResponse] = {
-    val endpoint = sources.listEndpoint(ListRepoSourcesResponseSchema) match {
-      case wrapped: WrappedEndpoint[Unit, ListRepoSourcesResponse] =>
-        wrapped.copy(request = wrapped.request.copy(additionalQueryParams = queryParams))
-      case other => sys.error(s"endpoint was $other")
-    }
+    val endpoint = findSources.listEndpoint(ListRepoSourcesResponseSchema).wrapped.addParams(queryParams)
     endpoint()
   }
 
@@ -83,9 +101,8 @@ object PipelinesXhr
       extends Request[A] {
     override def apply(a: A): (XMLHttpRequest, Option[js.Any]) = {
       val request @ (xhr, _) = originalRequest(a)
-      dom.window.console.log(s"Making request $a, token is ${state.currentToken}")
       //xhr.setRequestHeader("Content-Type", "application/json")
-      state.currentToken.foreach { jwtToken =>
+      AppState.get().currentToken.foreach { jwtToken =>
         xhr.setRequestHeader("Authorization", s"Bearer $jwtToken")
         xhr.setRequestHeader("X-Access-Token", jwtToken)
       }
@@ -106,6 +123,12 @@ object PipelinesXhr
       description: Documentation,
       tags: List[String]
   ) extends Endpoint[A, B](request) {
+    def addParams(queryParams: Map[String, String]): WrappedEndpoint[A, B] = {
+      withParams(request.additionalQueryParams ++ queryParams)
+    }
+    def withParams(queryParams: Map[String, String]): WrappedEndpoint[A, B] = {
+      copy(request = request.copy(additionalQueryParams = request.additionalQueryParams ++ queryParams))
+    }
     override def apply(a: A) = {
       val promise = Promise[B]()
       performXhr(request, response, a)(
@@ -118,15 +141,6 @@ object PipelinesXhr
 
   def wrapResponse[B](response: js.Function1[XMLHttpRequest, Either[Exception, B]])(xhr: XMLHttpRequest) = {
     val result: Either[Exception, B] = response(xhr)
-    dom.window.console.log(s"xhr status '${xhr.statusText}' (code='${xhr.status}') resp '${xhr.responseText}' returned ${result}")
-
-    dom.window.console.log(s"href=${dom.window.location.href}")
-    dom.window.console.log(s"search=${dom.window.location.search}")
-    dom.window.console.log(s"location=${dom.window.location}")
-    dom.window.console.log(s"pathname=${dom.window.location.pathname}")
-    dom.window.console.log(s"host=${dom.window.location.host}")
-    dom.window.console.log(s"hash=${dom.window.location.hash}")
-    dom.window.console.log(s"origin=${dom.window.location.origin}")
 
     xhr.status match {
       case 401 =>

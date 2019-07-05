@@ -15,11 +15,13 @@ trait RepoSchemas extends endpoints.circe.JsonSchemas {
   implicit def ListTransformationRequestSchema: JsonSchema[ListTransformationRequest]   = JsonSchema(implicitly, implicitly)
   implicit def ListTransformationResponseSchema: JsonSchema[ListTransformationResponse] = JsonSchema(implicitly, implicitly)
 
-  implicit def CreateRepoSourceRequestSchema: JsonSchema[CreateRepoSourceRequest]   = JsonSchema(implicitly, implicitly)
-  implicit def CreateRepoSourceResponseSchema: JsonSchema[CreateRepoSourceResponse] = JsonSchema(implicitly, implicitly)
+  implicit def CreateRepoSourceRequestSchema: JsonSchema[CreateSourceAliasRequest]   = JsonSchema(implicitly, implicitly)
+  implicit def CreateRepoSourceResponseSchema: JsonSchema[CreateSourceAliasResponse] = JsonSchema(implicitly, implicitly)
 
   implicit def RepoRequestSchema: JsonSchema[RepoRequest]   = JsonSchema(implicitly, implicitly)
   implicit def RepoResponseSchema: JsonSchema[RepoResponse] = JsonSchema(implicitly, implicitly)
 
   implicit def CirceJsonSchema: JsonSchema[Json] = JsonSchema(implicitly, implicitly)
+
+  implicit def PushSourceResponseSchema: JsonSchema[PushSourceResponse] = JsonSchema(implicitly, implicitly)
 }

@@ -7,6 +7,18 @@ import scala.collection.mutable.ListBuffer
 
 class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
 
+  "PipelineService.pushSourceForName" should {
+    "create a new source if one doesn't already exist" in {
+      WithScheduler { implicit scheduler =>
+        val service           = PipelineService()
+        val (true, created)   = service.pushSourceForName("test", true, false, Map("foo" -> "bar")).futureValue
+        val (false, existing) = service.pushSourceForName("test", true, false, Map("foo" -> "bar")).futureValue
+
+        created shouldBe existing
+        created.metadata("foo") shouldBe "bar"
+      }
+    }
+  }
   "PipelineService.getOrCreateSink" should {
     "link a sink which matches an existing source" in {
       WithScheduler { implicit scheduler =>
@@ -37,18 +49,26 @@ class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
           val st8 = service.triggers.currentState().get
           st8.sinks.size shouldBe 1
           st8.triggers.size shouldBe 1
-          st8.transformsByName.keySet should contain ("map")
+          st8.transformsByName.keySet should contain("map")
         }
 
+        service.pipelines.size shouldBe 0
 
         val src: DataSource.PushSource[String] = DataSource.createPush[String].apply(scheduler).addMetadata("foo", "bar")
-        val Seq(createdSource) = service.getOrCreateSource(src)
+        val Seq(createdSource)                 = service.getOrCreateSource(src)
+        createdSource.name shouldBe src.name
+
+        eventually {
+          service.pipelines.size shouldBe 1
+          val (_, p) = service.pipelines.head
+          p.result
+        }
 
         src.push("value")
         src.complete()
 
         eventually {
-          received should contain only("value")
+          received should contain only ("value".reverse)
         }
       }
     }

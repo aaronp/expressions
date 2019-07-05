@@ -3,6 +3,7 @@ package pipelines.client
 import java.util.UUID
 
 import org.scalajs.dom
+import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw._
 import org.scalajs.dom.{document, html, window}
 
@@ -13,6 +14,18 @@ object HtmlUtils extends HtmlUtils
 
 trait HtmlUtils {
 
+  /**
+    * TODO - display this in an app footer
+    *
+    * @param str
+    */
+  def raiseError(str: String) = {
+    showAlert(str)
+  }
+
+  def divById(id: String) = elmById(id) match {
+    case div: Div => div
+  }
   def elmById(id: String) = document.getElementById(id)
 
   def childrenFor(html: HTMLElement): immutable.IndexedSeq[Node] = {
@@ -62,6 +75,12 @@ trait HtmlUtils {
 
   def showAlert(text: String): Unit = {
     dom.window.alert(text)
+  }
+  val debugOn = true
+  def debug(text: String): Unit = {
+    if (debugOn) {
+      log(text)
+    }
   }
   def log(text: String): Unit = {
     dom.window.console.log(text)

@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.server.Directives.extractRequest
 import javax.crypto.spec.SecretKeySpec
-import pipelines.users.jwt.Claims
+import pipelines.users.Claims
 
 class SecureRoutes(settings: SecureRouteSettings) extends AuthenticatedDirective {
 

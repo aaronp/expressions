@@ -9,9 +9,10 @@ import monix.reactive.Observable
   * @param sources
   */
 case class RegisterAsSourceSink(override val metadata: Map[String, String], sources: Sources) extends DataSink {
-  override type T      = RegisterAsSourceSink
-  override type Input  = Any
-  override type Output = Unit
+  override type T             = RegisterAsSourceSink
+  override type Input         = Any
+  override type Output        = Unit
+  override type ConnectResult = CancelableFuture[Unit]
 
   override def inputType: ContentType = ContentType.any
 

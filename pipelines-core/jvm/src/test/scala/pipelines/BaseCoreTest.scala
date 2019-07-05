@@ -2,13 +2,13 @@ package pipelines
 
 import io.circe.Json
 import monix.execution.Scheduler
-import org.scalatest.concurrent.Eventually
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{GivenWhenThen, Matchers, WordSpec}
 
 import scala.concurrent.duration._
 
-abstract class BaseCoreTest extends WordSpec with Matchers with Eventually with GivenWhenThen {
+abstract class BaseCoreTest extends WordSpec with Matchers with Eventually with GivenWhenThen with ScalaFutures {
 
   def withScheduler[A](f: Scheduler => A): A = WithScheduler(f)
 

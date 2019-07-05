@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.Pipeline
@@ -12,6 +12,9 @@ import pipelines.reactive.repo.{ListRepoSourcesResponse, ListedDataSource}
 import pipelines.reactive.trigger.{PipelineMatch, RepoState, RepoStatePipe, TriggerEvent}
 
 import scala.collection.concurrent
+import scala.concurrent.Future
+import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * An in-memory, JVM-side place to support:
@@ -27,7 +30,18 @@ import scala.collection.concurrent
   * @param triggers
   * @param scheduler
   */
-class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: RepoStatePipe)(implicit scheduler: Scheduler) extends StrictLogging {
+class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: StreamDao[Future], val triggers: RepoStatePipe)(implicit scheduler: Scheduler) extends StrictLogging {
+
+  override def toString: String = {
+    pipelines
+      .map {
+        case (id, p) =>
+          s"""$id
+         |\t$p
+       """.stripMargin
+      }
+      .mkString("\n")
+  }
 
   private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
     logger.info(s"!>! Pipeline added $id : $pipeline")
@@ -38,7 +52,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Repo
     val criteria = MetadataCriteria(queryParams)
 
     val results = sources.list().withFilter(ds => criteria.matches(ds.metadataWithContentType)).map { found: DataSource =>
-      new ListedDataSource(found.id.getOrElse(""), found.metadataWithContentType, Option(found.contentType))
+      new ListedDataSource(found.metadataWithContentType, Option(found.contentType))
     }
     ListRepoSourcesResponse(results)
   }
@@ -52,7 +66,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Repo
     latest := Some(entry)
   }(triggers.scheduler)
 
-  private val pipelinesById = {
+  private val pipelinesById: concurrent.Map[UUID, Pipeline[_, _]] = {
     import scala.collection.JavaConverters._
     new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_, _]]().asScala
   }
@@ -68,44 +82,165 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Repo
         Some(p)
     }
   }
-  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = pipelinesById
 
+  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = pipelinesById
+  def pipelinesForSource(sourceId: String) = {
+    pipelines().values.filter(_.root.id.exists(_ == sourceId))
+  }
+  def pipelinesForSink(sinkId: String) = {
+    pipelines().values.filter(_.sink.id.exists(_ == sinkId))
+  }
+  def pipelinesForSourceAndSink(sourceId: String, sinkId: String) = {
+    pipelines().values.filter { p =>
+      p.root.id.exists(_ == sourceId) &&
+      p.sink.id.exists(_ == sinkId)
+    }
+  }
+
+  /**
+    * an observable of 'matches' containing the input (a new source, sink, trigger) with the 'match' created from it.
+    *
+    */
   lazy val matchEvents: Observable[(TriggerInput, PipelineMatch)] = triggers.output
     .flatMap {
       case (_, input, event) => Observable.fromIterable(event.matches.map(input -> _))
     }
     .share(scheduler)
 
-  lazy val pipelineCreatedEvents: Observable[Pipeline[_, _]] = matchEvents
-    .flatMap {
-      case (input: TriggerInput, mtch: PipelineMatch) =>
-        onPipelineMatch(input, mtch) match {
-          case Left(err) =>
-            input.callback.onFailedMatch(input, mtch, err)
-            logger.info(s"Couldn't create a pipeline: $err")
-            Observable.empty[Pipeline[_, _]]
-          case Right(pipeline: Pipeline[_, _]) =>
-            logger.info(s"Pipeline '${pipeline.matchId}' added : $pipeline")
-            input.callback.onMatch(input, mtch, pipeline)
-            Observable(pipeline)
-        }
-    }
-    .share(scheduler)
+  /**
+    * An event stream of Pipelines -- joined up sources and sinks
+    */
+  lazy val pipelineCreatedEvents: Observable[Pipeline[_, _]] = {
+    matchEvents
+      .flatMap {
+        case (input: TriggerInput, mtch: PipelineMatch) =>
+          onPipelineMatch(input, mtch) match {
+            case Left(err) =>
+              input.callback.onFailedMatch(input, mtch, err)
+              logger.info(s"Couldn't create a pipeline: $err")
+              Observable.empty[Pipeline[_, _]]
+            case Right(pipeline: Pipeline[_, _]) =>
+              logger.info(s"!!!Pipeline '${pipeline.matchId}' added due to\n\t$input\n\tWith Trigger:\n\t${mtch.trigger}\n\tPipeline:\n\t$pipeline")
+              input.callback.onMatch(input, mtch, pipeline)
+              Observable(pipeline)
+          }
+      }
+      .map { pipeline =>
+        addPipeline(pipeline.matchId, pipeline)
+        pipeline
+      }
+      .share(scheduler)
+  }
 
   def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_, _]] = {
     import pipelineMatch._
-    Pipeline(pipelineMatch.matchId, source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
-      obs.guarantee(Task.eval {
-        logger.info(s"Pipeline removed '${pipelineMatch.matchId}' : $pipelineMatch")
-        pipelinesById.remove(pipelineMatch.matchId)
-      })
-    }(scheduler)
+    val foundPipelines: Seq[Pipeline[_, _]] = for {
+      sourceId <- pipelineMatch.source.id.toSeq
+      sinkId   <- pipelineMatch.sink.id.toSeq
+      p        <- pipelinesForSourceAndSink(sourceId, sinkId)
+    } yield {
+      p
+    }
+
+    def create() = {
+      Pipeline(pipelineMatch.matchId, source, transforms, sink.aux) { obs: Observable[pipelineMatch.sink.Input] =>
+        obs
+          .guarantee(Task.eval {
+            logger.info(s"Pipeline removed '${pipelineMatch.matchId}' : $pipelineMatch")
+            pipelinesById.remove(pipelineMatch.matchId)
+          })
+      }(scheduler)
+    }
+
+    if (foundPipelines.nonEmpty) {
+      Left(s"Source ${pipelineMatch.source.id} is already connected to ${pipelineMatch.sink.id}")
+    } else {
+
+      create()
+    }
+
   }
 
   def sourceMetadata(): Seq[Map[String, String]] = sources.list().map(_.metadata)
   def sinkMetadata(): Seq[Map[String, String]]   = sinks.list().map(_.metadata)
 
-  def transformsById(): Map[String, Transform]               = state().fold(Map.empty[String, Transform])(_.transformsByName)
+  def transformsById(): Map[String, Transform] = state().fold(Map.empty[String, Transform])(_.transformsByName)
+
+  /**
+    * A means to get a source for a particular name (not ID), and potentially create a new one if one does not already exist.
+    *
+    * If one exists, the queryParams and persist flag are NOT used. If a new source IS created, then the 'persist' determines whether
+    * the source is written to persistent storage (e.g. a new source w/ the same name should be loaded on startup)
+    *
+    * @param name
+    * @param createIfMissing
+    * @param persist
+    * @param queryParams
+    * @tparam A
+    * @return a future detailing if the source was created and the push source, either new or created
+    */
+  def pushSourceForName[A: TypeTag](name: String, createIfMissing: Boolean, persist: Boolean, queryParams: Map[String, String]): Future[(Boolean, DataSource.PushSource[A])] = {
+    getOrCreateSourceForName[DataSource.PushSource[A]](name, createIfMissing, persist) {
+      val metadata = queryParams.updated(tags.Name, name)
+      DataSource
+        .push[A](metadata)
+        .ensuringId()
+        .ensuringMetadata(tags.SourceType, tags.typeValues.Push)
+        .ensuringContentType()
+    }
+  }
+
+  def getOrCreateSinkForName[S <: DataSink: ClassTag](name: String, createIfMissing: Boolean, persist: Boolean)(newSink: => S): Future[(Boolean, S)] = {
+    sinks.forName(name) match {
+      case Some(src: S) => Future.successful(false -> src)
+      case Some(other)  => Future.failed(new Exception(s"Sink '$name' is not a ${implicitly[ClassTag[S]].runtimeClass.getName}: $other"))
+      case None if createIfMissing =>
+        val dataSink: S = newSink
+
+        def readBack(): Future[(Boolean, S)] = {
+          getOrCreateSink(MetadataCriteria(Map(tags.Name -> name)), dataSink) match {
+            case Seq()         => Future.failed(new Exception(s"Compute says no  - sink $name not created"))
+            case Seq(found: S) => Future.successful(true -> found)
+            case many          => Future.failed(new Exception(s"Race condition creating sink as we found ${many.size} sinks for $name"))
+          }
+        }
+        if (persist) {
+          streamDao.persistSource(dataSink.metadata).flatMap { _ =>
+            readBack()
+          }
+        } else {
+          readBack()
+        }
+      case None =>
+        Future.failed(new Exception(s"Sink '${name}' doesn't exist and 'createIfMissing' query parameter not set"))
+    }
+  }
+  def getOrCreateSourceForName[S <: DataSource: ClassTag](name: String, createIfMissing: Boolean, persist: Boolean)(newSource: => S): Future[(Boolean, S)] = {
+    sources.forName(name) match {
+      case Some(src: S) => Future.successful(false -> src)
+      case Some(other)  => Future.failed(new Exception(s"Source '$name' is not a ${implicitly[ClassTag[S]].runtimeClass.getName}: $other"))
+      case None if createIfMissing =>
+        val dataSource: S = newSource
+
+        def readBack(): Future[(Boolean, S)] = {
+          getOrCreateSource(MetadataCriteria(Map(tags.Name -> name)), dataSource) match {
+            case Seq()         => Future.failed(new Exception(s"Compute says no  - source $name not created"))
+            case Seq(found: S) => Future.successful(true -> found)
+            case many          => Future.failed(new Exception(s"Race condition creating source as we found ${many.size} sources for $name"))
+          }
+        }
+        if (persist) {
+          streamDao.persistSource(dataSource.metadata).flatMap { _ =>
+            readBack()
+          }
+        } else {
+          readBack()
+        }
+      case None =>
+        Future.failed(new Exception(s"Source '${name}' doesn't exist and 'createIfMissing' query parameter not set"))
+    }
+  }
+
   def getOrCreateSource(source: DataSource): Seq[DataSource] = getOrCreateSource(MetadataCriteria(source.metadata), source)
   def getOrCreateSource(criteria: MetadataCriteria, source: => DataSource, callback: TriggerCallback = TriggerCallback.Ignore): Seq[DataSource] = {
     sources.find(criteria) match {
@@ -124,18 +259,49 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val triggers: Repo
       case found => found
     }
   }
+
+  def addTransform(name: String, newTransform: Transform, replace: Boolean = false, callback: TriggerCallback = TriggerCallback.Ignore) = {
+    triggers.addTransform(name, newTransform, replace, callback)
+  }
+
+  /** Registers a transformation for 'name' which will combine the matching source with the 'joinLatest' against an input source.
+    *
+    * @param name the name of the new transformation
+    * @param criteria the criteria used to find what should be a single unique data source with which to join
+    * @param replace a flag to determine what to do if an existing transform is already registered with the given name
+    * @param callback a callback to invoke with the source is registered
+    * @return either the new transform or a left error message
+    */
+  def getOrCreateJoinTransform(name: String, criteria: MetadataCriteria, replace: Boolean = false, callback: TriggerCallback = TriggerCallback.Ignore)(
+      transformSource: DataSource => Transform): Either[String, (Transform, Future[Ack])] = {
+    sources.find(criteria) match {
+      case Seq(only: DataSource) =>
+        val newTransform: Transform = transformSource(only)
+        val ack                     = addTransform(name, newTransform, replace, callback)
+        Right(newTransform -> ack)
+      case Seq() =>
+        sources.list() match {
+          case Seq()     => Left(s"There are no registered sources to match")
+          case Seq(only) => Left(s"The source '${only.metadata.mkString("[", ",", "]")}' doesn't match")
+          case Seq(_, _) => Left(s"Neither of the 2 sources match")
+          case many      => Left(s"None of the ${many.size} sources match")
+        }
+      case many => Left(s"${many.size} of the ${sources.size} sources match")
+    }
+  }
 }
 
 object PipelineService extends StrictLogging {
-  def apply(transforms: Map[String, Transform] = Transform.defaultTransforms())(implicit scheduler: Scheduler): PipelineService = {
+
+  def apply(transforms: Map[String, Transform] = Transform.defaultTransforms(), dao: StreamDao[Future] = StreamDao.noop[Future])(implicit scheduler: Scheduler): PipelineService = {
     val (sources, sinks, trigger) = create(scheduler)
-    val service                   = new PipelineService(sources, sinks, trigger)
+    val service                   = new PipelineService(sources, sinks, dao, trigger)
 
     transforms.foreach {
       case (id, t) => trigger.addTransform(id, t)
     }
     service.pipelineCreatedEvents.foreach { pipeline =>
-      service.addPipeline(pipeline.matchId, pipeline)
+      logger.info(s"created $pipeline")
     }
 
     service

@@ -1,7 +1,9 @@
 package pipelines.reactive
 
+import java.util.UUID
+
 import monix.eval.Task
-import monix.execution.{CancelableFuture, Scheduler}
+import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.subjects.Var
 import monix.reactive.{Consumer, Observable}
 
@@ -16,6 +18,8 @@ trait DataSink extends HasMetadata {
   type Input
   type Output
 
+  type ConnectResult <: Cancelable
+
   /** @return this instance as a parameterized type, just to help the compiler when creating Pipelines
     */
   def aux: DataSink.Aux[Input, Output] = this
@@ -26,7 +30,19 @@ trait DataSink extends HasMetadata {
 
   def addMetadata(entries: Map[String, String]): T
 
-  def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Output]
+  def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): ConnectResult
+
+  def ensuringId(id : => String = UUID.randomUUID.toString): T = ensuringMetadata(tags.Id, id)
+
+  def ensuringMetadata(key : String, value : => String): T = {
+    if (metadata.contains(key)) {
+      this.asInstanceOf[T]
+    } else {
+      addMetadata(key, value)
+    }
+  }
+
+  override def toString = s"Sink ${name.getOrElse(getClass.getSimpleName)} (${id.getOrElse("no-id")} of $inputType)"
 }
 
 object DataSink {
@@ -43,6 +59,7 @@ object DataSink {
     override type T      = Instance[In, Out]
     override type Input  = In
     override type Output = Out
+    override type ConnectResult = CancelableFuture[Output]
     override def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
       val result: Task[Out] = consumer(observable)
       result.runToFuture(scheduler)
@@ -59,6 +76,7 @@ object DataSink {
     override type T      = VarSink[A]
     override type Input  = A
     override type Output = Unit
+    override type ConnectResult = CancelableFuture[Output]
 
     override def addMetadata(entries: Map[String, String]): VarSink[A] = copy(metadata = metadata ++ entries)
 

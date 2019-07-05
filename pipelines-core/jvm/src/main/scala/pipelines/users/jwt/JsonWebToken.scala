@@ -6,6 +6,7 @@ import java.util.Base64
 
 import io.circe
 import javax.crypto.spec.SecretKeySpec
+import pipelines.users.Claims
 
 /**
   * Represents the parts of a Json Web Token. The signature is just the data - IT MAY NOT BE VALID!

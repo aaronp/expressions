@@ -5,7 +5,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.client.jvm.PipelinesClient
 import pipelines.rest.RunningServer
-import pipelines.socket.{AddressedMessage, AddressedTextMessage, SocketSettings}
+import pipelines.rest.socket.{AddressedMessage, AddressedTextMessage, SocketSettings}
 import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.concurrent.duration._

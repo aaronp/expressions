@@ -45,13 +45,13 @@ class RepoStatePipe(initialState: RepoState = new RepoState(Map.empty, Nil, Nil,
 
   private val subject: ConcurrentSubject[TriggerInput, TriggerInput] = ConcurrentSubject.publishToOne[TriggerInput]
   private val currentStateVar                                        = Var[RepoState](null)
-  def currentState()                                                 = Option(currentStateVar.apply())
+  def currentState(): Option[RepoState]                              = Option(currentStateVar.apply())
   val input: Observer[TriggerInput]                                  = subject
   val output: Observable[(RepoState, TriggerInput, TriggerEvent)] = {
     val scanned = subject.scan((initialState, (null: TriggerInput), (null: TriggerEvent))) {
       case ((state, _, _), input) =>
         val (newState, result) = state.update(input)
-        logger.info(s"$input yields $result w/ state having ${newState.sources.size} sources, ${newState.sinks.size} sinks, and ${newState.triggers.size} triggers")
+        logger.debug(s"$input yields $result w/ state having ${newState.sources.size} sources, ${newState.sinks.size} sinks, and ${newState.triggers.size} triggers")
         currentStateVar := newState
         (newState, input, result)
     }

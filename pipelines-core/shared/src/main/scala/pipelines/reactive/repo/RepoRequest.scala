@@ -13,16 +13,16 @@ sealed trait RepoRequest
 
 object RepoRequest {
   implicit val encoder = Encoder.instance[RepoRequest] {
-    case request @ ListRepoSourcesRequest(_)        => request.asJson
-    case request @ CreateRepoSourceRequest(_, _, _) => request.asJson
+    case request @ ListRepoSourcesRequest(_, _)     => request.asJson
+    case request @ CreateSourceAliasRequest(_, _, _) => request.asJson
     case request @ ListTransformationRequest(_)     => request.asJson
-    case request @ ListSinkRequest()                => request.asJson
+    case request @ ListSinkRequest(_, _)            => request.asJson
   }
 
   implicit val decoder: Decoder[RepoRequest] = {
     List[Decoder[RepoRequest]](
       Decoder[ListRepoSourcesRequest].widen,
-      Decoder[CreateRepoSourceRequest].widen,
+      Decoder[CreateSourceAliasRequest].widen,
       Decoder[ListTransformationRequest].widen,
       Decoder[ListSinkRequest].widen
     ).reduceLeft(_ or _)
@@ -36,7 +36,7 @@ sealed trait RepoResponse
 object RepoResponse {
   implicit val encoder = Encoder.instance[RepoResponse] {
     case request @ ListRepoSourcesResponse(_)    => request.asJson
-    case request @ CreateRepoSourceResponse(_)   => request.asJson
+    case request @ CreateSourceAliasResponse(_)   => request.asJson
     case request @ ListTransformationResponse(_) => request.asJson
     case request @ ListSinkResponse(_)           => request.asJson
   }
@@ -44,7 +44,7 @@ object RepoResponse {
   implicit val decoder: Decoder[RepoResponse] = {
     List[Decoder[RepoResponse]](
       Decoder[ListRepoSourcesResponse].widen,
-      Decoder[CreateRepoSourceResponse].widen,
+      Decoder[CreateSourceAliasResponse].widen,
       Decoder[ListTransformationResponse].widen,
       Decoder[ListSinkResponse].widen
     ).reduceLeft(_ or _)
@@ -57,7 +57,26 @@ object DataTransform {
   implicit val decoder: Decoder[DataTransform]       = deriveDecoder[DataTransform]
 }
 
-final case class ListedDataSource(name: String, metadata: Map[String, String], contentType: Option[ContentType])
+final case class ListedDataSource(metadata: Map[String, String], contentType: Option[ContentType]) {
+  import pipelines.reactive.tags._
+  def name(default: String = "")          = getOrElse(Name, default)
+  def tag(default: String = "")           = getOrElse(Tag, default)
+  def label(default: String = "")         = getOrElse(Label, default)
+  def createdBy(default: String = "anon") = getOrElse(CreatedBy, default)
+  def id(default: String = "empty")       = getOrElse(Id, default)
+  private def getOrElse(tag: String, default: String = "") = {
+    metadata.getOrElse(tag, default)
+  }
+  private def get(key: String) = metadata.get(key)
+
+  def description: String = {
+    val name = List(Name, Label, Tag, Id).view.flatMap(get).headOption.getOrElse("???")
+    contentType match {
+      case None     => name
+      case Some(ct) => s"$name ($ct)"
+    }
+  }
+}
 
 object ListedDataSource {
   implicit val encoder: ObjectEncoder[ListedDataSource] = deriveEncoder[ListedDataSource]
@@ -76,10 +95,11 @@ object ListedTransformation {
   implicit val decoder: Decoder[ListedTransformation]       = deriveDecoder[ListedTransformation]
 }
 
+
 /**
   *  LIST DATA SOURCE
   */
-case class ListRepoSourcesRequest(ofType: Option[ContentType]) extends RepoRequest
+case class ListRepoSourcesRequest(metadataCriteria: Map[String, String], ofType: Option[ContentType]) extends RepoRequest
 object ListRepoSourcesRequest {
   implicit val encoder: ObjectEncoder[ListRepoSourcesRequest] = deriveEncoder[ListRepoSourcesRequest]
   implicit val decoder: Decoder[ListRepoSourcesRequest]       = deriveDecoder[ListRepoSourcesRequest]
@@ -111,7 +131,7 @@ object ListTransformationResponse {
 /**
   *  LIST SINKS
   */
-case class ListSinkRequest() extends RepoRequest
+case class ListSinkRequest(metadataCriteria: Map[String, String], ofType: Option[ContentType]) extends RepoRequest
 object ListSinkRequest {
   implicit val encoder: ObjectEncoder[ListSinkRequest] = deriveEncoder[ListSinkRequest]
   implicit val decoder: Decoder[ListSinkRequest]       = deriveDecoder[ListSinkRequest]
@@ -126,14 +146,14 @@ object ListSinkResponse {
 /**
   * CREATE DATA SOURCE from an existing source and transformation
   */
-case class CreateRepoSourceRequest(baseDataSource: String, transformations: Seq[String], newDataSourceName: Option[String] = None) extends RepoRequest
-object CreateRepoSourceRequest {
-  implicit val encoder: ObjectEncoder[CreateRepoSourceRequest] = deriveEncoder[CreateRepoSourceRequest]
-  implicit val decoder: Decoder[CreateRepoSourceRequest]       = deriveDecoder[CreateRepoSourceRequest]
+case class CreateSourceAliasRequest(baseDataSource: String, transformations: Seq[String], newDataSourceName: Option[String] = None) extends RepoRequest
+object CreateSourceAliasRequest {
+  implicit val encoder: ObjectEncoder[CreateSourceAliasRequest] = deriveEncoder[CreateSourceAliasRequest]
+  implicit val decoder: Decoder[CreateSourceAliasRequest]       = deriveDecoder[CreateSourceAliasRequest]
 }
 
-case class CreateRepoSourceResponse(dataSource: String) extends RepoResponse
-object CreateRepoSourceResponse {
-  implicit val encoder: ObjectEncoder[CreateRepoSourceResponse] = deriveEncoder[CreateRepoSourceResponse]
-  implicit val decoder: Decoder[CreateRepoSourceResponse]       = deriveDecoder[CreateRepoSourceResponse]
+case class CreateSourceAliasResponse(dataSource: String) extends RepoResponse
+object CreateSourceAliasResponse {
+  implicit val encoder: ObjectEncoder[CreateSourceAliasResponse] = deriveEncoder[CreateSourceAliasResponse]
+  implicit val decoder: Decoder[CreateSourceAliasResponse]       = deriveDecoder[CreateSourceAliasResponse]
 }

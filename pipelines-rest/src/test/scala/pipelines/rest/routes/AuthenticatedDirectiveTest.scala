@@ -7,9 +7,9 @@ import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash, _}
 import akka.http.scaladsl.server.Route
 import javax.crypto.spec.SecretKeySpec
-import pipelines.rest.users.UserLoginRoutes
-import pipelines.users.LoginRequest
-import pipelines.users.jwt.{Claims, Hmac256}
+import pipelines.users.{Claims, LoginRequest}
+import pipelines.users.jwt.Hmac256
+import pipelines.users.rest.UserLoginRoutes
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

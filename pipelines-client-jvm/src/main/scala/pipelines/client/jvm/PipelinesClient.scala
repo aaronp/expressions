@@ -6,11 +6,11 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.{HttpsURLConnection, SSLContext}
 import pipelines.auth.AuthEndpoints
-import pipelines.manual.PushEndpoints
-import pipelines.reactive.repo.SourceRepoEndpoints
-import pipelines.socket.SocketEndpoint
+import pipelines.reactive.PushEndpoints
+import pipelines.reactive.repo.SourceEndpoints
+import pipelines.rest.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
-import pipelines.users.{LoginEndpoints, LoginRequest, LoginResponse, UserRoleEndpoints, UserEndpoints, UserSchemas}
+import pipelines.users.{LoginEndpoints, LoginRequest, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
 import scala.util.{Failure, Success, Try}
 
@@ -25,7 +25,7 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with PushEndpoints
     with AuthEndpoints
     with UserRoleEndpoints
-    with SourceRepoEndpoints
+    with SourceEndpoints
     with UserSchemas {
 
 //  implicit def loginRequestSchema: JsonSchema[LoginRequest]   = JsonSchema(implicitly, implicitly)

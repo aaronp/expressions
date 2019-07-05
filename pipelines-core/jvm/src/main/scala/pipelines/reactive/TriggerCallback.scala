@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.StrictLogging
 import pipelines.Pipeline
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 trait TriggerCallback {
@@ -32,23 +32,24 @@ object TriggerCallback {
   }
 
   case class PromiseCallback() extends TriggerCallback {
-    private val promise      = Promise[TriggerEvent]()
-    private val matchPromise = Promise[(PipelineMatch, Pipeline[_, _])]()
+    private val promise                                      = Promise[TriggerEvent]()
+    private val matchPromise                                 = Promise[(PipelineMatch, Pipeline[_, _])]()
+    val matchFuture: Future[(PipelineMatch, Pipeline[_, _])] = matchPromise.future
     override def onFailedMatch(input: TriggerInput, mtch: PipelineMatch, err: String): Unit = {
-      promise.complete(Try(mtch))
-      matchPromise.complete(Failure(new IllegalStateException(s"Triggered match could not create a pipeline: ${err}")))
+      promise.tryComplete(Try(mtch))
+      matchPromise.tryComplete(Failure(new IllegalStateException(s"Triggered match could not create a pipeline: ${err}")))
     }
 
     override def onMatch(input: TriggerInput, mtch: PipelineMatch, pipeline: Pipeline[_, _]): Unit = {
-      promise.complete(Try(mtch))
-      matchPromise.complete(Success(mtch -> pipeline))
+      promise.tryComplete(Try(mtch))
+      matchPromise.tryComplete(Success(mtch -> pipeline))
     }
 
     override def onResult(response: Try[TriggerEvent]): Unit = {
-      promise.complete(response)
+      promise.tryComplete(response)
       response match {
-        case Failure(err)   => matchPromise.complete(Failure(err))
-        case Success(other) => matchPromise.complete(Failure(new Exception("Event did not trigger a match:" + other)))
+        case Failure(err)   => matchPromise.tryComplete(Failure(err))
+        case Success(other) => matchPromise.tryComplete(Failure(new Exception("Event did not trigger a match:" + other)))
       }
     }
   }
