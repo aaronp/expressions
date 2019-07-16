@@ -54,7 +54,7 @@ object SourceTableComponent {
       )
     ).render
 
-    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources()
+    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources(Map.empty)
     val socketFuture: Future[ClientSocketState]     = PipelinesXhr.createSocket()
 
     import PipelinesXhr.implicits._

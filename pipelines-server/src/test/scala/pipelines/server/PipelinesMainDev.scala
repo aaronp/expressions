@@ -3,8 +3,6 @@ package pipelines.server
 import java.awt.Desktop
 import java.net.URI
 
-import pipelines.rest.RunningServer
-
 import scala.io.StdIn
 
 object PipelinesMainDev {
@@ -29,7 +27,7 @@ object PipelinesMainDev {
         sys.exit(0)
       case Some(startupFuture) =>
         import scala.concurrent.ExecutionContext.Implicits._
-        startupFuture.foreach { server: RunningServer =>
+        startupFuture.foreach { _ =>
           lazy val dt = Desktop.getDesktop
           if (Desktop.isDesktopSupported && dt.isSupported(Desktop.Action.BROWSE)) {
             dt.browse(new URI("https://localhost:80"))

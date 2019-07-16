@@ -3,9 +3,10 @@ package pipelines.server
 import args4c.ConfigApp
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.reactive.{PipelineService, Transform}
+import pipelines.reactive.{PipelineService, Transform, UploadEvent}
 import pipelines.rest.RestMain.ensureCerts
 import pipelines.rest.routes.TraceRoute
+import pipelines.rest.socket.AddressedMessage
 import pipelines.rest.{RestMain, RunningServer, Settings}
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
@@ -34,10 +35,8 @@ object PipelinesMain extends ConfigApp with StrictLogging {
 
     Transform
       .defaultTransforms()
-      .updated(
-        "httpRequestTransform",
-        TraceRoute.httpRequestTransform
-      )
+      .updated("TraceRoute.httpRequestTransform", TraceRoute.httpRequestTransform)
+      .updated("UploadEvent.asAddressedMessage", Transform.map[UploadEvent, AddressedMessage](UploadEvent.asAddressedMessage))
   }
 
   def run(rootConfig: Config): Future[RunningServer] = {

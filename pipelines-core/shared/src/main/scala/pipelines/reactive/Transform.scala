@@ -55,31 +55,27 @@ object Transform {
   }
 
   object keys {
-
-    val Dump                          = "dump"
-    val PushEventAsAddressedMessage   = "pushEventAsAddressedMessage"
-    val UploadEventAsAddressedMessage = "uploadEventAsAddressedMessage"
-
+    val Dump                        = "dump"
+    val PushEventAsAddressedMessage = "PushEvent.asAddressedMessage"
   }
 
   def defaultTransforms(): Map[String, Transform] = {
 
     Map[String, Transform](
-      "Json to String"                   -> jsonToString, //
-      "String to UTF-8 byte array"       -> stringToUtf8, //
-      "parse String as Try[Json]"        -> stringToJson,
-      "Try[_] as successes"              -> tries.successes,
-      "Try[_] as Throwable for failures" -> tries.failures,
-      "Try[_] as unsafe gets"            -> tries.get,
-      "_1"                               -> tuples._1,
-      "_2"                               -> tuples._2,
-      "_3"                               -> tuples._3,
-      "_4"                               -> tuples._4,
-      "addressedTextAsJson"              -> sockets.addressedTextAsJson,
-      "addressedMessageAsJson"           -> sockets.addressedAsJson,
-      keys.PushEventAsAddressedMessage   -> Transform.map[PushEvent, AddressedMessage](PushEvent.asAddressedMessage),
-      keys.UploadEventAsAddressedMessage -> Transform.map[UploadEvent, AddressedMessage](UploadEvent.asAddressedMessage),
-      keys.Dump                          -> dump("debug")
+      "Transform.jsonToString"         -> jsonToString, //
+      "Transform.stringToUtf8"         -> stringToUtf8, //
+      "Transform.stringToJson"         -> stringToJson,
+      "tries.successes"                -> tries.successes,
+      "tries.failures"                 -> tries.failures,
+      "tries.get"                      -> tries.get,
+      "_1"                             -> tuples._1,
+      "_2"                             -> tuples._2,
+      "_3"                             -> tuples._3,
+      "_4"                             -> tuples._4,
+      "sockets.addressedTextAsJson"    -> sockets.addressedTextAsJson,
+      "sockets.addressedAsJson"        -> sockets.addressedAsJson,
+      keys.PushEventAsAddressedMessage -> Transform.map[PushEvent, AddressedMessage](PushEvent.asAddressedMessage),
+      keys.Dump                        -> dump("debug")
     )
   }
   import scala.reflect.runtime.universe.TypeTag
