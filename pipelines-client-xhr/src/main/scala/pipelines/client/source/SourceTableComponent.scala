@@ -2,7 +2,6 @@ package pipelines.client.source
 
 import pipelines.client.tables.Clusterize
 import pipelines.client.{ClientSocketState, HtmlUtils, PipelinesXhr}
-import pipelines.reactive.repo.ListRepoSourcesResponse
 import pipelines.reactive.tags
 import scalatags.Text.all.{div, _}
 
@@ -54,23 +53,21 @@ object SourceTableComponent {
       )
     ).render
 
-    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources(Map.empty)
-    val socketFuture: Future[ClientSocketState]     = PipelinesXhr.createSocket()
+//    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources(Map.empty)
+    val socketFuture: Future[ClientSocketState] = PipelinesXhr.createSocket()
+
+    //sources <- sourceList
+//      sources.sources.foreach { src =>
+//        HtmlUtils.log(s"SOURCE: $src")
+//      }
 
     import PipelinesXhr.implicits._
-    for {
-      sources <- sourceList
-      socket  <- socketFuture
-    } {
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents))
-
+    socketFuture.foreach { socket =>
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq())
       import socket._
 
-      sources.sources.foreach { src =>
-        HtmlUtils.log(s"SOURCE: $src")
-      }
       val inst = {
-        HtmlUtils.log(s"Creating clusterize w/ ${sources.sources.size} sources")
+        HtmlUtils.log(s"Creating clusterize ")
         Clusterize(config)
       }
       socket.messages.foreach { msg =>
