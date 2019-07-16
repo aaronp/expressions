@@ -4,7 +4,9 @@ import java.util.UUID
 
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
-import pipelines.reactive.{ContentType, DataSink, DataSource, Transform}
+import pipelines.Pipeline.Step
+import pipelines.reactive._
+import pipelines.rest.socket.EventDto
 
 import scala.util.control.NonFatal
 
@@ -27,6 +29,21 @@ final class Pipeline[In, A] private (val matchId: UUID,
                                      val sink: DataSink.Aux[In, A],
                                      scheduler: Scheduler,
                                      val obs: Observable[In]) {
+
+  def asDto: PipelineDto = {
+    def stepAsDto(step: Pipeline.ChainStep): EventDto = {
+      step match {
+        case s: Step => EventDto(s.name, Map("transform" -> s.transform.toString))
+        case other   => EventDto(s"Unexpected: $other", Map.empty)
+      }
+    }
+    PipelineDto(
+      matchId.toString,
+      EventDto(root.toString, root.metadata),
+      steps.map(stepAsDto),
+      EventDto(sink.toString, sink.metadata)
+    )
+  }
 
   override def toString: String = {
     s"Pipeline($matchId: ${steps.mkString(s"[ $root --> ", " -> ", s" ] $sink")})"

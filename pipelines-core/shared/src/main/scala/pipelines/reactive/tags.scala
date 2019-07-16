@@ -26,6 +26,7 @@ object tags {
   object transforms {
     val `SourceEvent.asAddressedMessage` = "SourceEvent.asAddressedMessage"
     val `SinkEvent.asAddressedMessage` = "SinkEvent.asAddressedMessage"
+    val `Pipeline.asAddressedMessage` = "Pipeline.asAddressedMessage"
   }
 
   object labelValues {

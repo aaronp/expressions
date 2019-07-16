@@ -10,6 +10,7 @@ import monix.reactive.subjects.Var
 import pipelines.Pipeline
 import pipelines.reactive.repo.{ListRepoSourcesResponse, ListedDataSource}
 import pipelines.reactive.trigger.{PipelineMatch, RepoState, RepoStatePipe, TriggerEvent}
+import pipelines.rest.socket.AddressedMessage
 
 import scala.collection.concurrent
 import scala.concurrent.Future
@@ -295,6 +296,10 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
 
 object PipelineService extends StrictLogging {
 
+  def pipelineAsAddressedMessage(pipeline: Pipeline[_, _]): AddressedMessage = {
+    AddressedMessage(pipeline.asDto)
+  }
+
   def registerOwnSourcesAndSink(service: PipelineService): PipelineService = {
     service.getOrCreateSource {
       DataSource(service.sources.events).addMetadata(tags.Label, tags.labelValues.SourceEvents)
@@ -311,6 +316,7 @@ object PipelineService extends StrictLogging {
 
     service.addTransform(tags.transforms.`SourceEvent.asAddressedMessage`, Transform.map(SourceEvent.asAddressedMessage))
     service.addTransform(tags.transforms.`SinkEvent.asAddressedMessage`, Transform.map(SinkEvent.asAddressedMessage))
+    service.addTransform(tags.transforms.`Pipeline.asAddressedMessage`, Transform.map(pipelineAsAddressedMessage))
 
     service
   }
