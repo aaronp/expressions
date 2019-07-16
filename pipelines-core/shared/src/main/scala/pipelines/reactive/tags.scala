@@ -23,6 +23,11 @@ object tags {
   val SourceType = "sourceType"
   val SinkType   = "sinkType"
 
+  object transforms {
+    val `SourceEvent.asAddressedMessage` = "SourceEvent.asAddressedMessage"
+    val `SinkEvent.asAddressedMessage` = "SinkEvent.asAddressedMessage"
+  }
+
   object labelValues {
     val HttpRequests = "http-requests"
     val HttpRequestResponse = "http-request-response"

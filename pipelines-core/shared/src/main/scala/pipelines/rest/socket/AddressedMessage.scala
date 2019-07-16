@@ -55,6 +55,10 @@ object AddressedMessage {
     apply(topics.forClass[T], value.asJson.noSpaces)
   }
 
+  def apply[T: ClassTag: Encoder](to : String, value: T): AddressedTextMessage = {
+    apply(to, value.asJson.noSpaces)
+  }
+
   def apply(to: String, text: String) = new AddressedTextMessage(to, text)
 
   def apply(to: String, data: Array[Byte]) = new AddressedBinaryMessage(to, data)

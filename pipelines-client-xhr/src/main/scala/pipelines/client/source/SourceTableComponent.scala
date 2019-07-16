@@ -63,11 +63,12 @@ object SourceTableComponent {
 
     import PipelinesXhr.implicits._
     socketFuture.foreach { socket =>
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq())
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq(tags.transforms.`SourceEvent.asAddressedMessage`))
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SinkEvents), Seq(tags.transforms.`SinkEvent.asAddressedMessage`))
       import socket._
 
       val inst = {
-        HtmlUtils.log(s"Creating clusterize ")
+        HtmlUtils.log(s"Creating clusterize")
         Clusterize(config)
       }
       socket.messages.foreach { msg =>

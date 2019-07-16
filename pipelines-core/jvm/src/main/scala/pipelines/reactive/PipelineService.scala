@@ -295,7 +295,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
 
 object PipelineService extends StrictLogging {
 
-  def registerOwnSourcesAndSink(service : PipelineService) = {
+  def registerOwnSourcesAndSink(service: PipelineService): PipelineService = {
     service.getOrCreateSource {
       DataSource(service.sources.events).addMetadata(tags.Label, tags.labelValues.SourceEvents)
     }
@@ -308,6 +308,10 @@ object PipelineService extends StrictLogging {
     service.getOrCreateSource {
       DataSource(service.matchEvents).addMetadata(tags.Label, tags.labelValues.MatchEvents)
     }
+
+    service.addTransform(tags.transforms.`SourceEvent.asAddressedMessage`, Transform.map(SourceEvent.asAddressedMessage))
+    service.addTransform(tags.transforms.`SinkEvent.asAddressedMessage`, Transform.map(SinkEvent.asAddressedMessage))
+
     service
   }
 
