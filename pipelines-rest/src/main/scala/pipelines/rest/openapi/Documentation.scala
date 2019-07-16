@@ -7,7 +7,7 @@ import pipelines.audit.{AuditEndpoints, VersionDetails}
 import pipelines.auth.{AuthEndpoints, AuthModel, SetRolesForUserRequest, UserRoles}
 import pipelines.core.GenericMessageResult
 import pipelines.reactive.ContentType
-import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceEndpoints}
+import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceEndpoints, TransformEndpoints}
 import pipelines.users.{
   CreateUserRequest,
   CreateUserResponse,
@@ -27,16 +27,17 @@ object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoi
 /**
   * Generates OpenAPI documentation for the endpoints described in the `CounterEndpoints` trait.
   */
-object Documentation //
+object Documentation          //
     extends openapi.Endpoints //
-    with CirceAdapter      //
-    with SourceEndpoints   //
-    with AdminEndpoints    //
-    with LoginEndpoints    //
-    with UserEndpoints     //
-    with UserRoleEndpoints //
-    with AuthEndpoints     //
-    with AuditEndpoints    // TODO !
+    with CirceAdapter         //
+    with SourceEndpoints      //
+    with TransformEndpoints   //
+    with AdminEndpoints       //
+    with LoginEndpoints       //
+    with UserEndpoints        //
+    with UserRoleEndpoints    //
+    with AuthEndpoints        //
+    with AuditEndpoints       // TODO !
     with openapi.JsonSchemaEntities {
 
   import OpenApiEncoder.JsonSchema._
@@ -77,10 +78,9 @@ object Documentation //
   }
 
   def userDocs: List[Documentation.DocumentedEndpoint] = {
-//    val r: DocumentedRequest = confirmUser.confirmUserRequest
     List(
-      createUser.createUserEndpoint( //
-                                    document(CreateUserRequest("name", "email", "pwd")), //
+      createUser.createUserEndpoint(                                                        //
+                                    document(CreateUserRequest("name", "email", "pwd")),    //
                                     document(CreateUserResponse(true, Some("token"), None)) //
       ),
       resetUser.resetUserEndpoint(
@@ -94,15 +94,19 @@ object Documentation //
 
   def adminEndpointDocs: List[Documentation.DocumentedEndpoint] = {
     List(
-      generate.generateEndpoint( //
-                                document(GenerateServerCertRequest("saveToPath")), //
+      generate.generateEndpoint(                                                    //
+                                document(GenerateServerCertRequest("saveToPath")),  //
                                 document(GenerateServerCertResponse("certificate")) //
       ),
-      updatecert.updateEndpoint( //
+      updatecert.updateEndpoint(                                                                  //
                                 document(UpdateServerCertRequest("certificate", "save/to/path")), //
                                 genericResp),
       seed.seedEndpoint(document(SetJWTSeedRequest("seed")), genericResp)
     )
+  }
+
+  def transformEndpoints: List[Documentation.DocumentedEndpoint] = {
+    listTransforms.list(document(Option("sourceType"))) :: Nil
   }
 
   def repoEndpoints: List[Documentation.DocumentedEndpoint] = {
@@ -117,7 +121,7 @@ object Documentation //
   }
 
   def documentedEndpoints: List[Documentation.DocumentedEndpoint] = {
-    repoEndpoints ++ adminEndpointDocs ++ authDocs ++ userAuthDocs ++ userDocs ++ loginDocs
+    repoEndpoints ++ adminEndpointDocs ++ authDocs ++ userAuthDocs ++ userDocs ++ loginDocs ++ transformEndpoints
   }
 
   lazy val api: OpenApi = openApi(

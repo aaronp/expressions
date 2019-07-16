@@ -5,7 +5,7 @@ import args4c.obscurePassword
 import com.typesafe.config.Config
 import pipelines.Env
 import pipelines.reactive.PipelineService
-import pipelines.reactive.rest.SourceRoutes
+import pipelines.reactive.rest.{SourceRoutes, TransformRoutes}
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes}
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
@@ -32,7 +32,13 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
     import args4c.implicits._
     rootConfig.asFiniteDuration("pipelines.rest.socket.tokenValidityDuration")
   }
-  def repoRoutes(service: PipelineService): Route = SourceRoutes(service, secureSettings).routes
+
+  def repoRoutes(service: PipelineService): Route = {
+    import akka.http.scaladsl.server.Directives._
+    val srcRoutes = SourceRoutes(service, secureSettings).routes
+    val transRoute = TransformRoutes(service, secureSettings).routes
+    srcRoutes ~ transRoute
+  }
 
   override def toString: String = {
     import args4c.implicits._

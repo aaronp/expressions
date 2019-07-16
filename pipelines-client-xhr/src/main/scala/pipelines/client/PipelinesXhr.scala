@@ -6,7 +6,7 @@ import io.circe.Json
 import org.scalajs.dom
 import org.scalajs.dom.XMLHttpRequest
 import pipelines.core.{CoreSchemas, Redirection}
-import pipelines.reactive.repo.{ListRepoSourcesResponse, PushSourceResponse, RepoSchemas, SourceEndpoints}
+import pipelines.reactive.repo.{ListRepoSourcesResponse, PushSourceResponse, RepoSchemas, SourceEndpoints, TransformEndpoints}
 import pipelines.rest.socket.SocketEndpoint
 import pipelines.users.{LoginEndpoints, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
@@ -27,6 +27,7 @@ object PipelinesXhr
     with UserEndpoints
     with UserRoleEndpoints
     with SourceEndpoints
+    with TransformEndpoints
     with SocketEndpoint
     with RepoSchemas
     with UserSchemas
