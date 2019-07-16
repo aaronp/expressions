@@ -1,9 +1,12 @@
 package pipelines.client.source
 
 import pipelines.client.tables.Clusterize
-import pipelines.client.{HtmlUtils, PipelinesXhr}
+import pipelines.client.{ClientSocketState, HtmlUtils, PipelinesXhr}
+import pipelines.reactive.repo.ListRepoSourcesResponse
+import pipelines.reactive.tags
 import scalatags.Text.all.{div, _}
 
+import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
@@ -51,23 +54,34 @@ object SourceTableComponent {
       )
     ).render
 
-    PipelinesXhr
-      .createSocket()
-      .foreach { socket =>
-        import socket._
-        val inst = {
-          HtmlUtils.log("Creating clusterize")
-          Clusterize(config)
+    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources()
+    val socketFuture: Future[ClientSocketState]     = PipelinesXhr.createSocket()
+
+    import PipelinesXhr.implicits._
+    for {
+      sources <- sourceList
+      socket  <- socketFuture
+    } {
+      socket.subscribe(Map(tags.Label -> tags.typeValues.Push))
+
+      import socket._
+
+      sources.sources.foreach { src =>
+        HtmlUtils.log(s"SOURCE: $src")
+      }
+      val inst = {
+        HtmlUtils.log(s"Creating clusterize w/ ${sources.sources.size} sources")
+        Clusterize(config)
+      }
+      socket.messages.foreach { msg =>
+        try {
+          inst.append(Seq(s"<tr><td>${msg}</td></tr>"))
+        } catch {
+          case NonFatal(e) =>
+            inst.append(Seq(s"<tr><td>error: ${e}</td></tr>"))
         }
-        socket.messages.foreach { msg =>
-          try {
-            inst.append(Seq(s"<tr><td>${msg}</td></tr>"))
-          } catch {
-            case NonFatal(e) =>
-              inst.append(Seq(s"<tr><td>error: ${e}</td></tr>"))
-          }
-        }
-      }(PipelinesXhr.execContext)
+      }
+    }
 
     divText
   }

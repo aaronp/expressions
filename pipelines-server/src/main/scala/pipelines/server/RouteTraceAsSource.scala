@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.server.RouteResult
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.Scheduler
-import pipelines.reactive.{DataSource, PipelineService}
+import pipelines.reactive.{DataSource, PipelineService, tags}
 import pipelines.rest.routes.TraceRoute
 
 object RouteTraceAsSource extends StrictLogging {
@@ -26,14 +26,14 @@ object RouteTraceAsSource extends StrictLogging {
         DataSource
           .createPush[HttpRequest]
           .apply(ioScheduler) //
-          .addMetadata("label", "http-requests"))
+          .addMetadata(tags.Label, tags.labelValues.HttpRequests))
     }
     val usersResponses: DataSource.PushSource[(HttpRequest, Long, RouteResult)] = {
       addSrc(
         DataSource
           .createPush[(HttpRequest, Long, RouteResult)]
           .apply(ioScheduler) //
-          .addMetadata("label", "http-request-response"))
+          .addMetadata(tags.Label, tags.labelValues.HttpRequestResponse))
     }
     TraceRoute
       .onRequest { req: HttpRequest =>

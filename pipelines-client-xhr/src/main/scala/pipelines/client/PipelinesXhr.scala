@@ -6,7 +6,6 @@ import io.circe.Json
 import org.scalajs.dom
 import org.scalajs.dom.XMLHttpRequest
 import pipelines.core.{CoreSchemas, Redirection}
-import pipelines.reactive.PushEndpoints
 import pipelines.reactive.repo.{ListRepoSourcesResponse, PushSourceResponse, RepoSchemas, SourceEndpoints}
 import pipelines.rest.socket.SocketEndpoint
 import pipelines.users.{LoginEndpoints, UserEndpoints, UserRoleEndpoints, UserSchemas}
@@ -34,6 +33,9 @@ object PipelinesXhr
     with CoreSchemas {
 
   def execContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+  object implicits {
+    implicit val ec = execContext
+  }
 
   /**
     * dom.window.location.host -> localhost:80
@@ -41,8 +43,8 @@ object PipelinesXhr
     * dom.window.location.origin -> https://localhost:80
     *
     */
-  def createSocket() = socketState
-  private lazy val socketState = {
+  def createSocket(): Future[ClientSocketState] = socketState
+  private lazy val socketState: Future[ClientSocketState] = {
     socketTokens.newToken.apply().map { tempToken =>
       ClientSocketState(sockets.request.href(), tempToken)
     }

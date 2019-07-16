@@ -3,8 +3,9 @@ package pipelines.server
 import args4c.ConfigApp
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.reactive.PipelineService
+import pipelines.reactive.{PipelineService, Transform}
 import pipelines.rest.RestMain.ensureCerts
+import pipelines.rest.routes.TraceRoute
 import pipelines.rest.{RestMain, RunningServer, Settings}
 import pipelines.ssl.SSLConfig
 import pipelines.users.LoginHandler
@@ -29,11 +30,21 @@ object PipelinesMain extends ConfigApp with StrictLogging {
 
   override protected val configKeyForRequiredEntries = "pipelines.requiredConfig"
 
+  def transforms(): Map[String, Transform] = {
+
+    Transform
+      .defaultTransforms()
+      .updated(
+        "httpRequestTransform",
+        TraceRoute.httpRequestTransform
+      )
+  }
+
   def run(rootConfig: Config): Future[RunningServer] = {
     logger.info(RestMain.startupLog(rootConfig, getClass))
     val config             = ensureCerts(rootConfig)
     val settings: Settings = Settings(config)
-    val service            = PipelineService()(settings.env.ioScheduler)
+    val service            = PipelineService(transforms())(settings.env.ioScheduler)
 
     implicit val ioExecCtxt = settings.env.ioScheduler
     val loginHandlerFuture: Future[LoginHandler[Future]] = LoginHandler.handlerClassName(rootConfig) match {

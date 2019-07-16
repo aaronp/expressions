@@ -23,6 +23,10 @@ object tags {
   val SourceType = "sourceType"
   val SinkType   = "sinkType"
 
+  object labelValues {
+    val HttpRequests = "http-requests"
+    val HttpRequestResponse = "http-request-response"
+  }
   // hmm -- enums?
   object typeValues {
     val Push                 = "push"

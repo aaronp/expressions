@@ -5,6 +5,8 @@ import akka.http.scaladsl.server.RouteResult.Complete
 import akka.http.scaladsl.server.directives.BasicDirectives.{extractRequestContext, mapRouteResult}
 import akka.http.scaladsl.server.{RouteResult, _}
 import com.typesafe.scalalogging.StrictLogging
+import pipelines.reactive.Transform
+import pipelines.rest.socket.AddressedMessage
 
 /**
   * A route which can wrap incoming/outgoing messages for support, metrics, etc.
@@ -27,12 +29,25 @@ trait TraceRoute {
 object TraceRoute {
 
   private val BlackListFmtHeader = Set("Last-Modified", "ETag", "X-Access-Token")
+
+  /**
+    * Expose these trace routes as [[AddressedMessage]] so that we can see 'em over a socket
+    *
+    * @param request
+    * @return
+    */
+  def httpRequestAsAddressedMessage(request: HttpRequest): AddressedMessage = {
+    AddressedMessage(pretty(request))
+  }
+
+  val httpRequestTransform = Transform.map[HttpRequest, AddressedMessage](TraceRoute.httpRequestAsAddressedMessage)
+
   private def fmt(headers: Seq[HttpHeader]) = {
     headers.filterNot(h => BlackListFmtHeader.contains(h.name)) map { h =>
       s"${h.name}:${h.value}"
     }
   }
-  def pretty(response: RouteResult) = {
+  def pretty(response: RouteResult): String = {
     response match {
       case Complete(HttpResponse(status, headers, entity, _)) if status.intValue == 200 =>
         fmt(headers).mkString(s"${entity.getContentType} OK : [", ",", "]")
@@ -41,7 +56,7 @@ object TraceRoute {
       case other => other.toString
     }
   }
-  def pretty(r: HttpRequest) = {
+  def pretty(r: HttpRequest): String = {
     val token = r.headers
       .find(_.name.toLowerCase.contains("token"))
       .map { h =>

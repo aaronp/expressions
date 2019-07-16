@@ -56,8 +56,10 @@ object Transform {
 
   object keys {
 
-    val Dump = "dump"
-    val PushEventAsAddressedMessage = "pushEventAsAddressedMessage"
+    val Dump                          = "dump"
+    val PushEventAsAddressedMessage   = "pushEventAsAddressedMessage"
+    val UploadEventAsAddressedMessage = "uploadEventAsAddressedMessage"
+
   }
 
   def defaultTransforms(): Map[String, Transform] = {
@@ -76,7 +78,8 @@ object Transform {
       "addressedTextAsJson"              -> sockets.addressedTextAsJson,
       "addressedMessageAsJson"           -> sockets.addressedAsJson,
       keys.PushEventAsAddressedMessage   -> Transform.map[PushEvent, AddressedMessage](PushEvent.asAddressedMessage),
-      keys.Dump                             -> dump("debug")
+      keys.UploadEventAsAddressedMessage -> Transform.map[UploadEvent, AddressedMessage](UploadEvent.asAddressedMessage),
+      keys.Dump                          -> dump("debug")
     )
   }
   import scala.reflect.runtime.universe.TypeTag
