@@ -2,8 +2,9 @@ package pipelines.reactive
 
 import io.circe.{Decoder, Json, ObjectEncoder}
 import pipelines.rest.socket.AddressedMessage
+import pipelines.users.Claims
 
-final case class PushEvent(userId: String, userName: String, data: Json)
+final case class PushEvent(user : Claims, data: Json)
 
 object PushEvent {
   implicit val encoder: ObjectEncoder[PushEvent] = io.circe.generic.semiauto.deriveEncoder[PushEvent]

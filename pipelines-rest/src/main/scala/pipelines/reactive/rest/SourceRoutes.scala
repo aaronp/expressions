@@ -19,7 +19,6 @@ case class SourceRoutes(pipelineService: PipelineService, secureSettings: Secure
     with BaseCirceRoutes {
 
   def routes: Route = {
-    //listTransformsRoute ~
     pushSourceRoute ~ findSourcesRoute ~ listTypesRoute
   }
 
@@ -52,13 +51,13 @@ case class SourceRoutes(pipelineService: PipelineService, secureSettings: Secure
               getOrCreateFuture.map {
                 case (true, dataSource) =>
                   if (!body.isNull) {
-                    dataSource.push(PushEvent(claims.userId, claims.name, body))
+                    dataSource.push(PushEvent(claims, body))
                   }
                   CreatedPushSourceResponse(name, dataSource.contentType, dataSource.metadataWithContentType)
                 case (false, dataSource) =>
                   val ok = !body.isNull
                   if (!body.isNull) {
-                    dataSource.push(PushEvent(claims.userId, claims.name, body))
+                    dataSource.push(PushEvent(claims, body))
                   }
                   PushedValueResponse(ok)
               }

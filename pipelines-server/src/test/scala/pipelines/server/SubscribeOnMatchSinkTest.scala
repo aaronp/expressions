@@ -56,7 +56,7 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         // a web socket and connect an end client, we just observe what would be sent to said client, assuming AkkaIO
         // works
         val receivedOnSocketFuture = socket.toRemoteAkkaInput.dump("toRemoteOutput").take(1).toListL.runToFuture
-        val fromBob                = PushEvent("bob", "bobId", Json.fromString("hello from bob"))
+        val fromBob                = PushEvent(Claims.after(10.seconds).forUser("bob"), Json.fromString("hello from bob"))
         pushSource.push(fromBob)
 
         val List(gotIt) = receivedOnSocketFuture.futureValue
@@ -104,7 +104,8 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
 
         And("The socket sends a subscription request for a source")
         val createPipelineFuture = service.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
-        socketSource.socket.toServerFromRemote.onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
+        socketSource.socket.toServerFromRemote
+          .onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
 
         Then("A new pipeline should be created between the push source and our socket sink")
         val list           = createPipelineFuture.futureValue
@@ -114,21 +115,19 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         When("The source pushes some data")
         val readPushedDataFuture  = socketSource.socket.toRemoteAkkaInput.take(1).toListL.runToFuture
         val readPushed2DataFuture = socketSource.socket.toRemoteAkkaInput.take(2).toListL.runToFuture
-        val firstSourceMessage = PushEvent("alice", "aliceId", Json.fromString("alice data"))
+        val firstSourceMessage    = PushEvent(Claims.after(10.seconds).forUser("alice"), Json.fromString("alice data"))
         pushSource.push(firstSourceMessage)
 
         Then("Data from that source should be connected w/ the socket sink")
         val List(readBack) = readPushedDataFuture.futureValue
-        
 
         When("A second source is added which also meets the subscription criteria")
         val createPipeline2Future = service.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
-        val newPush = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId()
+        val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId()
 
-
-        val (pushSource2, _) = service.sources.add(newPush)
-        val List(secondOne) = createPipeline2Future.futureValue
-        val secondSourceMessage = PushEvent("meh", "meh", Json.fromString("second"))
+        val (pushSource2, _)    = service.sources.add(newPush)
+        val List(_)             = createPipeline2Future.futureValue
+        val secondSourceMessage = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
         pushSource2.push(secondSourceMessage)
 
         Then("data from both sources should come through the fucking socket")

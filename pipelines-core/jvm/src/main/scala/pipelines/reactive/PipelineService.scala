@@ -126,6 +126,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
           }
       }
       .map { pipeline =>
+        // let's be sure this is only evaluated once
         addPipeline(pipeline.matchId, pipeline)
         pipeline
       }
@@ -300,6 +301,7 @@ object PipelineService extends StrictLogging {
     transforms.foreach {
       case (id, t) => trigger.addTransform(id, t)
     }
+    // ensure our lazily-created stream is observed here, as the observation of which will drive an underlying pipelinemap
     service.pipelineCreatedEvents.foreach { pipeline =>
       logger.info(s"created $pipeline")
     }

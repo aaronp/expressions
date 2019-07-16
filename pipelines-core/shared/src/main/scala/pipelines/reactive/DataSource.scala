@@ -85,7 +85,9 @@ object DataSource {
     new PushSource[A](contentType, input, output, metadata)
   }
 
-  /**
+  /** Really represents a pipe -- this is a poor-man's Pipe, where instead of 'onNext' there's just an imperative 'push'.
+    *
+    * This could be factored out registering this 'Source' as a sink as well.
     *
     * @param contentType the type produced by this source
     * @param input a handle on the Observer who

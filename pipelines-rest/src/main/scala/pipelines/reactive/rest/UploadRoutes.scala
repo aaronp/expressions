@@ -1,46 +1,90 @@
 package pipelines.reactive.rest
 
 import java.nio.file.Path
+import java.util.Base64
 
 import akka.http.scaladsl.model.Multipart
-import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.server.Directives.{as, entity, extractExecutionContext, extractMaterializer, pathPrefix, _}
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.scaladsl.FileIO
 import eie.io._
-import pipelines.reactive.PipelineService
+import pipelines.reactive.{PipelineService, UploadEvent}
+import pipelines.rest.RestMain
 import pipelines.rest.routes.{SecureRouteSettings, SecureRoutes}
 import pipelines.users.Claims
 
 import scala.concurrent.Future
 
-case class UploadRoutes(pipelineService: PipelineService, secureSettings: SecureRouteSettings, uploadDir: Path) extends SecureRoutes(secureSettings) {
+/**
+  * A route for processing multi-part uploads to create/push to [[UploadEvent]] data sources
+  *
+  * @param pipelineService
+  * @param secureSettings
+  * @param uploadDir
+  * @param handleUpload
+  */
+case class UploadRoutes(pipelineService: PipelineService, secureSettings: SecureRouteSettings, uploadDir: Path, handleUpload: (Map[String, String], Seq[UploadEvent]) => String)
+    extends SecureRoutes(secureSettings) {
+
+  def routes: Route = upload
+
+  def safeName(name: String) = {
+    Base64.getUrlEncoder.encodeToString(name.getBytes("UTF-8"))
+  }
 
   //https://gist.github.com/jrudolph/08d0d28e1eddcd64dbd0
-  def upload = {
+  def upload: Route = {
     Directives.post {
-      pathPrefix("source" / Segment / "upload") { name: String =>
-        extractMaterializer { implicit materializer =>
-          extractExecutionContext { implicit ec =>
-            authenticated { claims: Claims =>
-              entity(as[Multipart.FormData]) { (formdata: Multipart.FormData) =>
-                val filesAndCount = formdata.parts.mapAsync(1) { p =>
-                  println(s"Got part. name: ${p.name} filename: ${p.filename}")
+      extractUri { uri =>
+        pathPrefix("source" / "upload" / Segment) { name: String =>
+          extractMaterializer { implicit materializer =>
+            extractExecutionContext { implicit ec =>
+              authenticated { claims: Claims =>
+                val metadata: Map[String, String] = RestMain.queryParamsForUri(uri, claims)
 
-                  val dir  = uploadDir.resolve(name).resolve(claims.name).mkDirs().resolve(p.filename.getOrElse(p.name))
-                  val sink = FileIO.toPath(dir)
-                  p.entity.dataBytes.runWith(sink).map { result =>
-                    dir -> result.count
+                entity(as[Multipart.FormData]) { (formdata: Multipart.FormData) =>
+                  val filesByFileName = formdata.parts.mapAsync(1) { p =>
+                    logger.debug(s"Got part. name: ${p.name} filename: ${p.filename}")
+
+                    /**
+                      * upload to:
+                      *
+                      * <uploadDir>/<name>/<user>
+                      */
+                    val fileName = p.filename.getOrElse(p.name)
+                    val filePath = uploadDir.resolve(safeName(name)).resolve(safeName(claims.name)).resolve(safeName(fileName))
+
+                    filePath.mkParentDirs()
+
+                    logger.info(s"Uploading to: ${filePath.toAbsolutePath}")
+
+                    val sink = FileIO.toPath(filePath)
+                    p.entity.dataBytes.runWith(sink).map { result =>
+                      fileName -> (filePath, result.count)
+                    }
                   }
-                }
-                val all: Future[List[(java.nio.file.Path, Long)]] = filesAndCount.runFold(List[(java.nio.file.Path, Long)]()) {
-                  case (state, next) => next +: state
-                }
+                  val all: Future[Map[String, Path]] = filesByFileName.runFold(Map[String, java.nio.file.Path]()) {
+                    case (byFileName, (fileName, (path, _))) =>
+                      byFileName.get(fileName) match {
+                        case Some(existingPath) =>
+                          if (existingPath == path) {
+                            byFileName
+                          } else {
+                            sys.error(s"Multiple files uploaded w/ the same name: $fileName")
+                          }
+                        case None =>
+                          byFileName.updated(fileName, path)
+                      }
+                  }
 
-                val messageFuture: Future[String] = all.map { files =>
-                  files.map(_._1.fileName).distinct.mkString("Uploaded ", ", ", "")
-
+                  val messageFuture = all.map { filesByName =>
+                    val uploads = filesByName.map {
+                      case (fileName, path) => UploadEvent(claims, path, fileName)
+                    }
+                    handleUpload(metadata, uploads.toSeq)
+                  }
+                  Directives.complete(messageFuture)
                 }
-                Directives.complete(messageFuture)
               }
             }
           }
