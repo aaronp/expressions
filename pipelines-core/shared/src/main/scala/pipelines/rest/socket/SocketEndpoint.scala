@@ -36,10 +36,10 @@ trait SocketEndpoint extends BaseEndpoint {
       post(path / "sockets" / "subscribe", jsonRequest[SocketSubscribeRequest]())
     }
 
-    def response(implicit resp: JsonResponse[GenericMessageResult]): Response[GenericMessageResult] =
-      jsonResponse[GenericMessageResult](Option("The subscription message - just an 'yeah, ok' response"))(resp)
+    def response(implicit resp: JsonResponse[SocketSubscribeResponse]): Response[SocketSubscribeResponse] =
+      jsonResponse[SocketSubscribeResponse](Option("The subscription message - just an 'yeah, ok' response"))(resp)
 
-    def subscribe(implicit req: JsonRequest[SocketSubscribeRequest], resp: JsonResponse[GenericMessageResult]): Endpoint[SocketSubscribeRequest, GenericMessageResult] = {
+    def subscribe(implicit req: JsonRequest[SocketSubscribeRequest], resp: JsonResponse[SocketSubscribeResponse]): Endpoint[SocketSubscribeRequest, SocketSubscribeResponse] = {
       endpoint(request, response(resp))
     }
   }

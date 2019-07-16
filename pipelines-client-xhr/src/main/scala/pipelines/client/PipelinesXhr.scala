@@ -31,8 +31,7 @@ object PipelinesXhr
     with SocketEndpoint
     with RepoSchemas
     with UserSchemas
-    with CoreSchemas
-    with PushEndpoints {
+    with CoreSchemas {
 
   def execContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 

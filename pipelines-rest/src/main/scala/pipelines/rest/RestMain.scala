@@ -27,8 +27,15 @@ object RestMain extends ConfigApp with StrictLogging {
   override protected val configKeyForRequiredEntries = "pipelines.rest.requiredConfig"
 
   def queryParamsForUri(uri: Uri, claims: Claims): Map[String, String] = {
-    uri.query().toMap.mapValues { text =>
-      text.replaceAllLiterally(tags.UserId, claims.userId).replaceAllLiterally(tags.UserName, claims.name)
+    uri.query().toMap.mapValues {
+      case null => ""
+      case text =>
+        val withId = if (claims.userId != null) {
+          text.replaceAllLiterally(tags.UserId, claims.userId)
+        } else {
+          text
+        }
+        withId.replaceAllLiterally(tags.UserName, claims.name)
     }
   }
   def run(rootConfig: Config): RunningServer = {

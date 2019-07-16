@@ -83,6 +83,7 @@ final class ServerSocket private (val toServerFromRemote: Observer[AddressedMess
     }
 
     implicit val s = scheduler
+
     /**
       * Send our first message over the new socket - a [[SocketConnectionAck]] which can be used so subsequently subscribe to sources
       * (via a [[SocketSubscribeRequest]]) using the id/source/sink metadata from the ack.

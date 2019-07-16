@@ -95,7 +95,6 @@ case class RepoState private[trigger] (
     val allSources = dataSource +: sources
     val matchedSources: Seq[(DataSource, OnNewTrigger)] = triggers.flatMap { triggerEvent =>
       allSources.flatMap { source =>
-
         if (triggerEvent.trigger.matchesSource(source)) {
           Option(source -> triggerEvent)
         } else {
@@ -152,7 +151,8 @@ case class RepoState private[trigger] (
     * or a multi-match
     *
     */
-  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, OnNewTrigger)], onError: => TriggerEvent)(multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
+  private def resolveMatches(allMatches: Seq[(DataSource, DataSink, OnNewTrigger)], onError: => TriggerEvent)(
+      multiMatchAsEvent: Seq[PipelineMatch] => TriggerEvent): TriggerEvent = {
     allMatches match {
       case Seq()                     => onError
       case Seq((src, sink, trigger)) => resolveTransformations(src, sink, trigger)

@@ -4,12 +4,13 @@ import java.time.{ZoneId, ZonedDateTime}
 
 import akka.http.scaladsl.model.headers.{HttpChallenges, _}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
+import akka.http.scaladsl.server.AuthenticationFailedRejection.{CredentialsMissing, CredentialsRejected}
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash, _}
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
 import javax.crypto.spec.SecretKeySpec
-import pipelines.users.{Claims, LoginRequest}
 import pipelines.users.jwt.Hmac256
 import pipelines.users.rest.UserLoginRoutes
+import pipelines.users.{Claims, LoginRequest}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -57,8 +58,8 @@ class AuthenticatedDirectiveTest extends BaseRoutesTest {
   "AuthenticatedDirective authorize" should {
     "reply w/ an auth error for completely bogus tokens" in {
       Get("/").withHeaders(Authorization(OAuth2BearerToken("some.bad.token"))) ~> UnderTest("SomeRealm").route ~> check {
-        status shouldBe StatusCodes.Unauthorized
-        header("WWW-Authenticate") shouldBe Some(`WWW-Authenticate`(HttpChallenges.oAuth2("SomeRealm")))
+        val AuthenticationFailedRejection(CredentialsRejected, challenge) = rejection
+        challenge shouldBe HttpChallenges.oAuth2("SomeRealm")
       }
     }
     "reply w/ an auth error for tokens with invalid secrets" in {
@@ -79,14 +80,13 @@ class AuthenticatedDirectiveTest extends BaseRoutesTest {
       When("the token is sent with a modified, invalid secret")
       val badSecreteToken = jwtToken + "A"
       Get("/").withHeaders(Authorization(OAuth2BearerToken(badSecreteToken))) ~> underTest.route ~> check {
-        status shouldBe StatusCodes.Unauthorized
-        header("X-Access-Token") shouldBe None
+        val AuthenticationFailedRejection(CredentialsRejected, _) = rejection
       }
     }
     "reply w/ an auth reject error for missing tokens" in {
       Get("/") ~> UnderTest("SomeRealm").route ~> check {
-        status shouldBe StatusCodes.Unauthorized
-        header("WWW-Authenticate") shouldBe Some(`WWW-Authenticate`(HttpChallenges.oAuth2("SomeRealm")))
+        val AuthenticationFailedRejection(CredentialsMissing, challenge) = rejection
+        challenge shouldBe HttpChallenges.oAuth2("SomeRealm")
       }
     }
     "reply w/ an auth reject error for expired tokens" in {
@@ -108,10 +108,11 @@ class AuthenticatedDirectiveTest extends BaseRoutesTest {
 
       Then("the user should be redirected to login again when they try to access the authenticated route")
       Get("/").withHeaders(Authorization(OAuth2BearerToken(jwtToken))) ~> underTest.route ~> check {
-        status shouldBe StatusCodes.Unauthorized
-        header[Location].map(_.uri.rawQueryString).foreach { x =>
-          x shouldBe Option("redirectTo=/")
-        }
+        val AuthenticationFailedRejection(CredentialsRejected, challenge) = rejection
+        challenge shouldBe HttpChallenges.oAuth2("ARealm")
+//        header[Location].map(_.uri.rawQueryString).foreach { x =>
+//          x shouldBe Option("redirectTo=/")
+//        }
       }
     }
     "allow routes for valid tokens and reply w/ a successful token" in {

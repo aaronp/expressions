@@ -6,7 +6,6 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.{HttpsURLConnection, SSLContext}
 import pipelines.auth.AuthEndpoints
-import pipelines.reactive.PushEndpoints
 import pipelines.reactive.repo.SourceEndpoints
 import pipelines.rest.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
@@ -22,7 +21,6 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with LoginEndpoints
     with UserEndpoints
     with SocketEndpoint
-    with PushEndpoints
     with AuthEndpoints
     with UserRoleEndpoints
     with SourceEndpoints
@@ -59,11 +57,6 @@ object PipelinesClient extends StrictLogging {
     SSLConfig(rootConfig).newContext.map { ctxt: SSLContext =>
       val hostPort = {
         val value = rootConfig.getString("pipelines.client.hostport")
-//        if (value.contains("localhost")) {
-//          value.replaceAllLiterally("localhost", InetAddress.getLocalHost.getHostAddress)
-//        } else {
-//          value
-//        }
         value
       }
 

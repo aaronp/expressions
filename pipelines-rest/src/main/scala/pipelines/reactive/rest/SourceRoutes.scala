@@ -10,6 +10,8 @@ import pipelines.rest.RestMain
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, SecureRoutes}
 import pipelines.users.Claims
 
+import scala.concurrent.Future
+
 case class SourceRoutes(pipelineService: PipelineService, secureSettings: SecureRouteSettings)
     extends SecureRoutes(secureSettings)
     with SourceEndpoints
@@ -40,20 +42,25 @@ case class SourceRoutes(pipelineService: PipelineService, secureSettings: Secure
         authenticated { claims =>
           pushSource.pushEndpoint(wtf, wtf2).implementedByAsync {
             case ((name, createIfMissingOpt, persistentOpt), body) =>
-              val getOrCreateFuture =
-                pipelineService.pushSourceForName[PushEvent](name, createIfMissingOpt.getOrElse(false), persistentOpt.getOrElse(false), RestMain.queryParamsForUri(uri, claims))
+              val getOrCreateFuture: Future[(Boolean, DataSource.PushSource[PushEvent])] = {
+                val create   = createIfMissingOpt.getOrElse(false)
+                val persist  = persistentOpt.getOrElse(false)
+                val metadata = RestMain.queryParamsForUri(uri, claims)
+                pipelineService.pushSourceForName[PushEvent](name, create, persist, metadata)
+              }
 
               getOrCreateFuture.map {
-                case (created, dataSource) =>
+                case (true, dataSource) =>
                   if (!body.isNull) {
                     dataSource.push(PushEvent(claims.userId, claims.name, body))
                   }
-
-                  if (created) {
-                    CreatedPushSourceResponse("Created", dataSource.contentType, dataSource.metadataWithContentType)
-                  } else {
-                    PushedValueResponse(true)
+                  CreatedPushSourceResponse(name, dataSource.contentType, dataSource.metadataWithContentType)
+                case (false, dataSource) =>
+                  val ok = !body.isNull
+                  if (!body.isNull) {
+                    dataSource.push(PushEvent(claims.userId, claims.name, body))
                   }
+                  PushedValueResponse(ok)
               }
           }
         }
@@ -62,15 +69,12 @@ case class SourceRoutes(pipelineService: PipelineService, secureSettings: Secure
   }
 
   def listTypesRoute: Route = {
-    val wtf                                               = implicitly[JsonResponse[types.TypesResponse]]
-    val listEndpoint: Endpoint[Unit, types.TypesResponse] = types.list(wtf)
-    val authReq = listEndpoint.request.flatMap { _ =>
-      authenticated
-    }
-    authReq { claims =>
+    val wtf = implicitly[JsonResponse[types.TypesResponse]]
+    authenticated { claims =>
       logger.info("Claims is: " + claims)
-      val result = ??? //repository.allTypes.map(_.toString).sorted
-      listEndpoint.response(result)
+      types.list(wtf).implementedBy { _ =>
+        pipelineService.sources.list().map(_.contentType.toString).distinct
+      }
     }
   }
 }

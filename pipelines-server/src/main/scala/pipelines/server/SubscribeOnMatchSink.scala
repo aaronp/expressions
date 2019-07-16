@@ -4,10 +4,12 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 import com.typesafe.scalalogging.StrictLogging
+import monix.execution.Ack
 import pipelines.reactive._
 import pipelines.reactive.trigger.Trigger
 import pipelines.rest.socket.{AddressedMessage, SocketSubscribeRequest, SocketSubscribeResponse, SocketUnsubscribeRequest}
 
+import scala.concurrent.Future
 import scala.util.Success
 
 /**
@@ -71,7 +73,7 @@ private[server] class SubscribeOnMatchSink(pipelinesService: PipelineService) ex
         }
     }
   }
-  private def onSocketSubscribe(request: SocketSubscribeRequest) = {
+  private def onSocketSubscribe(request: SocketSubscribeRequest): Future[Ack] = {
     val SocketSubscribeRequest(_, _, subscriptionId, transforms, retainAfterMatch) = request
     val trigger                                                  = Trigger(request.sourceAsCriteria, request.sinkAsCriteria, transforms)
 

@@ -8,7 +8,7 @@ import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 import org.scalajs.dom
 import org.scalajs.dom.raw.{MessageEvent, WebSocket}
-import pipelines.rest.socket.{AddressedMessage, SocketConnectionAck, SocketSubscribeRequest, SocketUnsubscribeRequest}
+import pipelines.rest.socket.{AddressedMessage, SocketConnectionAck, SocketUnsubscribeRequest}
 
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
@@ -32,7 +32,7 @@ final class ClientSocketState private (socket: WebSocket) {
   }
 
   messageEvents.foreach { evnt =>
-    HtmlUtils.log(s"\tsocket output:  ${evnt}")
+    HtmlUtils.log(s"\tsocket output: ${evnt}")
   }
 
   /**
@@ -50,15 +50,30 @@ final class ClientSocketState private (socket: WebSocket) {
     */
   private val connectionAck: CancelableFuture[Try[SocketConnectionAck]] = observerOf[SocketConnectionAck].headL.runToFuture
 
-  def subscribe(sourceCriteria: Map[String, String], addressedMessageId: String = UUID.randomUUID.toString, transforms: Seq[String] = Nil): String = {
+  def subscribeToSource(sourceId: String, transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString, retainAfterMatch: Boolean = false) = {
     connectionAck.foreach {
       case Success(ack: SocketConnectionAck) =>
-        HtmlUtils.log(s"Subscribing w/ $addressedMessageId to socket ${ack.commonId}")
-        send(SocketSubscribeRequest(ack.commonId, sourceCriteria, addressedMessageId, transforms))
+        val request = ack.subscribeToSource(sourceId, transforms, subscriptionId, retainAfterMatch)
+        send(request)
       case Failure(err) =>
         HtmlUtils.raiseError(s"Failure getting socket ack: $err")
     }
-    addressedMessageId
+    subscriptionId
+  }
+
+  def subscribe(sourceCriteria: Map[String, String],
+                transforms: Seq[String] = Nil,
+                subscriptionId: String = UUID.randomUUID.toString,
+                retainAfterMatch: Boolean = false): String = {
+    connectionAck.foreach {
+      case Success(ack: SocketConnectionAck) =>
+        HtmlUtils.log(s"Subscribing w/ $subscriptionId to socket ${ack.commonId}")
+        val request = ack.subscribeTo(sourceCriteria, transforms, subscriptionId, retainAfterMatch)
+        send(request)
+      case Failure(err) =>
+        HtmlUtils.raiseError(s"Failure getting socket ack: $err")
+    }
+    subscriptionId
   }
 
   def unSubscribe(subscriptionId: String): Unit = {

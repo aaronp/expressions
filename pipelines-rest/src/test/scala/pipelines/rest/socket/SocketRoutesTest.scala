@@ -66,7 +66,7 @@ class SocketRoutesTest extends BaseRoutesTest {
       socketConnectionRequest ~> underTest.routes ~> check {
         val List((claims, _)) = sockets.toList
         claims shouldBe user
-        rejection shouldBe ExpectedWebSocketRequestRejection
+        rejections should contain(ExpectedWebSocketRequestRejection)
       }
     }
   }

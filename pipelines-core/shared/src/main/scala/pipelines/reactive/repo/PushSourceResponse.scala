@@ -2,7 +2,7 @@ package pipelines.reactive.repo
 
 import cats.syntax.functor._
 import io.circe.{Decoder, Encoder, ObjectEncoder}
-import pipelines.reactive.ContentType
+import pipelines.reactive.{ContentType, HasMetadata}
 
 sealed trait PushSourceResponse
 object PushSourceResponse {
@@ -20,7 +20,7 @@ object PushSourceResponse {
   }
 }
 
-final case class CreatedPushSourceResponse(name: String, contentType: ContentType, metadata: Map[String, String]) extends PushSourceResponse
+final case class CreatedPushSourceResponse(sourceName: String, contentType: ContentType, override val metadata: Map[String, String]) extends PushSourceResponse with HasMetadata
 
 object CreatedPushSourceResponse {
   implicit val encoder: ObjectEncoder[CreatedPushSourceResponse] = io.circe.generic.semiauto.deriveEncoder[CreatedPushSourceResponse]

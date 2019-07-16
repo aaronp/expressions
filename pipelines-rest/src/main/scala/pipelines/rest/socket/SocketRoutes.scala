@@ -1,8 +1,8 @@
 package pipelines.rest.socket
 
 import akka.http.scaladsl.model.headers.{HttpChallenges, RawHeader}
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
+import akka.http.scaladsl.server.Directives._
 import pipelines.rest.RestMain
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, WebSocketTokenCache}
 import pipelines.users.Claims
@@ -19,8 +19,9 @@ import pipelines.users.Claims
 final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, handleSocket: (Claims, ServerSocket, Map[String, String]) => Unit)
     extends BaseSocketRoutes(settings)
     with SocketEndpoint
+    with SocketSchemas
     with BaseCirceRoutes {
-  def routes: Route = connectSocket ~ generateSocketToken
+  def routes: Route = connectSocket ~ generateSocketToken ~ subscribeSocket
 
   private val wtf = implicitly[JsonResponse[String]]
 
@@ -31,6 +32,18 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
         val uuid: String = tokens.generate(jwt)
         socketTokens.response.apply(uuid)
       case None => Directives.reject(AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, HttpChallenges.oAuth2(settings.realm)))
+    }
+  }
+
+  def subscribeSocket: Route = {
+
+    authenticated { user =>
+      socketSubscribe.subscribe.implementedBy { request: SocketSubscribeRequest =>
+//      val service : PipelinesSe
+//      new SubscribeOnMatchSink(service)
+//      }
+        ???
+      }
     }
   }
 

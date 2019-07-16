@@ -21,8 +21,8 @@ final case class SocketConnectionAck(commonId: String, sourceMetadata: Map[Strin
     * @param subscriptionId a unique id which can be used in order to cancel the subscription
     * @return a request which can connect the sink for this websocket to the given source id via the specified transforms (provided the types match up)
     */
-  def subscribeToSource(sourceId: String, transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString): SocketSubscribeRequest = {
-    subscribeTo(Map(tags.Id -> sourceId), transforms, subscriptionId)
+  def subscribeToSource(sourceId: String, transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString, retainAfterMatch : Boolean = false): SocketSubscribeRequest = {
+    subscribeTo(Map(tags.Id -> sourceId), transforms, subscriptionId, retainAfterMatch)
   }
 
   /**
