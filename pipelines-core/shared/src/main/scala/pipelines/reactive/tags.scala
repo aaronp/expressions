@@ -26,6 +26,10 @@ object tags {
   object labelValues {
     val HttpRequests = "http-requests"
     val HttpRequestResponse = "http-request-response"
+    val SourceEvents = "sourceEvents"
+    val SinkEvents = "sinkEvents"
+    val PipelineCreatedEvents = "pipelineCreatedEvents"
+    val MatchEvents = "matchEvents"
   }
   // hmm -- enums?
   object typeValues {

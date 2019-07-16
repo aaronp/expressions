@@ -62,7 +62,7 @@ object SourceTableComponent {
       sources <- sourceList
       socket  <- socketFuture
     } {
-      socket.subscribe(Map(tags.Label -> tags.typeValues.Push))
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents))
 
       import socket._
 

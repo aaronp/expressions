@@ -11,7 +11,7 @@ object PipelineListeners extends StrictLogging {
     * @param pipelinesService
     * @return
     */
-  def apply(pipelinesService: PipelineService) = {
+  def apply(pipelinesService: PipelineService): Unit = {
     SubscribeOnMatchSink.listenToNewSocketSources(pipelinesService)
   }
 

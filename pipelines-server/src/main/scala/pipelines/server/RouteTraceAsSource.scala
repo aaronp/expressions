@@ -15,9 +15,9 @@ object RouteTraceAsSource extends StrictLogging {
     */
   def apply(pipelinesService: PipelineService)(implicit ioScheduler: Scheduler): TraceRoute = {
 
-    def addSrc[A](src: DataSource.PushSource[A]) = {
+    def addSrc[A](src: DataSource.PushSource[A]): DataSource.PushSource[A] = {
       val Seq(created: DataSource.PushSource[A]) = pipelinesService.getOrCreateSource(src)
-      pipelinesService.getOrCreateSource(created).ensuring(_.head == created, "getOrCreate should've returned the same source")
+      //pipelinesService.getOrCreateSource(created).ensuring(_.head == created, "getOrCreate should've returned the same source")
       created
     }
 

@@ -19,10 +19,19 @@ case class SourceRoutes(pipelineService: PipelineService, secureSettings: Secure
     with BaseCirceRoutes {
 
   def routes: Route = {
-    pushSourceRoute ~ findSourcesRoute ~ listTypesRoute
+    pushSourceRoute ~ listTypesRoute ~ findSourcesRouteAuthenticated ~ findSourcesRoute
   }
 
   def findSourcesRoute: Route = {
+    val wtf = implicitly[JsonResponse[ListRepoSourcesResponse]]
+    extractUri { uri: Uri =>
+      findSources.listEndpoint(wtf).implementedBy { _ =>
+        val queryParams = uri.query().toMap
+        pipelineService.listSources(queryParams)
+      }
+    }
+  }
+  def findSourcesRouteAuthenticated: Route = {
     val wtf = implicitly[JsonResponse[ListRepoSourcesResponse]]
     extractUri { uri: Uri =>
       authenticated { claims: Claims =>

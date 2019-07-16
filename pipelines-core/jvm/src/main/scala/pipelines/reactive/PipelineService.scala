@@ -290,9 +290,26 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
       case many => Left(s"${many.size} of the ${sources.size} sources match")
     }
   }
+
 }
 
 object PipelineService extends StrictLogging {
+
+  def registerOwnSourcesAndSink(service : PipelineService) = {
+    service.getOrCreateSource {
+      DataSource(service.sources.events).addMetadata(tags.Label, tags.labelValues.SourceEvents)
+    }
+    service.getOrCreateSource {
+      DataSource(service.sinks.events).addMetadata(tags.Label, tags.labelValues.SinkEvents)
+    }
+    service.getOrCreateSource {
+      DataSource(service.pipelineCreatedEvents).addMetadata(tags.Label, tags.labelValues.PipelineCreatedEvents)
+    }
+    service.getOrCreateSource {
+      DataSource(service.matchEvents).addMetadata(tags.Label, tags.labelValues.MatchEvents)
+    }
+    service
+  }
 
   def apply(transforms: Map[String, Transform] = Transform.defaultTransforms(), dao: StreamDao[Future] = StreamDao.noop[Future])(implicit scheduler: Scheduler): PipelineService = {
     val (sources, sinks, trigger) = create(scheduler)

@@ -3,7 +3,7 @@ package pipelines.server
 import args4c.ConfigApp
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.reactive.{PipelineService, Transform, UploadEvent}
+import pipelines.reactive._
 import pipelines.rest.RestMain.ensureCerts
 import pipelines.rest.routes.TraceRoute
 import pipelines.rest.socket.AddressedMessage
@@ -55,6 +55,9 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     loginHandlerFuture.map { loginHandler =>
       val sslConf: SSLConfig = SSLConfig(settings.rootConfig)
       val route              = PipelineServerRoutes(sslConf, settings, service, loginHandler)
+
+      PipelineService.registerOwnSourcesAndSink(service)
+
       RunningServer(settings, sslConf, route)
     }
   }
