@@ -3,6 +3,7 @@ package pipelines.client.source
 import pipelines.client.tables.Clusterize
 import pipelines.client.{ClientSocketState, HtmlUtils, PipelinesXhr}
 import pipelines.reactive.tags
+import pipelines.rest.socket.{AddressedBinaryMessage, AddressedTextMessage}
 import scalatags.Text.all.{div, _}
 
 import scala.concurrent.Future
@@ -53,31 +54,24 @@ object SourceTableComponent {
       )
     ).render
 
-//    val sourceList: Future[ListRepoSourcesResponse] = PipelinesXhr.listSources(Map.empty)
     val socketFuture: Future[ClientSocketState] = PipelinesXhr.createSocket()
-
-    //sources <- sourceList
-//      sources.sources.foreach { src =>
-//        HtmlUtils.log(s"SOURCE: $src")
-//      }
 
     import PipelinesXhr.implicits._
     socketFuture.foreach { socket =>
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq(tags.transforms.`SourceEvent.asAddressedMessage`))
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SinkEvents), Seq(tags.transforms.`SinkEvent.asAddressedMessage`))
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq(tags.transforms.`SourceEvent.asAddressedMessage`), retainAfterMatch = true)
+      socket.subscribe(Map(tags.Label -> tags.labelValues.SinkEvents), Seq(tags.transforms.`SinkEvent.asAddressedMessage`), retainAfterMatch = true)
       import socket._
 
       val inst = {
         HtmlUtils.log(s"Creating clusterize")
         Clusterize(config)
       }
-      socket.messages.foreach { msg =>
-        try {
-          inst.append(Seq(s"<tr><td>${msg}</td></tr>"))
-        } catch {
-          case NonFatal(e) =>
-            inst.append(Seq(s"<tr><td>error: ${e}</td></tr>"))
-        }
+
+      socket.messages.foreach {
+        case AddressedBinaryMessage(to, data) =>
+          inst.append(Seq(s"<tr><td>to:${to}</td><td>${data.size} bytes</td></tr>"))
+        case AddressedTextMessage(to, msg) =>
+          inst.append(Seq(s"<tr><td>to:${to}</td><td>text:${msg}</td></tr>"))
       }
     }
 

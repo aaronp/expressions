@@ -77,14 +77,7 @@ object Menu {
 
       locally {
 
-        def newRow(item: ListedDataSource) = {
-          tr(
-            td(item.name())
-          ).render.outerHTML
-        }
-
-        val rows         = sources.map(newRow) :+ newRow(ListedDataSource(Map(tags.Name -> "fake"), None))
-        val initialState = SourceTableState(content = rows)
+        val initialState = SourceTableState()
         // allow the 'Sources' menu item to clicked
         val sourceTableLI = addMenuItem("Sources") { _ =>
           GoldenLayoutComponents.addComponent(myLayout, initialState.asLayoutItemConfig())

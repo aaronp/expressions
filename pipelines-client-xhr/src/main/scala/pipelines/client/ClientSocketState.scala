@@ -8,7 +8,7 @@ import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 import org.scalajs.dom
 import org.scalajs.dom.raw.{MessageEvent, WebSocket}
-import pipelines.rest.socket.{AddressedMessage, SocketConnectionAck, SocketUnsubscribeRequest}
+import pipelines.rest.socket.{AddressedMessage, SocketClientConnectionAck, SocketConnectionAck, SocketUnsubscribeRequest}
 
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
@@ -28,12 +28,8 @@ final class ClientSocketState private (socket: WebSocket) {
     */
   val (input: Observer[MessageEvent], messageEvents: Observable[MessageEvent]) = {
     val (a, b) = Pipe.replayLimited[MessageEvent](10).multicast
-    (a, b.dump("SocketState"))
+    (a, b.dump("ClientSocketState"))
   }
-
-//  messageEvents.foreach { evnt: MessageEvent =>
-//    HtmlUtils.log(s"\tsocket output: ${evnt}")
-//  }
 
   /**
     * All the addressed messages coming from the server.
@@ -111,12 +107,12 @@ final class ClientSocketState private (socket: WebSocket) {
     input.onError(new Exception(s"Socket error: $evt"))
   }
   socket.onmessage = { msg =>
-    input.onNext(msg)
     HtmlUtils.log(s"onMessage ${msg}")
+    input.onNext(msg)
   }
   socket.onopen = { msg =>
     HtmlUtils.log(s"onopen ${msg}")
-    sendMessage(AddressedMessage("client-open", "hi"))
+    sendMessage(AddressedMessage(SocketClientConnectionAck(true)))
   }
 }
 object ClientSocketState {
