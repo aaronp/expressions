@@ -3,6 +3,8 @@ package pipelines.server
 import java.awt.Desktop
 import java.net.URI
 
+import pipelines.mongo.StartMongo
+
 import scala.io.StdIn
 
 object PipelinesMainDev {
@@ -19,7 +21,7 @@ object PipelinesMainDev {
   def main(a: Array[String]): Unit = {
 
     // let's get mongo going..
-    dockerenv.mongo().start()
+    StartMongo.main(a)
 
     PipelinesMain.runMain(a ++: devArgs) match {
       case None =>

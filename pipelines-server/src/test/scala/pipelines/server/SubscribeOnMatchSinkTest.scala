@@ -55,7 +55,7 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         // flush it to the websocket channel -- this test isn't a full integration test where we actually spin up
         // a web socket and connect an end client, we just observe what would be sent to said client, assuming AkkaIO
         // works
-        val receivedOnSocketFuture = socket.fromRemoteAkkaInput.dump("toRemoteOutput").take(1).toListL.runToFuture
+        val receivedOnSocketFuture = socket.toClientAkkaInput.dump("toRemoteOutput").take(1).toListL.runToFuture
         val fromBob                = PushEvent(Claims.after(10.seconds).forUser("bob"), Json.fromString("hello from bob"))
         pushSource.push(fromBob)
 
@@ -104,7 +104,7 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
 
         And("The socket sends a subscription request for a source")
         val createPipelineFuture = service.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
-        socketSource.socket.toServerFromRemote
+        socketSource.socket.toClient
           .onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
 
         Then("A new pipeline should be created between the push source and our socket sink")
@@ -113,8 +113,8 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         pipeline.matchId should not be null
 
         When("The source pushes some data")
-        val readPushedDataFuture  = socketSource.socket.fromRemoteAkkaInput.take(1).toListL.runToFuture
-        val readPushed2DataFuture = socketSource.socket.fromRemoteAkkaInput.take(2).toListL.runToFuture
+        val readPushedDataFuture  = socketSource.socket.toClientAkkaInput.take(1).toListL.runToFuture
+        val readPushed2DataFuture = socketSource.socket.toClientAkkaInput.take(2).toListL.runToFuture
         val firstSourceMessage    = PushEvent(Claims.after(10.seconds).forUser("alice"), Json.fromString("alice data"))
         pushSource.push(firstSourceMessage)
 

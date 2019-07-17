@@ -24,6 +24,6 @@ final case class SocketSink(user: Claims, socket: ServerSocket, override val met
   override val inputType: ContentType = ContentType.of[AddressedMessage]
 
   override def connect(contentType: ContentType, observable: Observable[AddressedMessage], sourceMetadata: Map[String, String])(implicit scheduler: Scheduler): Cancelable = {
-    observable.subscribe(socket.toServerFromRemote)
+    observable.subscribe(socket.toClient)
   }
 }

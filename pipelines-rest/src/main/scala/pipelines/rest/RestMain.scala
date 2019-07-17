@@ -9,6 +9,8 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import pipelines.Localhost
 import pipelines.reactive.{PipelineService, tags}
+import pipelines.rest.routes.WebSocketTokenCache
+import pipelines.rest.socket.{ServerSocket, SocketRoutes}
 import pipelines.ssl.GenCerts.CertAuthSettings
 import pipelines.ssl.{GenCerts, SSLConfig}
 import pipelines.users.Claims
@@ -42,6 +44,7 @@ object RestMain extends ConfigApp with StrictLogging {
     val config   = ensureCerts(rootConfig)
     val settings = Settings(config)
     val service  = PipelineService()(settings.env.ioScheduler)
+    PipelineService.registerOwnSourcesAndSink(service)
 
     logger.warn(s"Starting with\n${settings}\n\n")
 
@@ -53,7 +56,6 @@ object RestMain extends ConfigApp with StrictLogging {
 
     val login = settings.loginRoutes(sslConf).routes
 
-    val service    = PipelineService()(settings.env.ioScheduler)
     val repoRoutes = settings.repoRoutes(service)
 
     val route: Route = {

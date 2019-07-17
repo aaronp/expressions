@@ -33,8 +33,6 @@ object PipelineServerRoutes {
       }
     }
 
-    val socketRoutes: Route = createSocketRoute(settings, pipelinesService).routes
-
     val login = settings.loginRoutes(sslConf, loginHandler).routes
 
     import settings.env._
@@ -42,7 +40,6 @@ object PipelineServerRoutes {
       settings.staticRoutes.route +:
         DocumentationRoutes.route +:
         login +:
-        socketRoutes +:
         additionalRoutes
     }
 
@@ -50,17 +47,5 @@ object PipelineServerRoutes {
     Route.seal(trace.wrap(reduce(repoRoutes)))
   }
 
-  def createSocketRoute(settings: Settings, pipelinesService: PipelineService): SocketRoutes = {
 
-    /**
-      * What to do when a new WebSocket is opened? Register a source and sink!
-      */
-    def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
-      socket.register(user, queryMetadata, pipelinesService)
-    }
-
-    // create a temp look-up from a string which can be used as the websocket protocol to the user's JWT
-    val tokens = WebSocketTokenCache(settings.tokenValidityDuration)(settings.env.ioScheduler)
-    new SocketRoutes(settings.secureSettings, tokens, handleSocket)
-  }
 }

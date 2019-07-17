@@ -1,6 +1,5 @@
 package pipelines.reactive
 
-import monix.execution.CancelableFuture
 import org.scalatest.concurrent.ScalaFutures
 import pipelines._
 import pipelines.reactive.DataSource.PushSource
@@ -95,12 +94,12 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
             service.transformsByName.keySet should contain("persisted")
           }
 
-          service.getOrCreateDump("before")
-          service.getOrCreateDump("after")
+          service.getOrCreateDump("before").futureValue
+          service.getOrCreateDump("after").futureValue
           service.underlying.triggers.connect(
             MetadataCriteria("autoconnect" -> "true"),
             MetadataCriteria("name"        -> "count"),
-            Seq("before", "addressedTextAsJson", "Json to String", "String to UTF-8 byte array", "persisted", "after"),
+            Seq("before", "sockets.addressedTextAsJson", "Transform.jsonToString", "Transform.stringToUtf8", "persisted", "after"),
             retainTriggerAfterMatch = true,
             TriggerCallback.Ignore
           )

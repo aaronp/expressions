@@ -8,10 +8,10 @@ import monix.execution.{Scheduler, UncaughtExceptionReporter}
 
 final class Env(materializer: ActorMaterializer) extends AutoCloseable {
 
-  lazy val computeScheduler                         = {
+  lazy val computeScheduler = {
     Scheduler.computation(name = "pipelines-env-compute", reporter = Env.reporter("pipelines-io"))
   }
-  lazy val ioScheduler                              = {
+  lazy val ioScheduler = {
     Scheduler.io("pipelines-env-io", reporter = Env.reporter("pipelines-io"))
   }
   implicit val actorMaterializer: ActorMaterializer = materializer

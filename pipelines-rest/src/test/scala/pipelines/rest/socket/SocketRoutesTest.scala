@@ -24,13 +24,13 @@ class SocketRoutesTest extends BaseRoutesTest {
 
       def handler(user: Claims, socket: ServerSocket, queryParams: Map[String, String]) = {
         implicit val s = env.ioScheduler
-        socket.fromRemoteOutput.subscribe(socket.toServerFromRemote)
+        socket.fromRemoteOutput.subscribe(socket.toClient)
       }
 
       val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), handler)
 
       val clientMessages = ListBuffer[AddressedMessage]()
-      client.toClientOutput.foreach {
+      client.fromServer.foreach {
         case am @ AddressedTextMessage(_, _) =>
           clientMessages += am
         case other => sys.error("wrong" + other)

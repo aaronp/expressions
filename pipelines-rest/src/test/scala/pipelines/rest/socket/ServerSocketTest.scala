@@ -28,7 +28,7 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
 
       val received = ListBuffer[AddressedTextMessage]()
       When("We subscribe it to both observables")
-      val done: CancelableFuture[Unit] = socket.fromRemoteAkkaInput.foreach {
+      val done: CancelableFuture[Unit] = socket.toClientAkkaInput.foreach {
         case msg: AddressedTextMessage =>
           val before = received.size
           received += msg
@@ -36,8 +36,8 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
         case other => sys.error(s"got $other")
       }
 
-      (first ++ Observable.never).delayOnNext(1.millis).subscribe(socket.toServerFromRemote)
-      second.delayOnNext(1.millis).subscribe(socket.toServerFromRemote)
+      (first ++ Observable.never).delayOnNext(1.millis).subscribe(socket.toClient)
+      second.delayOnNext(1.millis).subscribe(socket.toClient)
 
       Then("It should contain the values from both")
       done.futureValue

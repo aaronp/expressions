@@ -6,15 +6,19 @@ import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import akka.NotUsed
 import akka.http.scaladsl.model.ws.Message
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import monix.execution.{Cancelable, Scheduler}
+import io.circe.{Decoder, Encoder}
+import monix.execution.{Ack, Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.{Observable, Observer}
+
+import scala.concurrent.Future
+import scala.reflect.ClassTag
 
 /**
   * represents a pipe which can drive a web socket that can be subscribed to multiple sources
   *
   */
 class ClientSocket private (private val fromServerInput: Observer[AddressedMessage],
-                            val toClientOutput: Observable[AddressedMessage],
+                            val fromServer: Observable[AddressedMessage],
                             val toServerInput: Observer[AddressedMessage],
                             val toServerOutput: Observable[AddressedMessage],
                             val akkaSource: Source[Message, NotUsed],
@@ -22,6 +26,22 @@ class ClientSocket private (private val fromServerInput: Observer[AddressedMessa
                             val scheduler: Scheduler) {
 
   lazy val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
+
+  def expect[T: ClassTag: Decoder](n: Int = 1): CancelableFuture[List[T]] = {
+    fromServer
+      .flatMap {
+        case msg: AddressedMessage => Observable.fromIterable(msg.as[T].toOption)
+      }
+      .take(n)
+      .toListL
+      .runToFuture(scheduler)
+  }
+
+  def requestHandshake(): Future[Ack] = send(SocketClientConnectionAck(true))
+
+  def send[T: ClassTag: Encoder](data: T): Future[Ack] = {
+    toServerInput.onNext(AddressedMessage(data))
+  }
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
   def addClientSubscription(cancelable: Cancelable, id: UUID = UUID.randomUUID()): UUID = {

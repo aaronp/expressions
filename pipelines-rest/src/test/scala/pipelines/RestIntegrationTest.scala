@@ -5,12 +5,12 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.client.jvm.{ClientSession, PipelinesClient}
 import pipelines.rest.RunningServer
-import pipelines.rest.socket.{AddressedMessage, AddressedTextMessage}
-import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse}
+import pipelines.rest.socket.SocketConnectionAck
+import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Success, Try}
+import scala.util.Success
 
 class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures {
 
@@ -28,31 +28,27 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
       token.count(_ == '.') shouldBe 2
     }
   }
-  "The Rest server" should {
 
-    "handle client websocket requests" in {
+  "The Rest server" should {
+    "respond to new websocket client handshakes" in {
 
       Using(Env()) { implicit clientEnv =>
         val config = DevRestMain.devArgs.asConfig().resolve()
-        val session: ClientSession[Future] = eventually {
-          val client = PipelinesClient(config)(clientEnv.ioScheduler).get
+        val session: ClientSession = eventually {
+          val client: PipelinesClient[Future] = PipelinesClient(config)(clientEnv.ioScheduler).get
           client.newSession("admin", "password").futureValue
         }
+
         val wsClient = session.socket
 
-        val echoReply = wsClient.toClientOutput
-          .dump("toClientOutput")
-          .collect {
-            case AddressedTextMessage("hello", echo) if echo.startsWith("echo:") => echo
-          }
-          .take(1)
-          .runAsyncGetFirst(clientEnv.ioScheduler)
+        val ackReply = wsClient.expect[SocketConnectionAck](1)
 
-        wsClient.toServerInput.onNext(AddressedMessage("hello", "world"))
+        session.requestHandshake()
 
         implicit val sched = clientEnv.computeScheduler
 
-        echoReply.futureValue shouldBe Some("echo: world")
+        val List(handshake) = ackReply.futureValue
+        handshake.commonId should not be null
       }
     }
   }

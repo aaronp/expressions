@@ -17,7 +17,7 @@ final case class SocketSource(user: Claims, socket: ServerSocket, override val m
 
   override def data(ct: ContentType): Option[Observable[_]] = {
     if (ct == contentType) {
-      Option(socket.fromRemoteAkkaInput)
+      Option(socket.toClientAkkaInput)
     } else {
       None
     }

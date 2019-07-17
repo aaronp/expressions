@@ -27,17 +27,17 @@ object OpenApiEncoder extends endpoints.openapi.model.OpenApiSchemas with endpoi
 /**
   * Generates OpenAPI documentation for the endpoints described in the `CounterEndpoints` trait.
   */
-object Documentation          //
+object Documentation //
     extends openapi.Endpoints //
-    with CirceAdapter         //
-    with SourceEndpoints      //
-    with TransformEndpoints   //
-    with AdminEndpoints       //
-    with LoginEndpoints       //
-    with UserEndpoints        //
-    with UserRoleEndpoints    //
-    with AuthEndpoints        //
-    with AuditEndpoints       // TODO !
+    with CirceAdapter       //
+    with SourceEndpoints    //
+    with TransformEndpoints //
+    with AdminEndpoints     //
+    with LoginEndpoints     //
+    with UserEndpoints      //
+    with UserRoleEndpoints  //
+    with AuthEndpoints      //
+    with AuditEndpoints     // TODO !
     with openapi.JsonSchemaEntities {
 
   import OpenApiEncoder.JsonSchema._
@@ -79,8 +79,8 @@ object Documentation          //
 
   def userDocs: List[Documentation.DocumentedEndpoint] = {
     List(
-      createUser.createUserEndpoint(                                                        //
-                                    document(CreateUserRequest("name", "email", "pwd")),    //
+      createUser.createUserEndpoint( //
+                                    document(CreateUserRequest("name", "email", "pwd")), //
                                     document(CreateUserResponse(true, Some("token"), None)) //
       ),
       resetUser.resetUserEndpoint(
@@ -94,11 +94,11 @@ object Documentation          //
 
   def adminEndpointDocs: List[Documentation.DocumentedEndpoint] = {
     List(
-      generate.generateEndpoint(                                                    //
-                                document(GenerateServerCertRequest("saveToPath")),  //
+      generate.generateEndpoint( //
+                                document(GenerateServerCertRequest("saveToPath")), //
                                 document(GenerateServerCertResponse("certificate")) //
       ),
-      updatecert.updateEndpoint(                                                                  //
+      updatecert.updateEndpoint( //
                                 document(UpdateServerCertRequest("certificate", "save/to/path")), //
                                 genericResp),
       seed.seedEndpoint(document(SetJWTSeedRequest("seed")), genericResp)

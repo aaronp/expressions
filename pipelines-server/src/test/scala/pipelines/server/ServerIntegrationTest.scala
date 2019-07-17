@@ -7,12 +7,12 @@ import pipelines.{BaseCoreTest, DevRestMain, rest}
 import pipelines.rest.RunningServer
 import pipelines.users.{CreateUserRequest, CreateUserResponse}
 
+  import args4c.implicits._
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
 class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures {
 
-  import args4c.implicits._
   private var server: RunningServer = null
 
   "PipelinesClient.newUser" should {

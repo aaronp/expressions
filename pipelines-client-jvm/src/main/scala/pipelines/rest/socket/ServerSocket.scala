@@ -19,25 +19,25 @@ import scala.reflect.ClassTag
 /**
   * represents a pipe which can drive a web socket that can be subscribed to multiple sources
   *
-  * @param toServerFromRemote the channel for sending messages to the remote connection
+  * @param toClient the channel for sending messages to the remote connection
   * @param fromRemoteOutput the channel of messages coming from the remote connection
   * @param toRemoteAkkaInput the input to the akka sink which drives the akka sink -- the other end of the 'toRemote' pipe
-  * @param fromRemoteAkkaInput the output of the akka source which drives data into the 'fromRemote' observable
+  * @param toClientAkkaInput the output of the akka source which drives data into the 'fromRemote' observable
   * @param scheduler
   */
-final class ServerSocket private (val toServerFromRemote: Observer[AddressedMessage],
-                                  val fromRemoteAkkaInput: Observable[AddressedMessage],
-                                  val fromRemoteOutput: Observable[AddressedMessage],
+final class ServerSocket private (val toClient: Observer[AddressedMessage],
+                                  val toClientAkkaInput: Observable[AddressedMessage],
                                   val toRemoteAkkaInput: Observer[AddressedMessage],
+                                  val fromRemoteOutput: Observable[AddressedMessage],
                                   val scheduler: Scheduler)
     extends StrictLogging {
 
   def sendToClient[T: ClassTag: Encoder](value: T): Future[Ack] = {
-    toRemoteAkkaInput.onNext(AddressedMessage("toRemote.onNext", value))
+    toClient.onNext(AddressedMessage(value))
   }
 
   val akkaSink: Sink[Message, _]                = asAkkaSink("\t!\tServerSocket sink", toRemoteAkkaInput)(scheduler)
-  val akkaSource: Source[Message, NotUsed]      = asAkkaSource(s"\t!\tServerSocket src", fromRemoteAkkaInput)(scheduler)
+  val akkaSource: Source[Message, NotUsed]      = asAkkaSource(s"\t!\tServerSocket src", toClientAkkaInput)(scheduler)
   val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
@@ -67,6 +67,8 @@ final class ServerSocket private (val toServerFromRemote: Observer[AddressedMess
     // use the same ID for both the source and sink so we can more easily associate them when needed.
     val commonId: String = UUID.randomUUID.toString
 
+    logger.info(s"Registering new socket connection from ${user} w/ id '${commonId}'")
+
     val baseMetadata: Map[String, String] = Map( //
                                                 tags.Id          -> commonId, //
                                                 tags.ContentType -> SocketSource.contentType.toString, //
@@ -95,6 +97,18 @@ final class ServerSocket private (val toServerFromRemote: Observer[AddressedMess
       val handshake = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
       logger.info(s"Sending ack on new socket: $handshake")
       socket.sendToClient(handshake)
+
+      val clientAcks: Observable[SocketClientConnectionAck] = socket.fromRemoteOutput.flatMap { fromClient =>
+        logger.info(s"""Got a client addressed messsage: $fromClient""".stripMargin)
+        Observable.fromIterable(fromClient.as[SocketClientConnectionAck].toOption)
+      }
+
+      // respond to client ack
+      clientAcks.foreach { clientAck =>
+        logger.info(s"""Sending client a handshake in response to a $clientAck""".stripMargin)
+        socket.sendToClient(handshake)
+      }
+
       (newSource, handshake, newSink)
     }
   }
@@ -109,14 +123,14 @@ object ServerSocket {
   def apply(settings: SocketSettings)(implicit scheduler: Scheduler): ServerSocket = {
     import settings._
 
-    val (toClientInput: Observer[AddressedMessage], toClientOutput: Observable[AddressedMessage]) = {
-      PipeSettings.pipeForSettings(s"$name-input", settings.input)
-    }
-
-    val (fromClientInput: Observer[AddressedMessage], fromClientOutput: Observable[AddressedMessage]) = {
+    val (toClient: Observer[AddressedMessage], toClientAkkaInput: Observable[AddressedMessage]) = {
       PipeSettings.pipeForSettings(s"$name-output", settings.output)
     }
 
-    new ServerSocket(fromClientInput, fromClientOutput, toClientOutput, toClientInput, scheduler)
+    val (fromClientAkkaInput: Observer[AddressedMessage], fromClient: Observable[AddressedMessage]) = {
+      PipeSettings.pipeForSettings(s"$name-input", settings.input)
+    }
+
+    new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler)
   }
 }

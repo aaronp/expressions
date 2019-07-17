@@ -7,6 +7,17 @@ import pipelines.reactive.{MetadataCriteria, tags}
 import pipelines.users.Claims
 
 /**
+  * The first message to send from the client
+  */
+final case class SocketClientConnectionAck(fromTheClient : Boolean = true) {
+
+}
+object SocketClientConnectionAck {
+  implicit val encoder: ObjectEncoder[SocketClientConnectionAck] = io.circe.generic.semiauto.deriveEncoder[SocketClientConnectionAck]
+  implicit val decoder: Decoder[SocketClientConnectionAck] = io.circe.generic.semiauto.deriveDecoder[SocketClientConnectionAck]
+}
+
+/**
   * The first messages sent when a socket connection has been made. It contains a 'commonId' -- an ID used for both sides
   * of the socket (SocketSource and SocketSink), and so can create [SocketSubscribeRequest] requests
   *
@@ -39,7 +50,6 @@ final case class SocketConnectionAck(commonId: String, sourceMetadata: Map[Strin
 object SocketConnectionAck {
   implicit val encoder: ObjectEncoder[SocketConnectionAck] = io.circe.generic.semiauto.deriveEncoder[SocketConnectionAck]
   implicit val decoder: Decoder[SocketConnectionAck]       = io.circe.generic.semiauto.deriveDecoder[SocketConnectionAck]
-
 }
 
 /**

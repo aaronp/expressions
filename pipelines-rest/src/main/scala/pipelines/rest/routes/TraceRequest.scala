@@ -64,7 +64,7 @@ trait TraceRequest {
 }
 
 object TraceRequest {
-  def apply(callback: HttpRequest => Unit) = new TraceRequest {
+  def apply(callback: HttpRequest => Unit): TraceRequest = new TraceRequest {
     override def onRequest(request: HttpRequest): Unit = {
       callback(request)
     }

@@ -8,7 +8,7 @@ import javax.net.ssl.{HttpsURLConnection, SSLContext}
 import pipelines.Env
 import pipelines.auth.AuthEndpoints
 import pipelines.reactive.repo.{SourceEndpoints, TransformEndpoints}
-import pipelines.rest.socket.SocketEndpoint
+import pipelines.rest.socket.{EventDto, SocketEndpoint}
 import pipelines.ssl.SSLConfig
 import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginEndpoints, LoginRequest, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
@@ -29,30 +29,37 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     with TransformEndpoints
     with UserSchemas {
 
-  def newUser(request : CreateUserRequest): R[CreateUserResponse] = createUser.createUserEndpoint.apply(request)
+  def newUser(request: CreateUserRequest): R[CreateUserResponse] = createUser.createUserEndpoint.apply(request)
 
-  def login(login: LoginRequest): R[LoginResponse]            = userLogin.loginEndpoint.apply(login -> None)
+  def login(login: LoginRequest): R[LoginResponse] = userLogin.loginEndpoint.apply(login -> None)
+
   def login(user: String, password: String): R[LoginResponse] = login(LoginRequest(user, password))
 
-  def newSession(user: String, password: String)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession[R]] = {
+  def newSession(user: String, password: String)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession] = {
     newSession(LoginRequest(user, password))
   }
 
-  def newSession(request: LoginRequest)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession[R]] = {
-    val loginRespR           = ev(login(request))
+  def newSession(request: LoginRequest)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession] = {
     implicit val execContent = env.ioScheduler
 
-    loginRespR.flatMap { response: LoginResponse =>
+    val loginRespFuture: Future[LoginResponse] = ev(login(request))
+
+    loginRespFuture.flatMap { response: LoginResponse =>
       response.jwtToken match {
         case Some(jwt) =>
           val socketRequest: SttpRequest = sockets.request(Unit)
           val webSocketUri               = socketRequest.uri.toString.replaceAllLiterally("http", "ws")
-          ClientSession(this, jwt, defaultSslContext, webSocketUri, request.user)
+
+          val me: PipelinesClient[Future] = this.asInstanceOf[PipelinesClient[Future]]
+
+          ClientSession(me, jwt, defaultSslContext, webSocketUri, request.user).map { session: ClientSession =>
+            session.send(EventDto("hello", Map("x" -> "y")))
+            session
+          }
         case None => Future.failed(new Exception(s"Login request for ${request.user} failed - no token"))
       }
     }
   }
-
 }
 
 object PipelinesClient extends StrictLogging {
@@ -62,7 +69,7 @@ object PipelinesClient extends StrictLogging {
       forHost(s"https://${hostPort(rootConfig)}", Option(ctxt))
     }
   }
-  def sync(rootConfig: Config) : Try[PipelinesClient[Try]] = {
+  def sync(rootConfig: Config): Try[PipelinesClient[Try]] = {
     SSLConfig(rootConfig).newContext.map { ctxt: SSLContext =>
       forHostSync(s"https://${hostPort(rootConfig)}", Option(ctxt))
     }

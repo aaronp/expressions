@@ -1,8 +1,8 @@
 package pipelines.rest.socket
 
 import akka.http.scaladsl.model.headers.{HttpChallenges, RawHeader}
-import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server._
 import pipelines.rest.RestMain
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, WebSocketTokenCache}
 import pipelines.users.Claims
@@ -39,21 +39,20 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
 
     authenticated { user =>
       socketSubscribe.subscribe.implementedBy { request: SocketSubscribeRequest =>
-//      val service : PipelinesSe
-//      new SubscribeOnMatchSink(service)
-//      }
         ???
       }
     }
   }
 
   def connectSocket: Route = {
+
     authenticatedConnect {
       case (tokenProtocol, user) =>
-        Directives.extractUri { uri =>
-          logger.info(s"${user.name} created socket at ${timestamp()} from $tokenProtocol")
+        logger.info(s"${user.name} created socket at ${timestamp()} from '$tokenProtocol'")
+        if (tokenProtocol != "")
           tokens.validateAndRemove(tokenProtocol)
 
+        Directives.extractUri { uri =>
           val settings = SocketSettings(user.name)
           withSocketRoute(settings) {
             case (_, socket) =>
@@ -62,6 +61,7 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
           }
         }
     }
+
   }
 
   /**

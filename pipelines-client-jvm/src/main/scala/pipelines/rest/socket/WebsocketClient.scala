@@ -1,6 +1,6 @@
 package pipelines.rest.socket
 
-import akka.http.scaladsl.model.headers.Authorization
+import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.ws.WebSocketRequest
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import com.typesafe.scalalogging.StrictLogging
@@ -11,9 +11,9 @@ import scala.concurrent.Future
 
 object WebsocketClient extends StrictLogging {
 
-  def apply(uri: String, env: Env, sslContextOpt: Option[SSLContext], settings: SocketSettings, authHeader: Option[Authorization] = None): Future[ClientSocket] = {
+  def apply(uri: String, env: Env, sslContextOpt: Option[SSLContext], settings: SocketSettings, authHeader: List[HttpHeader] = Nil): Future[ClientSocket] = {
 
-    val wsReq = WebSocketRequest(uri, extraHeaders = authHeader.toList)
+    val wsReq = WebSocketRequest(uri, extraHeaders = authHeader)
 
     import env._
     val socket: ClientSocket = ClientSocket(settings)(env.ioScheduler)
@@ -35,7 +35,10 @@ object WebsocketClient extends StrictLogging {
     }
 
     connectionFuture.map { upgrade =>
-      logger.info(s"Socket upgrade response is ${upgrade.response.status}")
+      require(
+        upgrade.response.status.intValue == 101,
+        s"Socket upgrade response to $uri w/ ${authHeader.size} headers was not upgrade (101), but ${upgrade.response.status}"
+      )
       socket
     }(env.ioScheduler)
   }

@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatter
 import io.circe.{Decoder, Encoder, ObjectEncoder}
 
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
   * This was created to wrap websocket messages so that a single websocket connection can be used by multiple producers/consumers.
@@ -21,7 +21,7 @@ sealed trait AddressedMessage {
   def isBinary: Boolean
   def to: String
 
-  def as[T: Decoder]: Try[T]
+  def as[T: ClassTag: Decoder]: Try[T]
 }
 object AddressedMessage {
   import cats.syntax.functor._
@@ -38,8 +38,8 @@ object AddressedMessage {
     val SubscribeTopic   = "__SUBSCRIBE__"
     val UnsubscribeTopic = "__UNSUBSCRIBE__"
 
-    def forClass(name: String): String = s"class:${name}"
-    def forClass[T: ClassTag]: String  = forClass(className[T])
+    def forClass(name: String): String         = s"class:${name}"
+    def forClass[T: ClassTag]: String          = forClass(className[T])
     private def className[T: ClassTag]: String = implicitly[ClassTag[T]].runtimeClass.getName
   }
 
@@ -55,7 +55,7 @@ object AddressedMessage {
     apply(topics.forClass[T], value.asJson.noSpaces)
   }
 
-  def apply[T: ClassTag: Encoder](to : String, value: T): AddressedTextMessage = {
+  def apply[T: ClassTag: Encoder](to: String, value: T): AddressedTextMessage = {
     apply(to, value.asJson.noSpaces)
   }
 
@@ -77,8 +77,13 @@ object AddressedMessage {
 case class AddressedTextMessage(override val to: String, text: String) extends AddressedMessage {
   override def isBinary = false
 
-  def as[T: Decoder]: Try[T] = {
-    io.circe.parser.decode[T](text).toTry
+  def as[T: ClassTag: Decoder]: Try[T] = {
+    val expectedTopic = AddressedMessage.topics.forClass[T]
+    if (expectedTopic == to) {
+      io.circe.parser.decode[T](text).toTry
+    } else {
+      Failure(new Exception(s"Topic '$to' doesn't match '$expectedTopic'"))
+    }
   }
 }
 object AddressedTextMessage {
@@ -89,7 +94,7 @@ case class AddressedBinaryMessage(override val to: String, data: Array[Byte]) ex
   override def isBinary = true
 
   // TODO - this is naive and untested - we probably need to refact this as the bytes could be protobuf, avro, etc
-  def as[T: Decoder]: Try[T] = {
+  def as[T: ClassTag: Decoder]: Try[T] = {
     val text = new String(data, "UTF-8")
     io.circe.parser.decode[T](text).toTry
   }
