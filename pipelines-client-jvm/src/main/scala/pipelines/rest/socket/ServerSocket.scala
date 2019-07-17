@@ -6,6 +6,7 @@ import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import akka.NotUsed
 import akka.http.scaladsl.model.ws.Message
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.Encoder
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.{Observable, Observer}
@@ -20,26 +21,24 @@ import scala.reflect.ClassTag
   *
   * @param toServerFromRemote the channel for sending messages to the remote connection
   * @param fromRemoteOutput the channel of messages coming from the remote connection
-  * @param toRemote the input to the akka sink which drives the akka sink -- the other end of the 'toRemote' pipe
-  * @param toRemoteAkkaInput the output of the akka source which drives data into the 'fromRemote' observable
+  * @param toRemoteAkkaInput the input to the akka sink which drives the akka sink -- the other end of the 'toRemote' pipe
+  * @param fromRemoteAkkaInput the output of the akka source which drives data into the 'fromRemote' observable
   * @param scheduler
   */
 final class ServerSocket private (val toServerFromRemote: Observer[AddressedMessage],
-                                  val toRemoteAkkaInput: Observable[AddressedMessage],
+                                  val fromRemoteAkkaInput: Observable[AddressedMessage],
                                   val fromRemoteOutput: Observable[AddressedMessage],
-                                  val toRemote: Observer[AddressedMessage],
-                                  val scheduler: Scheduler) {
+                                  val toRemoteAkkaInput: Observer[AddressedMessage],
+                                  val scheduler: Scheduler)
+    extends StrictLogging {
 
   def sendToClient[T: ClassTag: Encoder](value: T): Future[Ack] = {
-    toServerFromRemote.onNext(AddressedMessage(value))
-  }
-  def withOutput(newOutput: Observable[AddressedMessage]): ServerSocket = {
-    new ServerSocket(toServerFromRemote, newOutput, fromRemoteOutput, toRemote, scheduler)
+    toRemoteAkkaInput.onNext(AddressedMessage("toRemote.onNext", value))
   }
 
-  lazy val akkaSink: Sink[Message, _]                = asAkkaSink("\t!\tServerSocket sink", toRemote)(scheduler)
-  lazy val akkaSource: Source[Message, NotUsed]      = asAkkaSource(s"\t!\tServerSocket src", toRemoteAkkaInput)(scheduler)
-  lazy val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
+  val akkaSink: Sink[Message, _]                = asAkkaSink("\t!\tServerSocket sink", toRemoteAkkaInput)(scheduler)
+  val akkaSource: Source[Message, NotUsed]      = asAkkaSource(s"\t!\tServerSocket src", fromRemoteAkkaInput)(scheduler)
+  val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
   def addClientSubscription(cancelable: Cancelable, id: UUID = UUID.randomUUID()): UUID = {
@@ -89,12 +88,12 @@ final class ServerSocket private (val toServerFromRemote: Observer[AddressedMess
       * (via a [[SocketSubscribeRequest]]) using the id/source/sink metadata from the ack.
       *
       */
-    import pipelinesService.sources.scheduler
     for {
       (_, newSource) <- sourceFuture
       (_, newSink)   <- sinkFuture
     } yield {
       val handshake = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
+      logger.info(s"Sending ack on new socket: $handshake")
       socket.sendToClient(handshake)
       (newSource, handshake, newSink)
     }
@@ -111,11 +110,11 @@ object ServerSocket {
     import settings._
 
     val (toClientInput: Observer[AddressedMessage], toClientOutput: Observable[AddressedMessage]) = {
-      PipeSettings.pipeForSettings(s"$id-input", settings.input)
+      PipeSettings.pipeForSettings(s"$name-input", settings.input)
     }
 
     val (fromClientInput: Observer[AddressedMessage], fromClientOutput: Observable[AddressedMessage]) = {
-      PipeSettings.pipeForSettings(s"$id-output", settings.output)
+      PipeSettings.pipeForSettings(s"$name-output", settings.output)
     }
 
     new ServerSocket(fromClientInput, fromClientOutput, toClientOutput, toClientInput, scheduler)

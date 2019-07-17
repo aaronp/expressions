@@ -51,11 +51,10 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
     authenticatedConnect {
       case (tokenProtocol, user) =>
         Directives.extractUri { uri =>
-          val created = s"${user.name} created socket at ${timestamp()} from $tokenProtocol"
-          logger.info(created)
+          logger.info(s"${user.name} created socket at ${timestamp()} from $tokenProtocol")
           tokens.validateAndRemove(tokenProtocol)
 
-          val settings = SocketSettings(user.name, created)
+          val settings = SocketSettings(user.name)
           withSocketRoute(settings) {
             case (_, socket) =>
               val metadata = RestMain.queryParamsForUri(uri, user)
@@ -105,8 +104,8 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
 
   private[socket] def connectAnySocket(user: Claims): Route = {
     sockets.connect(wtf).request { _ =>
-      val created  = s"${user.name} created at ${timestamp()}"
-      val settings = SocketSettings(user.name, created)
+      logger.info(s"${user.name} created at ${timestamp()}")
+      val settings = SocketSettings(user.name)
 
       Directives.extractUri { uri =>
         withSocketRoute(settings) {

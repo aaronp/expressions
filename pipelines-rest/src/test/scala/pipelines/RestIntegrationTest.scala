@@ -3,13 +3,14 @@ package pipelines
 import args4c.implicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.client.jvm.PipelinesClient
+import pipelines.client.jvm.{ClientSession, PipelinesClient}
 import pipelines.rest.RunningServer
-import pipelines.rest.socket.{AddressedMessage, AddressedTextMessage, SocketSettings}
-import pipelines.users.{LoginRequest, LoginResponse}
+import pipelines.rest.socket.{AddressedMessage, AddressedTextMessage}
+import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse}
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Success
+import scala.util.{Success, Try}
 
 class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures {
 
@@ -19,7 +20,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
     "reject invalid passwords" in {
       val client = {
         val config = DevRestMain.devArgs.asConfig().resolve()
-        PipelinesClient(config).get
+        PipelinesClient.sync(config).get
       }
 
       client.login(LoginRequest("admin", "wrong")).isFailure shouldBe true
@@ -28,18 +29,16 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
     }
   }
   "The Rest server" should {
+
     "handle client websocket requests" in {
 
-      val session = eventually {
-        val Success(client) = {
-          val config = DevRestMain.devArgs.asConfig().resolve()
-          PipelinesClient(config)
+      Using(Env()) { implicit clientEnv =>
+        val config = DevRestMain.devArgs.asConfig().resolve()
+        val session: ClientSession[Future] = eventually {
+          val client = PipelinesClient(config)(clientEnv.ioScheduler).get
+          client.newSession("admin", "password").futureValue
         }
-        val Success(connected) = client.newSession("admin", "password")
-        connected
-      }
-      Using(Env()) { clientEnv =>
-        val wsClient = session.socket(SocketSettings(getClass.getSimpleName))(clientEnv).futureValue
+        val wsClient = session.socket
 
         val echoReply = wsClient.toClientOutput
           .dump("toClientOutput")
@@ -65,6 +64,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
       case _                =>
     }
     super.beforeAll()
+
     val Some(started) = rest.RestMain.runMain(DevRestMain.devArgs)
     server = started
   }

@@ -28,11 +28,12 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
 
       val received = ListBuffer[AddressedTextMessage]()
       When("We subscribe it to both observables")
-      val done: CancelableFuture[Unit] = socket.toRemoteAkkaInput.foreach {
+      val done: CancelableFuture[Unit] = socket.fromRemoteAkkaInput.foreach {
         case msg: AddressedTextMessage =>
           val before = received.size
           received += msg
           received.size shouldBe before + 1
+        case other => sys.error(s"got $other")
       }
 
       (first ++ Observable.never).delayOnNext(1.millis).subscribe(socket.toServerFromRemote)

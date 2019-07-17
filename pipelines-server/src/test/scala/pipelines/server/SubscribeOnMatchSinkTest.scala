@@ -55,7 +55,7 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         // flush it to the websocket channel -- this test isn't a full integration test where we actually spin up
         // a web socket and connect an end client, we just observe what would be sent to said client, assuming AkkaIO
         // works
-        val receivedOnSocketFuture = socket.toRemoteAkkaInput.dump("toRemoteOutput").take(1).toListL.runToFuture
+        val receivedOnSocketFuture = socket.fromRemoteAkkaInput.dump("toRemoteOutput").take(1).toListL.runToFuture
         val fromBob                = PushEvent(Claims.after(10.seconds).forUser("bob"), Json.fromString("hello from bob"))
         pushSource.push(fromBob)
 
@@ -113,8 +113,8 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         pipeline.matchId should not be null
 
         When("The source pushes some data")
-        val readPushedDataFuture  = socketSource.socket.toRemoteAkkaInput.take(1).toListL.runToFuture
-        val readPushed2DataFuture = socketSource.socket.toRemoteAkkaInput.take(2).toListL.runToFuture
+        val readPushedDataFuture  = socketSource.socket.fromRemoteAkkaInput.take(1).toListL.runToFuture
+        val readPushed2DataFuture = socketSource.socket.fromRemoteAkkaInput.take(2).toListL.runToFuture
         val firstSourceMessage    = PushEvent(Claims.after(10.seconds).forUser("alice"), Json.fromString("alice data"))
         pushSource.push(firstSourceMessage)
 

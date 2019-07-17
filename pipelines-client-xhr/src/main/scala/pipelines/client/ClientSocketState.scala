@@ -31,9 +31,9 @@ final class ClientSocketState private (socket: WebSocket) {
     (a, b.dump("SocketState"))
   }
 
-  messageEvents.foreach { evnt =>
-    HtmlUtils.log(s"\tsocket output: ${evnt}")
-  }
+//  messageEvents.foreach { evnt: MessageEvent =>
+//    HtmlUtils.log(s"\tsocket output: ${evnt}")
+//  }
 
   /**
     * All the addressed messages coming from the server.
@@ -100,6 +100,7 @@ final class ClientSocketState private (socket: WebSocket) {
 
   def sendMessage(data: AddressedMessage): Unit = {
     import io.circe.syntax._
+    HtmlUtils.log(s"sendMessage(${data})")
     socket.send(data.asJson.noSpaces)
   }
 
@@ -115,6 +116,7 @@ final class ClientSocketState private (socket: WebSocket) {
   }
   socket.onopen = { msg =>
     HtmlUtils.log(s"onopen ${msg}")
+    sendMessage(AddressedMessage("client-open", "hi"))
   }
 }
 object ClientSocketState {

@@ -33,7 +33,7 @@ abstract class BaseSocketRoutes(val settings: SecureRouteSettings) extends Secur
     }
   }
 
-  protected def defaultSettings(id: String): SocketSettings = SocketSettings(id, id)
+  protected def defaultSettings(id: String): SocketSettings = SocketSettings(id)
 
   def withSocketRoute(settings: SocketSettings)(f: (Scheduler, ServerSocket) => Unit): Route = {
     extractSocket(settings) {
