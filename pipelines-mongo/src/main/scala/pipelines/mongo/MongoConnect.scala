@@ -13,7 +13,8 @@ import scala.util.Try
 class MongoConnect(mongoConfig: Config) {
 
   def user     = mongoConfig.getString("user")
-  def database = mongoConfig.getString("database")
+  def database: String = mongoConfig.getString("database").ensuring(_.nonEmpty, "'database' not set")
+
   def uri      = mongoConfig.getString("uri")
 
   def databaseConfig(name: String): DatabaseConfig = DatabaseConfig(mongoConfig.getConfig(s"databases.$name"))

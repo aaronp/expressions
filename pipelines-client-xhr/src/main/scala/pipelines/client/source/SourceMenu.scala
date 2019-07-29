@@ -3,17 +3,41 @@ package pipelines.client.source
 import org.scalajs.dom.html.{Anchor, Div}
 import org.scalajs.dom.raw.MouseEvent
 import pipelines.client.layout.{GoldenLayout, GoldenLayoutComponents}
-import pipelines.client.menu.Menu.css
+import pipelines.client.menu.Menu.{addMenuItem, css, dropDownMenu, menuContainer}
 import pipelines.client.menu.Modals
 import pipelines.client.source.NewPushSourceModal.FormData
 import pipelines.client.{HtmlUtils, PipelinesXhr}
-import pipelines.reactive.repo.{CreatedPushSourceResponse, ListedDataSource, PushedValueResponse}
+import pipelines.reactive.repo.{CreatedPushSourceResponse, ListRepoSourcesResponse, ListedDataSource, PushedValueResponse}
 import scalatags.JsDom.all.{`class`, a, div, href, style, _}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 object SourceMenu {
+  def init(myLayout: GoldenLayout): Unit = {
+    def appendSourcesMenu(sources: Seq[ListedDataSource]): Unit = {
+      menuContainer.appendChild(dropDownMenu("Sources", false) {
+        SourceMenu(sources, myLayout)
+      })
+
+      val initialState = SourceTableState()
+      // allow the 'Sources' menu item to clicked
+      val sourceTableLI = addMenuItem("Sources") { _ =>
+        GoldenLayoutComponents.addComponent(myLayout, initialState.asLayoutItemConfig())
+      }
+
+      // allow the 'Sources' menu item to be dragged onto the table
+      myLayout.createDragSource(sourceTableLI, initialState.asLayoutItemConfig())
+    }
+
+    PipelinesXhr.listSources(Map.empty).onComplete {
+      case Success(ListRepoSourcesResponse(sources)) =>
+        appendSourcesMenu(sources)
+      case Failure(err) =>
+        HtmlUtils.raiseError(s"Error listing sources: $err")
+        throw err
+    }
+  }
 
   def apply(sources: Seq[ListedDataSource], layout: GoldenLayout): Div = {
 

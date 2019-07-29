@@ -3,19 +3,15 @@ package pipelines.client.menu
 import io.circe.{Decoder, Json, ObjectEncoder}
 import org.scalajs.dom.html.{Button, Div, LI}
 import org.scalajs.dom.raw._
-import pipelines.client.layout.{GoldenLayout, GoldenLayoutComponents}
-import pipelines.client.source.{SourceMenu, SourceTableState}
+import pipelines.client.HtmlUtils
+import pipelines.client.layout.GoldenLayout
+import pipelines.client.source.SourceMenu
 import pipelines.client.users.UsersMenu
-import pipelines.client.{Constants, HtmlUtils, PipelinesXhr}
-import pipelines.reactive.repo.{ListRepoSourcesResponse, ListedDataSource}
-import pipelines.reactive.tags
 import scalatags.JsDom.all._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
 import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
-import scala.util.{Failure, Success}
 
 /**
   */
@@ -57,8 +53,9 @@ object Menu {
     }
   }
 
-  private def dropDownMenu(title: String, rightAligned: Boolean)(content: Element): Div = {
-    val btn: Button = button(`class` := css.MenuButton, title, i(style := "padding-left:10px;", "V")).render
+  def dropDownMenu(title: String, rightAligned: Boolean)(content: Element): Div = {
+    //i(style := "padding-left:10px;", "V")
+    val btn: Button = button(`class` := css.MenuButton, title).render
     div(`class` := css.DropDown, style := css.inlineStyle(rightAligned))(
       btn,
       content
@@ -67,45 +64,11 @@ object Menu {
 
   def menuContainer = elmById(css.MenuContainer)
 
+
   @JSExport
   def initialise(myLayout: GoldenLayout) = {
-
-    def appendSourcesMenu(sources: Seq[ListedDataSource]): Unit = {
-      menuContainer.appendChild(dropDownMenu("Sources", false) {
-        SourceMenu(sources, myLayout)
-      })
-
-      locally {
-
-        val initialState = SourceTableState()
-        // allow the 'Sources' menu item to clicked
-        val sourceTableLI = addMenuItem("Sources") { _ =>
-          GoldenLayoutComponents.addComponent(myLayout, initialState.asLayoutItemConfig())
-        }
-
-        // allow the 'Sources' menu item to be dragged onto the table
-        myLayout.createDragSource(sourceTableLI, initialState.asLayoutItemConfig())
-      }
-    }
-
-    PipelinesXhr.listSources(Map.empty).onComplete {
-      case Success(ListRepoSourcesResponse(sources)) =>
-        appendSourcesMenu(sources)
-      case Failure(err) =>
-        HtmlUtils.raiseError(s"Error listing sources: $err")
-        throw err
-    }
-
-    PipelinesXhr.userStatus.statusEndpoint.apply().onComplete {
-      case Failure(_) =>
-        addMenuItem("login") { _ =>
-          redirectTo(Constants.pages.LoginPage)
-        }
-      case Success(status) =>
-        menuContainer.appendChild(dropDownMenu(status.userName, true) {
-          UsersMenu(status, myLayout)
-        })
-    }
+    SourceMenu.init(myLayout)
+    UsersMenu.init(myLayout)
   }
 
   def addMenuItem(title: String)(itemOp: MouseEvent => Unit): LI = {
