@@ -17,7 +17,8 @@ export JVM_ARGS="$JVM_ARGS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app
 #export JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.port=$JMX_PORT"
 export JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.authenticate=false"
 export JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.ssl=false"
+export JVM_ARGS="$JVM_ARGS -Dlogback.configurationFile=/app/config/logback.xml"
 
 echo "Starting w/ $JVM_ARGS on $IPADDR with $# args $@ (first is '$1')"
 
-java ${JVM_ARGS} -cp /app/lib/app.jar:/app/config pipelines.server.PipelinesMain $@ pipelines-docker.conf
+java ${JVM_ARGS} -cp /app/config:/app/lib/app.jar pipelines.server.PipelinesMain $@ pipelines-docker.conf

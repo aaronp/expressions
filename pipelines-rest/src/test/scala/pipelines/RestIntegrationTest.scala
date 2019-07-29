@@ -31,8 +31,31 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
 
   "The Rest server" should {
     "respond to new websocket client handshakes" in {
-
       Using(Env()) { implicit clientEnv =>
+        val config = DevRestMain.devArgs.asConfig().resolve()
+        val session: ClientSession = eventually {
+          val client: PipelinesClient[Future] = PipelinesClient(config)(clientEnv.ioScheduler).get
+          client.newSession("admin", "password").futureValue
+        }
+
+        val wsClient = session.socket
+
+        val ackReply = wsClient.expect[SocketConnectionAck](1)
+
+        session.requestHandshake()
+
+        implicit val sched = clientEnv.computeScheduler
+
+        val List(handshake) = ackReply.futureValue
+        handshake.commonId should not be null
+      }
+    }
+    "receive source and sink events after subscribing to them" in {
+      Using(Env()) { implicit clientEnv =>
+        val state = IntegrationTestState().futureValue
+
+        state
+
         val config = DevRestMain.devArgs.asConfig().resolve()
         val session: ClientSession = eventually {
           val client: PipelinesClient[Future] = PipelinesClient(config)(clientEnv.ioScheduler).get

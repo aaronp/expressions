@@ -46,6 +46,4 @@ object PipelineServerRoutes {
     val trace = RouteTraceAsSource(pipelinesService)(settings.env.ioScheduler)
     Route.seal(trace.wrap(reduce(repoRoutes)))
   }
-
-
 }
