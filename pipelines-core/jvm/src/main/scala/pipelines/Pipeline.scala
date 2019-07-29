@@ -12,15 +12,6 @@ import scala.util.control.NonFatal
 
 /** Represents a connect source w/ a sink (view some transformation (chain) steps)
   *
-  * @param matchId
-  * @param root
-  * @param logicalSource
-  * @param steps
-  * @param sink
-  * @param scheduler
-  * @param obs
-  * @tparam In
-  * @tparam A
   */
 final class Pipeline[In, A] private (val matchId: UUID,
                                      val root: DataSource,
@@ -29,6 +20,9 @@ final class Pipeline[In, A] private (val matchId: UUID,
                                      val sink: DataSink.Aux[In, A],
                                      scheduler: Scheduler,
                                      val obs: Observable[In]) {
+
+  def sourceId = root.id.getOrElse("not-set")
+  def sinkId   = sink.id.getOrElse("not-set")
 
   def asDto: PipelineDto = {
     def stepAsDto(step: Pipeline.ChainStep): EventDto = {

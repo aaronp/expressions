@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import dockerenv.BaseKafkaSpec
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.{Schedulers, Using, WithScheduler}
+import pipelines.{Schedulers, Using}
 
 import scala.concurrent.duration._
 

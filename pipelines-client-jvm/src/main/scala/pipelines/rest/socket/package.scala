@@ -37,36 +37,4 @@ package object socket extends StrictLogging {
     }
   }
 
-  def asAkkaSink(prefix: String, messages: Observer[AddressedMessage])(implicit scheduler: Scheduler) = {
-    val reactiveSub = {
-      new pipelines.rest.socket.WrappedPublisher.WrappedSubscriber[AddressedMessage](prefix, messages.toReactive(scheduler))
-    }
-    Sink.fromSubscriber(reactiveSub).contramap[Message] { fromRemote: Message =>
-      val addressed: AddressedMessage = try {
-        asAddressedMessage(fromRemote)
-      } catch {
-        case NonFatal(e) => AddressedMessage.error(e.getMessage)
-      }
-      addressed
-    }
-  }
-
-  def asAkkaSource(prefix: String, messages: Observable[AddressedMessage])(implicit scheduler: Scheduler): Source[Message, NotUsed] = {
-    val wsMessages = messages.map { msg =>
-      import io.circe.syntax._
-      val json = msg.asJson.noSpaces
-      if (msg.isBinary) {
-        BinaryMessage(ByteString(json.getBytes("UTF-8")))
-      } else {
-        TextMessage(json)
-      }
-    }
-
-    val reactive = {
-      new WrappedPublisher(prefix, wsMessages.toReactivePublisher(scheduler))
-    }
-    Source.fromPublisher(reactive)
-
-  }
-
 }

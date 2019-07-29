@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.circe.Encoder
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.{Observable, Observer}
-import pipelines.reactive.{PipelineService, tags}
+import pipelines.reactive.{HasMetadata, Ids, PipelineService, tags}
 import pipelines.users.Claims
 
 import scala.concurrent.Future
@@ -36,8 +36,8 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
     toClient.onNext(AddressedMessage(value))
   }
 
-  val akkaSink: Sink[Message, _]                = asAkkaSink("\t!\tServerSocket sink", toRemoteAkkaInput)(scheduler)
-  val akkaSource: Source[Message, NotUsed]      = asAkkaSource(s"\t!\tServerSocket src", toClientAkkaInput)(scheduler)
+  val akkaSink: Sink[Message, _]                = ObserverAsAkkaSink("\t!\tServerSocket sink", toRemoteAkkaInput, scheduler)
+  val akkaSource: Source[Message, NotUsed]      = ObservableAsAkkaSource(s"\t!\tServerSocket src", toClientAkkaInput, scheduler)
   val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
@@ -65,7 +65,7 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
     val persist = queryMetadata.getOrElse(tags.Persist, false.toString).toBoolean
 
     // use the same ID for both the source and sink so we can more easily associate them when needed.
-    val commonId: String = UUID.randomUUID.toString
+    val commonId: String = s"svrSkt-${Ids.next()}"
 
     logger.info(s"Registering new socket connection from ${user} w/ id '${commonId}'")
 
@@ -117,18 +117,18 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
 object ServerSocket {
 
   def apply(scheduler: Scheduler): ServerSocket = {
-    apply(SocketSettings("anon"))(scheduler)
+    apply(SocketSettings("ServerSocket.apply"))(scheduler)
   }
 
   def apply(settings: SocketSettings)(implicit scheduler: Scheduler): ServerSocket = {
     import settings._
 
     val (toClient: Observer[AddressedMessage], toClientAkkaInput: Observable[AddressedMessage]) = {
-      PipeSettings.pipeForSettings(s"$name-output", settings.output)
+      PipeSettings.pipeForSettings(s"ServerSocket '$name' output", settings.output)
     }
 
     val (fromClientAkkaInput: Observer[AddressedMessage], fromClient: Observable[AddressedMessage]) = {
-      PipeSettings.pipeForSettings(s"$name-input", settings.input)
+      PipeSettings.pipeForSettings(s"ServerSocket '$name' input", settings.input)
     }
 
     new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler)

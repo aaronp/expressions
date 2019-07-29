@@ -8,6 +8,37 @@ import pipelines.reactive.repo.ListedDataSource
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
+/**
+  * Represents the state for the golden layout 'push source' page.
+  *
+  * The page itself should be something like:
+  *
+  * {{{
+  *
+  *   +------------------------------------------------+
+  *   |   Push Source 'Some Name'                      |
+  *   +------------------------------------------------+
+  *   |                                                |
+  *   |   Message Content:                             |
+  *   |   +---------------------------------------+    |
+  *   |   | {                                     |    |
+  *   |   |    "some" : "data"                    |    |
+  *   |   | }                                     |    |
+  *   |   |                                       |    |
+  *   |   |                                       |    |
+  *   |   |                                       |    |
+  *   |   |                                       |    |
+  *   |   |                                       |    |
+  *   |   +---------------------------------------+    |
+  *   |                                                |
+  *   |    Send                       Cancel  Close    |
+  *   |                                                |
+  *   +------------------------------------------------+
+  * }}}
+  *
+  * @param source
+  * @param componentName
+  */
 @JSExportTopLevel("PushSourceState")
 case class PushSourceState(source: ListedDataSource, componentName: String) {
   def asLayoutItemConfig(name: String = "Push Source"): js.Dynamic = {

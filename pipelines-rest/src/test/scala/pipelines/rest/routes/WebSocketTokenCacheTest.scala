@@ -2,7 +2,7 @@ package pipelines.rest.routes
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
-import pipelines.{Schedulers, WithScheduler}
+import pipelines.Schedulers
 
 import scala.concurrent.duration._
 

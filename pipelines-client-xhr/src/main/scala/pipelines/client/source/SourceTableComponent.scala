@@ -1,7 +1,7 @@
 package pipelines.client.source
 
 import pipelines.client.tables.Clusterize
-import pipelines.client.{ClientSocketState, HtmlUtils, PipelinesXhr}
+import pipelines.client.{ClientSocketStateXHR, HtmlUtils, PipelinesXhr}
 import pipelines.rest.socket.{AddressedBinaryMessage, AddressedTextMessage}
 import scalatags.Text.all.{div, _}
 
@@ -52,10 +52,10 @@ object SourceTableComponent {
       )
     ).render
 
-    val socketFuture: Future[ClientSocketState] = PipelinesXhr.createSocket()
+    val socketFuture: Future[ClientSocketStateXHR] = PipelinesXhr.createSocket()
 
     import PipelinesXhr.implicits._
-    socketFuture.foreach { socket: ClientSocketState =>
+    socketFuture.foreach { socket: ClientSocketStateXHR =>
       socket.subscribeToSourceEvents()
       socket.subscribeToSinkEvents()
 

@@ -1,7 +1,7 @@
 package pipelines.rest.socket
 
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.ws.WebSocketRequest
+import akka.http.scaladsl.model.ws.{WebSocketRequest, WebSocketUpgradeResponse}
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.SSLContext
@@ -20,7 +20,7 @@ object WebsocketClient extends StrictLogging {
 
     val http = Http()
 
-    val connectionFuture = sslContextOpt match {
+    val connectionFuture: Future[WebSocketUpgradeResponse] = sslContextOpt match {
       case None =>
         val (future, _) = http.singleWebSocketRequest(wsReq, socket.akkaFlow)
         future

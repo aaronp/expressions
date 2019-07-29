@@ -4,13 +4,12 @@ import akka.http.scaladsl.server.Route
 import args4c.obscurePassword
 import com.typesafe.config.Config
 import pipelines.Env
-import pipelines.reactive.PipelineService
 import pipelines.reactive.rest.{SourceRoutes, TransformRoutes}
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes, WebSocketTokenCache}
-import pipelines.rest.socket.{ServerSocket, SocketRoutes}
-import pipelines.ssl.SSLConfig
+import pipelines.rest.socket.SocketRoutes
+import pipelines.rest.socket.handlers.SubscriptionHandler
+import pipelines.users.LoginHandler
 import pipelines.users.rest.UserLoginRoutes
-import pipelines.users.{Claims, LoginHandler}
 
 import scala.compat.Platform
 import scala.concurrent.duration.FiniteDuration
@@ -18,11 +17,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
 
-  def loginRoutes(sslConf: SSLConfig, loginHandler: LoginHandler[Future] = LoginHandler(rootConfig)): UserLoginRoutes = {
+  def loginRoutes(loginHandler: LoginHandler[Future] = LoginHandler(rootConfig))(implicit ec: ExecutionContext): UserLoginRoutes = {
     UserLoginRoutes(
       secret = rootConfig.getString("pipelines.www.jwtSeed"),
       realm = Option(rootConfig.getString("pipelines.www.realmName")).filterNot(_.isEmpty)
-    )(loginHandler.login)(ExecutionContext.global)
+    )(loginHandler.login)
   }
 
   val secureSettings: SecureRouteSettings = SecureRouteSettings.fromRoot(rootConfig)
@@ -34,25 +33,17 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
     rootConfig.asFiniteDuration("pipelines.rest.socket.tokenValidityDuration")
   }
 
-  def repoRoutes(service: PipelineService): Route = {
+  def repoRoutes(socketHandler: SubscriptionHandler): Route = {
     import akka.http.scaladsl.server.Directives._
-    val srcRoutes  = SourceRoutes(service, secureSettings).routes
-    val transRoute = TransformRoutes(service, secureSettings).routes
-    srcRoutes ~ transRoute ~ createSocketRoute(service).routes
+    val srcRoutes  = SourceRoutes(socketHandler.pipelinesService, secureSettings).routes
+    val transRoute = TransformRoutes(socketHandler.pipelinesService, secureSettings).routes
+    srcRoutes ~ transRoute ~ createSocketRoute(socketHandler).routes
   }
 
-  def createSocketRoute(pipelinesService: PipelineService): SocketRoutes = {
-
-    /**
-      * What to do when a new WebSocket is opened? Register a source and sink!
-      */
-    def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
-      socket.register(user, queryMetadata, pipelinesService)
-    }
-
+  def createSocketRoute(socketHandler: SubscriptionHandler): SocketRoutes = {
     // create a temp look-up from a string which can be used as the websocket protocol to the user's JWT
     val tokens = WebSocketTokenCache(tokenValidityDuration)(env.ioScheduler)
-    new SocketRoutes(secureSettings, tokens, handleSocket)
+    new SocketRoutes(secureSettings, tokens, socketHandler)
   }
 
   override def toString: String = {
@@ -74,9 +65,7 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
 
 object Settings {
 
-  def apply(rootConfig: Config): Settings = {
-    val config = rootConfig.getConfig("pipelines")
-    val env    = pipelines.Env()
-    new Settings(rootConfig, host = config.getString("rest.host"), port = config.getInt("rest.port"), env)
+  def apply(rootConfig: Config, env: Env = pipelines.Env()): Settings = {
+    new Settings(rootConfig, host = rootConfig.getString("pipelines.rest.host"), port = rootConfig.getInt("pipelines.rest.port"), env)
   }
 }

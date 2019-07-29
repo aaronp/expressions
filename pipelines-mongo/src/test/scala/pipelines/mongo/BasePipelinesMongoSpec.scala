@@ -10,7 +10,7 @@ import scala.util.Success
 
 abstract class BasePipelinesMongoSpec extends BaseMongoSpec with LowPriorityMongoImplicits with StrictLogging {
 
-  override def testTimeout = 5.seconds
+  override def testTimeout = 15.seconds
 
   lazy val rootConfig = ConfigFactory.load()
 

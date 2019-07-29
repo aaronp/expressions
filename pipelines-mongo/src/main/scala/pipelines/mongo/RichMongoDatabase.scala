@@ -54,11 +54,11 @@ final class RichMongoDatabase(val mongoDb: MongoDatabase) extends AnyVal {
     val logger = LoggerFactory.getLogger(getClass)
 
     // checks to see if the collection exists, and if not it is created
-    mongoDb.createRequiredCollections(Set(config.collectionName), config.usersDb).toListL.runToFuture.flatMap { created: List[String] =>
+    mongoDb.createRequiredCollections(Set(config.collectionName), config.options).toListL.runToFuture.flatMap { created: List[String] =>
       val collection: MongoCollection[Document] = mongoDb.getCollection(config.collectionName)
       if (created.nonEmpty) {
         import config._
-        logger.info(s"Created ${created.mkString(",")} with $usersDb, adding ${indices.size} indices: ${indices.mkString(",")}")
+        logger.info(s"Created ${created.mkString(",")} with $options, adding ${indices.size} indices: ${indices.mkString(",")}")
 
         val futures: List[Future[Unit]] = indices.map { index =>
           val bson: BsonDocument = index.asBsonDoc
@@ -66,7 +66,7 @@ final class RichMongoDatabase(val mongoDb: MongoDatabase) extends AnyVal {
             .createIndex(bson, index.asOptions)
             .monix
             .map { name =>
-              logger.info(s"Created index $name in $usersDb")
+              logger.info(s"Created index $name in $options")
               name
             }
             .completedL
@@ -77,7 +77,7 @@ final class RichMongoDatabase(val mongoDb: MongoDatabase) extends AnyVal {
           collection
         }
       } else {
-        logger.debug(s"${config.collectionName} already exists")
+        logger.debug(s"Collection '${config.collectionName}' already exists")
         Future.successful(collection)
       }
     }

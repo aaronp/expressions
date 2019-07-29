@@ -44,10 +44,10 @@ object PipelinesXhr
     * dom.window.location.origin -> https://localhost:80
     *
     */
-  def createSocket(): Future[ClientSocketState] = socketState
-  private lazy val socketState: Future[ClientSocketState] = {
+  def createSocket(): Future[ClientSocketStateXHR] = socketState
+  private lazy val socketState: Future[ClientSocketStateXHR] = {
     socketTokens.newToken.apply().map { tempToken =>
-      ClientSocketState(sockets.request.href(), tempToken)
+      ClientSocketStateXHR(sockets.request.href(), tempToken)
     }
   }
 
@@ -59,8 +59,12 @@ object PipelinesXhr
   }
 
   def createSource(name: String, persist: Boolean, metadata: Map[String, String]): Future[PushSourceResponse] = {
+    pushToSource(name, Json.Null, persist, metadata)
+  }
+
+  def pushToSource(name: String, data: Json, persist: Boolean = false, metadata: Map[String, String] = Map.empty): Future[PushSourceResponse] = {
     val createIfMissing = Option(true)
-    pushSource.pushEndpoint.wrapped.addParams(metadata).apply((name, createIfMissing, Option(persist)), Json.Null)
+    pushSource.pushEndpoint.wrapped.addParams(metadata).apply((name, createIfMissing, Option(persist)), data)
   }
 
   def listSources(queryParams: Map[String, String]): Future[ListRepoSourcesResponse] = {

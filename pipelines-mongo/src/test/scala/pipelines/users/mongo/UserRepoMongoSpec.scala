@@ -1,70 +1,77 @@
 package pipelines.users.mongo
 
-import pipelines.{Schedulers, WithScheduler}
-import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
+import org.mongodb.scala.{Document, MongoCollection}
+import pipelines.Schedulers
+import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings, MongoConnect}
 import pipelines.users.CreateUserRequest
-import pipelines.users.jvm.UserHash
+import pipelines.users.jvm.PasswordHash
 
 trait UserRepoMongoSpec extends BasePipelinesMongoSpec {
 
   "UserServiceMongo.find" should {
     "find users by email or password" in {
-      Schedulers.using { implicit s =>
-        val usersCollectionName = s"users-${System.currentTimeMillis}"
-        val config              = configForCollection(usersCollectionName)
-        val settings            = CollectionSettings(config, usersCollectionName)
-        val userService         = UserRepoMongo(settings, UserHash(config)).futureValue
+      MongoConnect(rootConfig).use { db =>
+        Schedulers.using { implicit s =>
+          val usersCollectionName = s"users-${System.currentTimeMillis}"
+          val config              = configForCollection(usersCollectionName)
+          val settings            = CollectionSettings(config, usersCollectionName)
 
-        try {
+          val coll: MongoCollection[Document] = settings.ensureCreated(db).futureValue
+          val userService                     = UserRepoMongo(db, coll, PasswordHash(config))
 
-          Given("A new user 'dave'")
-          val daveReq = CreateUserRequest("dave", s"d@ve.com", "password")
-          // this should succeed:
-          userService.createUser(daveReq).futureValue
+          try {
 
-          val Some(foundByName)  = userService.findUser("dave").futureValue
-          val Some(foundByEmail) = userService.findUser("d@ve.com").futureValue
-          foundByName shouldBe foundByEmail
-          foundByEmail.id.length should be > 5
-          foundByName.id shouldBe foundByEmail.id
-          foundByName.id should not be (empty)
-        } finally {
-          userService.users.drop().monix.completedL.runToFuture.futureValue
+            Given("A new user 'dave'")
+            val daveReq = CreateUserRequest("dave", s"d@ve.com", "password")
+            // this should succeed:
+            userService.createUser(daveReq).futureValue
+
+            val Some(foundByName)  = userService.findUser("dave").futureValue
+            val Some(foundByEmail) = userService.findUser("d@ve.com").futureValue
+            foundByName shouldBe foundByEmail
+            foundByEmail.id.length should be > 5
+            foundByName.id shouldBe foundByEmail.id
+            foundByName.id should not be (empty)
+          } finally {
+            userService.users.drop().monix.completedL.runToFuture.futureValue
+          }
         }
       }
     }
   }
   "UserServiceMongo.createUser" should {
     "not be able to create a user w/ the same name or email" in {
-      Schedulers.using { implicit s =>
-        val usersCollectionName = s"users-${System.currentTimeMillis}"
-        val config              = configForCollection(usersCollectionName)
-        val settings            = CollectionSettings(config, usersCollectionName)
-        val userService         = UserRepoMongo(settings, UserHash(config)).futureValue
+      MongoConnect(rootConfig).use { db =>
+        Schedulers.using { implicit s =>
+          val usersCollectionName = s"users-${System.currentTimeMillis}"
+          val config              = configForCollection(usersCollectionName)
+          val settings            = CollectionSettings(config, usersCollectionName).ensureCreated(db).futureValue
+          val userService         = UserRepoMongo(db, settings, PasswordHash(config))
 
-        try {
+          try {
 
-          Given("A new user 'dave'")
-          val daveReq = CreateUserRequest("dave", s"d@ve.com", "password")
-          // this should succeed:
-          userService.createUser(daveReq).futureValue
+            Given("A new user 'dave'")
+            val daveReq = CreateUserRequest("dave", s"d@ve.com", "password")
+            // this should succeed:
+            userService.createUser(daveReq).futureValue
 
-          When("We try to create him a second time")
-          Then("It should fail")
+            When("We try to create him a second time")
+            Then("It should fail")
 
-          val Left(error) = userService.createUser(daveReq).futureValue
-          error.message shouldBe "That user already exists"
+            val Left(error) = userService.createUser(daveReq).futureValue
+            error.message shouldBe "That user already exists"
 
-          And("It should fail if just the email is different")
-          val Left(bang2) = userService.createUser(daveReq.copy(email = "changed" + daveReq.email)).futureValue
-          bang2.message shouldBe "That user already exists"
+            And("It should fail if just the email is different")
+            val Left(bang2) = userService.createUser(daveReq.copy(email = "changed" + daveReq.email)).futureValue
+            bang2.message shouldBe "That user already exists"
 
-          And("It should fail if just the name is different")
-          val Left(bang3) = userService.createUser(daveReq.copy(userName = "changed" + daveReq.userName)).futureValue
-          bang3.message shouldBe "That user already exists"
+            And("It should fail if just the name is different")
+            val Left(bang3) = userService.createUser(daveReq.copy(userName = "changed" + daveReq.userName)).futureValue
+            bang3.message shouldBe "That user already exists"
 
-        } finally {
-          userService.users.drop().monix.completedL.runToFuture.futureValue
+          } finally {
+            userService.users.drop().monix.completedL.runToFuture.futureValue
+          }
         }
       }
     }

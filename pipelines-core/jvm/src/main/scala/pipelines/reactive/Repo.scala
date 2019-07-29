@@ -1,7 +1,5 @@
 package pipelines.reactive
 
-import java.util.UUID
-
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 
@@ -56,7 +54,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
     }
   }
   def add[T <: A](value: T, callback: TriggerCallback = TriggerCallback.Ignore): (T, Future[Ack]) = {
-    val id: String  = UUID.randomUUID().toString
+    val id: String  = Ids.next()
     val idSource: T = addId(value, id).asInstanceOf[T]
     Lock.synchronized {
       byId = byId.updated(id, idSource)

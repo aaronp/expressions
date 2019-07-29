@@ -3,6 +3,7 @@ package pipelines.users.mongo
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import monix.execution.{CancelableFuture, Scheduler}
+import org.mongodb.scala.MongoDatabase
 import pipelines.auth.{AuthModel, SetRolesForUserRequest, UserRoles}
 import pipelines.core.{GenericErrorResult, GenericMessageResult}
 import pipelines.mongo.CollectionSettings
@@ -60,15 +61,17 @@ case class UserRolesService(authRepo: RefDataMongo[AuthModel], userRoleRepo: Ref
 }
 
 object UserRolesService {
-  def apply(rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
+  def apply(mongo: MongoDatabase, rootConfig: Config)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
     val userRoles: CollectionSettings = CollectionSettings(rootConfig, "userRoles")
     val roles                         = CollectionSettings(rootConfig, "roles")
-    apply(userRoles, roles)
+    apply(mongo, userRoles, roles)
   }
-  def apply(users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
-    val second = RefDataMongo[UserRoles](users)
+
+  def apply(mongo: MongoDatabase, users: CollectionSettings, roles: CollectionSettings)(implicit ioScheduler: Scheduler): CancelableFuture[UserRolesService] = {
+    val first  = RefDataMongo[AuthModel](mongo, roles)
+    val second = RefDataMongo[UserRoles](mongo, users)
     for {
-      authService <- RefDataMongo[AuthModel](roles)
+      authService <- first
       userService <- second
     } yield {
       new UserRolesService(authService, userService)

@@ -1,7 +1,5 @@
 package pipelines.reactive
 
-import java.util.UUID
-
 import io.circe.{Decoder, ObjectEncoder}
 import pipelines.rest.socket.EventDto
 

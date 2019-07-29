@@ -8,7 +8,6 @@ import akka.http.scaladsl.settings.RoutingSettings
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.scaladsl.Flow
 import com.typesafe.scalalogging.StrictLogging
-import pipelines.rest.openapi.DocumentationRoutes
 import pipelines.rest.routes.TraceRoute
 import pipelines.ssl.SSLConfig
 
@@ -21,28 +20,26 @@ import scala.util.Try
   * @param settings
   * @param bindingFuture
   */
-class RunningServer private (val settings: Settings, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
+class RunningServer[A] private (val settings: Settings, val service: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
+//  def service: PipelineService = commandHandler.pipelinesService
   override def close(): Unit = settings.env.close()
 }
 
 object RunningServer extends StrictLogging {
 
-  def apply(settings: Settings, sslConf: SSLConfig, httpsRoutes: Route): RunningServer = {
-    import settings.env._
-    val https: HttpsConnectionContext                  = loadHttps(sslConf).get // let it throw, let it throw! can't hold me back anymore...
-    val flow: Flow[HttpRequest, HttpResponse, NotUsed] = route2HandlerFlow(httpsRoutes)
-    val httpsBindingFuture                             = Http().bindAndHandle(flow, settings.host, settings.port, connectionContext = https)
-    val bindingFuture                                  = httpsBindingFuture
-    new RunningServer(settings, bindingFuture)
+  def apply[A](settings: Settings, sslConf: SSLConfig, service: A, httpsRoutes: Route): RunningServer[A] = {
+    val https = Option(loadHttps(sslConf).get) // let it throw, let it throw! can't hold me back anymore...
+    apply[A](settings, https, service, httpsRoutes)
   }
 
-  def routeFor(settings: Settings, routes: Seq[Route]): Route = {
+  def apply[A](settings: Settings, https: Option[HttpsConnectionContext], service: A, httpsRoutes: Route): RunningServer[A] = {
     import settings.env._
-    val theRest = settings.staticRoutes.route +:
-      DocumentationRoutes.route +:
-      routes
-
-    makeRoutes(theRest)
+    val flow: Flow[HttpRequest, HttpResponse, NotUsed] = route2HandlerFlow(httpsRoutes)
+    val http = Http()
+    val connectionContext = https.getOrElse(http.defaultServerHttpContext)
+    val httpsBindingFuture                             = http.bindAndHandle(flow, settings.host, settings.port, connectionContext = connectionContext)
+    val bindingFuture                                  = httpsBindingFuture
+    new RunningServer(settings, service, bindingFuture)
   }
 
   def reduce(routes: Seq[Route]): Route = {

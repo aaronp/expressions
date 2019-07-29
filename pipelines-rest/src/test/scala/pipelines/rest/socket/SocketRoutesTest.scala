@@ -3,14 +3,16 @@ package pipelines.rest.socket
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.server.ExpectedWebSocketRequestRejection
 import monix.reactive.Observable
+import pipelines.reactive.PipelineService
 import pipelines.rest.DevConfig
 import pipelines.rest.routes.{BaseRoutesTest, WebSocketTokenCache}
+import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.users.Claims
+import pipelines.users.jwt.RichClaims._
 import pipelines.{Env, Using}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
-import pipelines.users.jwt.RichClaims._
 
 class SocketRoutesTest extends BaseRoutesTest {
   val settings = DevConfig.secureSettings
@@ -22,12 +24,15 @@ class SocketRoutesTest extends BaseRoutesTest {
     "echo client messages back" in Using(Env()) { env =>
       val client = ClientSocket(SocketSettings("client"))(env.ioScheduler)
 
-      def handler(user: Claims, socket: ServerSocket, queryParams: Map[String, String]) = {
-        implicit val s = env.ioScheduler
-        socket.fromRemoteOutput.subscribe(socket.toClient)
-      }
+      val commandRouter = new AddressedMessageRouter(PipelineService()(env.ioScheduler))
+      val subsc         = SubscriptionHandler.register(commandRouter)
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), handler)
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc) {
+        override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]) = {
+          implicit val s = env.ioScheduler
+          socket.fromRemoteOutput.subscribe(socket.toClient)
+        }
+      }
 
       val clientMessages = ListBuffer[AddressedMessage]()
       client.fromServer.foreach {
@@ -55,21 +60,23 @@ class SocketRoutesTest extends BaseRoutesTest {
     val socketConnectionRequest = Get("/sockets/connect").withHeaders(Authorization(OAuth2BearerToken(jwt)))
 
     "upgrade a GET request to a WS request for new users" in Using(Env()) { env =>
-      val sockets = ListBuffer[(Claims, ServerSocket)]()
-      def handler(user: Claims, socket: ServerSocket, queryParams: Map[String, String]): String = {
-        sockets += (user -> socket)
-        user.name
+      val socketList = ListBuffer[(Claims, ServerSocket)]()
+
+      val commandRouter = new AddressedMessageRouter(PipelineService()(env.ioScheduler))
+      val subsc         = SubscriptionHandler.register(commandRouter)
+
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc) {
+        override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]) = {
+          socketList += (user -> socket)
+          user.name
+        }
       }
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), handler)
-
       socketConnectionRequest ~> underTest.routes ~> check {
-        val List((claims, _)) = sockets.toList
+        val List((claims, _)) = socketList.toList
         claims shouldBe user
         rejections should contain(ExpectedWebSocketRequestRejection)
       }
     }
   }
-
-  override def testTimeout: FiniteDuration = 12.seconds
 }

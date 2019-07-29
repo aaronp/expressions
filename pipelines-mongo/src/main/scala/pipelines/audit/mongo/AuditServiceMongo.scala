@@ -4,7 +4,6 @@ import java.time.ZonedDateTime
 
 import cats.kernel.Eq
 import com.mongodb.CursorType
-import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Json
 import monix.execution.{CancelableFuture, Scheduler}
@@ -13,8 +12,8 @@ import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase}
 import pipelines.audit.AuditVersion
-import AuditServiceMongo.RevisionProjection
-import pipelines.mongo.{BsonUtil, CollectionSettings, LowPriorityMongoImplicits}
+import pipelines.audit.mongo.AuditServiceMongo.RevisionProjection
+import pipelines.mongo.{BsonUtil, LowPriorityMongoImplicits}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -182,13 +181,7 @@ object AuditServiceMongo extends LowPriorityMongoImplicits with StrictLogging {
     }
   }
 
-  def apply(rootConfig: Config, collectionName: String)(implicit ioSched: Scheduler): CancelableFuture[AuditServiceMongo] = {
-    apply(CollectionSettings(rootConfig, collectionName))
-  }
-
-  def apply(config: CollectionSettings)(implicit ioSched: Scheduler): CancelableFuture[AuditServiceMongo] = {
-    config.ensureCreated.map { auth =>
-      new AuditServiceMongo(config.mongoDb, auth)
-    }
+  def apply(mongoDb: MongoDatabase, collection: MongoCollection[Document])(implicit ioSched: Scheduler): AuditServiceMongo = {
+    new AuditServiceMongo(mongoDb, collection)
   }
 }

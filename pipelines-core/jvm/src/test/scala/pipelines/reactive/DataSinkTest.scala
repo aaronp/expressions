@@ -45,6 +45,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
             s"source: '${a}', other: '${other}'"
           }
         }
+        val transformsByNameBeforeSize = service.state.get.transformsByName.size
         service.triggers.addTransform("modified", modified)
 
         When("We connect the control source w/ the controllable (modifiable) sink")
@@ -54,7 +55,7 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
         eventually {
           service.state.get.sources.size shouldBe 2
           service.state.get.sinks.size shouldBe 1
-          service.state.get.transformsByName.size shouldBe 1
+          service.state.get.transformsByName.size shouldBe transformsByNameBeforeSize + 1
         }
 
         val triggerCallback = TriggerCallback { event: Try[TriggerEvent] =>

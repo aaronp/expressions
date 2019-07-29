@@ -4,7 +4,7 @@ import java.util.UUID
 
 import io.circe.Json
 import org.mongodb.scala.bson.collection.immutable.Document
-import pipelines.{Schedulers, WithScheduler}
+import pipelines.Schedulers
 
 trait MongoConnectSpec extends BasePipelinesMongoSpec {
 

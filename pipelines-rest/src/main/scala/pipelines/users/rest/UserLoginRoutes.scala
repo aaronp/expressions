@@ -36,7 +36,6 @@ object UserLoginRoutes {
   * @param secret
   * @param loginRejection
   * @param doLogin
-  * @param ec
   */
 class UserLoginRoutes(secret: SecretKeySpec, loginRejection: Rejection, doLogin: LoginRequest => Future[Option[Claims]])(implicit ec: ExecutionContext)
     extends LoginEndpoints
@@ -64,13 +63,13 @@ class UserLoginRoutes(secret: SecretKeySpec, loginRejection: Rejection, doLogin:
     }
   }
 
-  def loginAndRedirect(loginRequest: LoginRequest, redirectTo: Option[String]) = {
+  def loginAndRedirect(loginRequest: LoginRequest, redirectTo: Option[String]): Future[LoginResponse] = {
     doLogin(loginRequest).map {
-      case Some(claims) =>
+      case claimsOpt @ Some(claims) =>
         logger.info(s"Successful login for ${claims.name}, redirectTo=$redirectTo")
         val token = JsonWebToken.asHmac256Token(claims, secret)
-        LoginResponse(true, Option(token), redirectTo)
-      case None => LoginResponse(false, None, None)
+        LoginResponse(true, Option(token), claimsOpt, redirectTo)
+      case None => LoginResponse(false, None, None, None)
     }
   }
 

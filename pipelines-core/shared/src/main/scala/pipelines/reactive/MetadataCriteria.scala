@@ -3,7 +3,15 @@ package pipelines.reactive
 import scala.util.matching.Regex
 
 final class MetadataCriteria(criteria: Map[String, MetadataCriteria.Match]) {
-  override def toString =s"MetadataCriteria($criteria)"
+  override def toString = render("MetadataCriteria")
+
+  def render(name : String): String = {
+    criteria
+      .map {
+        case (key, value) => s"$key ==> $value"
+      }
+      .mkString(s"$name \n\t", "\n\t", "")
+  }
   final def matches(first: (String, String), theRest: (String, String)*): Boolean = {
     matches(theRest.toMap + first)
   }
@@ -22,8 +30,8 @@ object MetadataCriteria {
   private val KindValueR = "(.*):(.*)".r
   private val PrefixR    = "([^.]*)\\.(.*)".r
 
-  private implicit def descString(desc : String) = new {
-    def as(f : String => Boolean) = new Function[String, Boolean] {
+  private implicit def descString(desc: String) = new {
+    def as(f: String => Boolean) = new Function[String, Boolean] {
       override def apply(arg: String): Boolean = {
         f(arg)
       }

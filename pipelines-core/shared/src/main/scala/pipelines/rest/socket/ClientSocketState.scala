@@ -15,9 +15,9 @@ import scala.util.{Failure, Success, Try}
   *
   * @param scheduler
   */
-abstract class ClientSocketSessionState(val scheduler: Scheduler) {
+abstract class ClientSocketState(val scheduler: Scheduler) {
 
-  def connectionAck: CancelableFuture[Try[SocketConnectionAck]] = {
+  lazy val connectionAck: CancelableFuture[Try[SocketConnectionAck]] = {
     observerOf[SocketConnectionAck].headL.runToFuture(scheduler)
   }
 
@@ -33,7 +33,7 @@ abstract class ClientSocketSessionState(val scheduler: Scheduler) {
     connectionAck.foreach {
       case Success(ack: SocketConnectionAck) =>
         val request = ack.subscribeToSource(sourceId, transforms, subscriptionId, retainAfterMatch)
-//        logInfo(s"Client got connection ack, our source/sink id is ${ack.commonId}")
+        logInfo(s"Client got connection ack, our source/sink id is ${ack.commonId}")
         send(request)
       case Failure(err) =>
         raiseError(s"Failure getting socket ack: $err")
@@ -41,26 +41,29 @@ abstract class ClientSocketSessionState(val scheduler: Scheduler) {
     subscriptionId
   }
 
-  def subscribeToSourceEvents() = {
+  def subscribeToSourceEvents(): CancelableFuture[Any] = {
     subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq(tags.transforms.`SourceEvent.asAddressedMessage`), retainAfterMatch = true)
   }
-  def subscribeToSinkEvents() = {
+  def subscribeToSinkEvents(): CancelableFuture[Any] = {
     subscribe(Map(tags.Label -> tags.labelValues.SinkEvents), Seq(tags.transforms.`SinkEvent.asAddressedMessage`), retainAfterMatch = true)
   }
 
+  /**
+    * @return a future of the subscriptionId which can be used to unsubscribe from messages
+    */
   def subscribe(sourceCriteria: Map[String, String],
                 transforms: Seq[String] = Nil,
                 subscriptionId: String = UUID.randomUUID.toString,
-                retainAfterMatch: Boolean = false): String = {
-    connectionAck.foreach {
+                retainAfterMatch: Boolean = false): CancelableFuture[Any] = {
+    connectionAck.map {
       case Success(ack: SocketConnectionAck) =>
         logInfo(s"Subscribing w/ $subscriptionId to socket ${ack.commonId}")
         val request = ack.subscribeTo(sourceCriteria, transforms, subscriptionId, retainAfterMatch)
         send(request)
+        subscriptionId
       case Failure(err) =>
         raiseError(s"Failure getting socket ack: $err")
     }(scheduler)
-    subscriptionId
   }
 
   def unSubscribe(subscriptionId: String): Unit = {
@@ -84,14 +87,5 @@ abstract class ClientSocketSessionState(val scheduler: Scheduler) {
     val topicName = AddressedMessage.topics.forClass[T]
     messages.filter(_.to == topicName).map(_.as[T])
   }
-
-//  def sendMessage(data: AddressedMessage): Unit = {
-//    import io.circe.syntax._
-//    logInfo(s"sendMessage(${data})")
-////    socket.send(data.asJson.noSpaces)
-//    sendJson(data.asJson.noSpaces)
-//  }
-
-//  def close(code: Int = 0): Unit = socket.close(code)
 
 }

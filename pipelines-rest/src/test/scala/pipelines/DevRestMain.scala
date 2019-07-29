@@ -13,13 +13,13 @@ import scala.io.StdIn
   */
 object DevRestMain extends StrictLogging {
 
-  def devArgs: Array[String] =
-    Array(
-      "dev.conf", //
-      "generateMissingCerts=true", //
-      "pipelines.tls.hostname=localhost", //
-      "pipelines.tls.certificate=target/certificates/cert.p12" //
-    )
+  def devArgs: Array[String] = {
+    import eie.io._
+    val certPath = ".target/certificates/cert.p12".asPath
+    val p        = certPath.toAbsolutePath.toString
+    println(p)
+    Array(s"pipelines.tls.certificate=${p}", "dev.conf")
+  }
 
   def main(a: Array[String]): Unit = {
 

@@ -1,27 +1,61 @@
 package pipelines.mongo
 
+import cats.effect.{IO, Resource}
 import com.mongodb.ConnectionString
 import com.typesafe.config.Config
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.Json
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.model.{CreateCollectionOptions, IndexOptions}
-import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCredential}
-import pipelines.mongo.MongoConnect.DatabaseConfig
+import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCredential, MongoDatabase}
 
 import scala.util.Try
 
-class MongoConnect(mongoConfig: Config) {
+final class MongoConnect(mongoConfig: Config) extends StrictLogging {
 
-  def user     = mongoConfig.getString("user")
+  def user             = mongoConfig.getString("user")
   def database: String = mongoConfig.getString("database").ensuring(_.nonEmpty, "'database' not set")
 
-  def uri      = mongoConfig.getString("uri")
+  def uri = mongoConfig.getString("uri")
 
-  def databaseConfig(name: String): DatabaseConfig = DatabaseConfig(mongoConfig.getConfig(s"databases.$name"))
+  private def mongoDb(): MongoDatabase = {
+    client.getDatabase(database)
+  }
+
+  lazy val mongoResource: Resource[IO, (MongoClient, MongoDatabase)] = {
+    def connect(): (MongoClient, MongoDatabase) = {
+      val c = client
+      c -> c.getDatabase(database)
+    }
+    Resource.make(IO(connect())) {
+      case (client, _) =>
+        IO(client.close())
+    }
+  }
+
+  lazy val mongoDbResource: Resource[IO, MongoDatabase] = {
+    mongoResource.flatMap {
+      case (a, b) => Resource.pure[IO, MongoDatabase](b)
+    }
+  }
+  def useClient[A](thunk: (MongoClient, MongoDatabase) => A): A = {
+    val io = mongoResource.use { pear =>
+      IO(thunk(pear._1, pear._2))
+    }
+    io.unsafeRunSync()
+  }
+  def use[A](thunk: MongoDatabase => A): A = {
+    mongoDbResource
+      .use { db =>
+        IO(thunk(db))
+      }
+      .unsafeRunSync()
+  }
 
   def client: MongoClient = {
     val pwd   = mongoConfig.getString("password").toCharArray
     val creds = MongoCredential.createCredential(user, database, pwd)
+    logger.info(s"$user connecting to db $database at '$uri'")
     MongoClientSettings
       .builder()
       .applyConnectionString(new ConnectionString(uri))
@@ -76,7 +110,7 @@ object MongoConnect extends LowPriorityMongoImplicits {
 
   }
 
-  case class DatabaseConfig(config: Config) {
+  case class DatabaseConfig(val config: Config) {
     def capped               = config.getBoolean("capped")
     def maxSizeInBytes: Long = config.getMemorySize("maxSizeInBytes").toBytes
     def maxDocuments         = config.getLong("maxDocuments")
@@ -91,6 +125,27 @@ object MongoConnect extends LowPriorityMongoImplicits {
         case 0L => opts
         case n  => opts.sizeInBytes(n)
       }
+    }
+  }
+  object DatabaseConfig {
+    def apply(rootConfig: Config, name: String): DatabaseConfig = DatabaseConfig(rootConfig.getConfig(s"pipelines.mongo.databases.$name"))
+  }
+
+  def use[A](rootConfig: Config)(thunk: (MongoClient, MongoDatabase) => A): A = {
+    val io = resource(rootConfig).use { pear =>
+      IO(thunk(pear._1, pear._2))
+    }
+    io.unsafeRunSync()
+  }
+
+  def resource(rootConfig: Config): Resource[IO, (MongoClient, MongoDatabase)] = {
+    def connect(): (MongoClient, MongoDatabase) = {
+      val c = MongoConnect(rootConfig)
+      c.client -> c.mongoDb
+    }
+    Resource.make(IO(connect())) {
+      case (client, _) =>
+        IO(client.close())
     }
   }
 

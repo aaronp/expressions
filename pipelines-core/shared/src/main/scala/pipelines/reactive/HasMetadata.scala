@@ -19,8 +19,8 @@ trait HasMetadata {
     }
   }
 
-  def id: Option[String] = metadata.get(tags.Id)
-  def name : Option[String] = metadata.get(tags.Name)
+  def id: Option[String]   = metadata.get(tags.Id)
+  def name: Option[String] = metadata.get(tags.Name)
 }
 
 object HasMetadata {

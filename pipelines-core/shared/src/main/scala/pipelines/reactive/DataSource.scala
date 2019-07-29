@@ -1,7 +1,5 @@
 package pipelines.reactive
 
-import java.util.UUID
-
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.{Observable, Observer, Pipe}
 
@@ -18,7 +16,7 @@ trait DataSource extends HasMetadata {
 
   final def addMetadata(key: String, value: String): T = addMetadata(Map(key -> value))
 
-  def ensuringId(id: => String = UUID.randomUUID.toString): T = ensuringMetadata(tags.Id, id)
+  def ensuringId(id: => String): T = ensuringMetadata(tags.Id, id)
 
   def ensuringContentType(): T = ensuringMetadata(tags.ContentType, contentType.toString)
 

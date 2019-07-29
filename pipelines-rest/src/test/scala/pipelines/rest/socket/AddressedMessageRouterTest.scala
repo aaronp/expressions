@@ -1,26 +1,26 @@
-package pipelines.server
+package pipelines.rest.socket
 
 import io.circe.Json
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Consumer, Observable}
 import pipelines.Pipeline
 import pipelines.reactive.{tags => rTags, _}
-import pipelines.rest.socket._
+import pipelines.rest.routes.BaseRoutesTest
+import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.users.Claims
 
 import scala.concurrent.duration._
 import scala.util.Success
 
-class SubscribeOnMatchSinkTest extends BaseServiceSpec {
-
-  override def testTimeout: FiniteDuration = 10.seconds
+class AddressedMessageRouterTest extends BaseRoutesTest {
 
   "SubscribeOnMatchSink.addressedMessageRoutingSink" should {
     "subscribe sources to sinks via transformations to AddressedMessages" in {
       withScheduler { implicit s =>
+        Given("A PipelineService")
         val service = PipelineService()
 
-        Given("A new socket sink as if a new user connected")
+        And("A new socket sink as if a new user connected")
         val socket: ServerSocket = ServerSocket(s)
         val socketSink: SocketSink = {
           val userForWhomThisSocketWasCreated = Claims.after(1.minute).forUser("anybody")
@@ -34,9 +34,15 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         And("a push source as if from a REST endpoint")
         val (true, pushSource) = service.pushSourceForName[PushEvent]("pushIt", true, false, Map.empty).futureValue
 
-        When("We use the SubscribeOnMatchSink.addressedMessageRoutingSink to send a subscribe message interpret an 'AddressedMessage' to ")
-        val underTest                                  = new SubscribeOnMatchSink(service)
+        When("We use the SubscriptionHandler via AddressedMessageRouter to route subscription requests to the SubscriptionHandler")
+        val underTest = new AddressedMessageRouter(service)
+        SubscriptionHandler.register(underTest)
+
         val consumer: Consumer[AddressedMessage, Unit] = underTest.addressedMessageRoutingSink.consumer
+
+        //
+        // SubscriptionHandler.register(AddressedMessageRouter(service))
+        //
 
         val subscriptionMessage: AddressedMessage = {
           val sourceCriteria = Map(rTags.Id -> pushSource.id.get)
@@ -63,9 +69,6 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         gotIt.as[PushEvent] shouldBe Success(fromBob)
       }
     }
-//    "receive unsubscribe messages from new SocketSources" in {
-//      ???
-//    }
   }
   "SubscribeOnMatchSink.isSocketMessage" should {
     "return true for AddressedMessages containing only SocketSubscribeRequest or SocketUnsubscribeRequest messages" in {
@@ -79,7 +82,7 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
             AddressedMessage(subscribeInput),
             AddressedMessage("topic", "123")
           ))
-        val Some(filtered) = SubscribeOnMatchSink.isSocketMessage.applyTo(dataSource)
+        val Some(filtered) = AddressedMessageRouter.isSocketMessage.applyTo(dataSource)
 
         val List(unsubscribe, subscribe) = filtered.asObservable[AddressedMessage].toListL.runSyncUnsafe(testTimeout)
         unsubscribe.as[SocketUnsubscribeRequest] shouldBe Success(SocketUnsubscribeRequest("socketSinkId"))
@@ -87,23 +90,23 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
       }
     }
   }
-  "PipelineListeners.listenToNewSocketSources" should {
+  "SubscribeOnMatchSink.apply" should {
     "Add socket listeners which will apply subscribe/unsubscribe requests from SocketSources in order to connect 'em to available sources/sinks" in {
       withScheduler { implicit sched: Scheduler =>
         Given("We've used listenToNewSocketSources to ensure 'subscribe' requests from new sockets are handled")
-        val service = PipelineService()(sched)
-        SubscribeOnMatchSink.listenToNewSocketSources(service)
+        val router = AddressedMessageRouter(PipelineService()(sched))
+        SubscriptionHandler.register(router)
 
         When("A new SocketSource and sink are created")
         val socket                       = ServerSocket(sched)
         val user                         = Claims.after(1.minute).forUser("bob")
-        val (socketSource, handshake, _) = socket.register(user, Map.empty, service).futureValue
+        val (socketSource, handshake, _) = socket.register(user, Map.empty, router.pipelinesService).futureValue
 
         And("Some push source to which we can subscribe")
-        val (true, pushSource) = service.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue
+        val (true, pushSource) = router.pipelinesService.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue
 
         And("The socket sends a subscription request for a source")
-        val createPipelineFuture = service.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
+        val createPipelineFuture = router.pipelinesService.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
         socketSource.socket.toClient
           .onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
 
@@ -122,10 +125,10 @@ class SubscribeOnMatchSinkTest extends BaseServiceSpec {
         val List(readBack) = readPushedDataFuture.futureValue
 
         When("A second source is added which also meets the subscription criteria")
-        val createPipeline2Future = service.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
-        val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId()
+        val createPipeline2Future = router.pipelinesService.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
+        val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId(Ids.next())
 
-        val (pushSource2, _)    = service.sources.add(newPush)
+        val (pushSource2, _)    = router.pipelinesService.sources.add(newPush)
         val List(_)             = createPipeline2Future.futureValue
         val secondSourceMessage = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
         pushSource2.push(secondSourceMessage)

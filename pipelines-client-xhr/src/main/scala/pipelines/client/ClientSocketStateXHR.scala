@@ -5,7 +5,7 @@ import monix.execution.Scheduler
 import monix.reactive.{Observable, Observer, Pipe}
 import org.scalajs.dom
 import org.scalajs.dom.raw.{MessageEvent, WebSocket}
-import pipelines.rest.socket.{AddressedMessage, ClientSocketSessionState, SocketConnectionAckRequest}
+import pipelines.rest.socket.{AddressedMessage, ClientSocketState, SocketConnectionAckRequest}
 
 import scala.util.control.NonFatal
 
@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
   *
   * @param socket
   */
-final class ClientSocketState private (socket: WebSocket) extends ClientSocketSessionState(Scheduler.global) {
+final class ClientSocketStateXHR private (socket: WebSocket) extends ClientSocketState(Scheduler.global) {
 
   /**
     * Let's drive the socket access via our good friend, the Monix Pipe
@@ -32,7 +32,7 @@ final class ClientSocketState private (socket: WebSocket) extends ClientSocketSe
     * individual pieces of the UI can filter on the parts intended for them
     */
   override val messages: Observable[AddressedMessage] = messageEvents.collect {
-    case ClientSocketState.AsAddressMessage(msg) => msg
+    case ClientSocketStateXHR.AsAddressMessage(msg) => msg
   }
 
   def sendMessage(data: AddressedMessage): Unit = {
@@ -64,8 +64,8 @@ final class ClientSocketState private (socket: WebSocket) extends ClientSocketSe
     HtmlUtils.raiseError(msg)
   }
 }
-object ClientSocketState {
-  def apply(relativeSocketHref: String, connectionToken: String): ClientSocketState = {
+object ClientSocketStateXHR {
+  def apply(relativeSocketHref: String, connectionToken: String): ClientSocketStateXHR = {
     val socketUrl = {
       val wsProtocol = dom.window.location.protocol.replaceAllLiterally("http", "ws")
       s"${wsProtocol}//${dom.window.location.host}${relativeSocketHref}"
@@ -74,7 +74,7 @@ object ClientSocketState {
 
     // TODO - improve the hand-shake to use a custom connection protocol.
     // see e.g. Stack Overflow: https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
-    new ClientSocketState(new WebSocket(socketUrl, connectionToken))
+    new ClientSocketStateXHR(new WebSocket(socketUrl, connectionToken))
   }
 
   private object AsAddressMessage {

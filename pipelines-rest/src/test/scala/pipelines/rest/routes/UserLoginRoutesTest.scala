@@ -54,7 +54,7 @@ class UserLoginRoutesTest extends BaseRoutesTest {
     }
     "be able to login successfully and return a jwt token" in {
       Post("/users/login", LoginRequest("admin", "password")) ~> loginRoute.loginRoute ~> check {
-        val LoginResponse(true, Some(token), None) = responseAs[LoginResponse]
+        val LoginResponse(true, Some(token), Some(_), None) = responseAs[LoginResponse]
 
         val List(xAccessToken) = header("x-access-token").map(_.value()).toList
         xAccessToken shouldBe token

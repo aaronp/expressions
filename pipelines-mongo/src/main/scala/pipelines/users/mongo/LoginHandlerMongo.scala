@@ -2,7 +2,8 @@ package pipelines.users.mongo
 
 import com.typesafe.config.Config
 import monix.execution.Scheduler
-import pipelines.auth.SetRolesForUserRequest
+import org.mongodb.scala.MongoDatabase
+import pipelines.mongo.MongoConnect
 import pipelines.users.{Claims, LoginHandler, LoginRequest}
 
 import scala.concurrent.Future
@@ -41,11 +42,11 @@ class LoginHandlerMongo(val users: UserRepoMongo, val userRoles: UserRolesServic
 }
 
 object LoginHandlerMongo {
-  def apply(rootConfig: Config)(implicit ioSched: Scheduler): Future[LoginHandlerMongo] = {
+  def apply(mongo: MongoDatabase, rootConfig: Config)(implicit ioSched: Scheduler): Future[LoginHandlerMongo] = {
     import args4c.implicits._
     val sessionDuration                      = rootConfig.asFiniteDuration("pipelines.users.sessionDuration")
-    val usersFuture: Future[UserRepoMongo]   = UserRepoMongo(rootConfig)
-    val authFuture: Future[UserRolesService] = UserRolesService(rootConfig)
+    val usersFuture: Future[UserRepoMongo]   = UserRepoMongo(mongo, rootConfig)
+    val authFuture: Future[UserRolesService] = UserRolesService(mongo, rootConfig)
     for {
       u <- usersFuture
       a <- authFuture
@@ -53,4 +54,12 @@ object LoginHandlerMongo {
       new LoginHandlerMongo(u, a, sessionDuration)
     }
   }
+
+//  def apply(rootConfig: Config)(implicit ioSched: Scheduler): Future[MongoDatabase] = {
+//
+//    val conn = MongoConnect(rootConfig)
+//
+//    val c = conn.client
+//    c -> c.getDatabase(database)
+//  }
 }

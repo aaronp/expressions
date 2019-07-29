@@ -33,69 +33,11 @@ import scala.reflect.runtime.universe._
   */
 class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: StreamDao[Future], val triggers: RepoStatePipe)(implicit scheduler: Scheduler) extends StrictLogging {
 
-  override def toString: String = {
-    pipelines
-      .map {
-        case (id, p) =>
-          s"""$id
-         |\t$p
-       """.stripMargin
-      }
-      .mkString("\n")
-  }
-
-  private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
-    logger.info(s"!>! Pipeline added $id : $pipeline")
-    pipelinesById.put(id, pipeline)
-  }
-
-  def listSources(queryParams: Map[String, String]): ListRepoSourcesResponse = {
-    val criteria = MetadataCriteria(queryParams)
-
-    val results = sources.list().withFilter(ds => criteria.matches(ds.metadataWithContentType)).map { found: DataSource =>
-      new ListedDataSource(found.metadataWithContentType, Option(found.contentType))
-    }
-    ListRepoSourcesResponse(results)
-  }
-
-  private var latest = Var(Option.empty[(RepoState, TriggerInput, TriggerEvent)])(scheduler)
-
-  def state(): Option[RepoState]        = latest().map(_._1)
-  def lastEvent(): Option[TriggerEvent] = latest().map(_._3)
-
-  triggers.output.foreach { entry: (RepoState, TriggerInput, TriggerEvent) =>
-    latest := Some(entry)
-  }(triggers.scheduler)
+  private val latest = Var(Option.empty[(RepoState, TriggerInput, TriggerEvent)])(scheduler)
 
   private val pipelinesById: concurrent.Map[UUID, Pipeline[_, _]] = {
     import scala.collection.JavaConverters._
     new java.util.concurrent.ConcurrentHashMap[UUID, Pipeline[_, _]]().asScala
-  }
-
-  def cancel(id: UUID): Option[Pipeline[_, _]] = {
-    pipelinesById.remove(id) match {
-      case None =>
-        logger.info(s"Couldn't cancel the pipeline: $id")
-        None
-      case Some(p) =>
-        logger.info(s"Canceled pipeline: $id")
-        p.cancel()
-        Some(p)
-    }
-  }
-
-  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = pipelinesById
-  def pipelinesForSource(sourceId: String) = {
-    pipelines().values.filter(_.root.id.exists(_ == sourceId))
-  }
-  def pipelinesForSink(sinkId: String) = {
-    pipelines().values.filter(_.sink.id.exists(_ == sinkId))
-  }
-  def pipelinesForSourceAndSink(sourceId: String, sinkId: String) = {
-    pipelines().values.filter { p =>
-      p.root.id.exists(_ == sourceId) &&
-      p.sink.id.exists(_ == sinkId)
-    }
   }
 
   /**
@@ -104,9 +46,25 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
     */
   lazy val matchEvents: Observable[(TriggerInput, PipelineMatch)] = triggers.output
     .flatMap {
-      case (_, input, event) => Observable.fromIterable(event.matches.map(input -> _))
+      case (newState: RepoState, input: TriggerInput, event: TriggerEvent) =>
+        onEvent(newState, input, event)
+        Observable.fromIterable(event.matches.map(input -> _))
     }
     .share(scheduler)
+
+  def onEvent(newState: RepoState, input: TriggerInput, event: TriggerEvent): Unit = {
+
+    logger.info(s"""
+        !VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV _-=[ onEvent ]=-_ VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+        !
+        !input: $input
+        !
+        !result $event
+        !
+        !${RepoStateRender(this, newState)}
+        !^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      """.stripMargin('!'))
+  }
 
   /**
     * An event stream of Pipelines -- joined up sources and sinks
@@ -134,6 +92,64 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
       .share(scheduler)
   }
 
+  override def toString: String = {
+    pipelines
+      .map {
+        case (id, p) =>
+          s"""$id
+         |\t$p
+       """.stripMargin
+      }
+      .mkString("\n")
+  }
+
+  private def addPipeline(id: UUID, pipeline: Pipeline[_, _]): Unit = {
+    logger.info(s"!>! Pipeline added $id : $pipeline")
+    pipelinesById.put(id, pipeline)
+  }
+
+  def listSources(queryParams: Map[String, String]): ListRepoSourcesResponse = {
+    val criteria = MetadataCriteria(queryParams)
+
+    val results = sources.list().withFilter(ds => criteria.matches(ds.metadataWithContentType)).map { found: DataSource =>
+      new ListedDataSource(found.metadataWithContentType, Option(found.contentType))
+    }
+    ListRepoSourcesResponse(results)
+  }
+
+  def state(): Option[RepoState]        = latest().map(_._1)
+  def lastEvent(): Option[TriggerEvent] = latest().map(_._3)
+
+  triggers.output.foreach { entry: (RepoState, TriggerInput, TriggerEvent) =>
+    latest := Some(entry)
+  }(triggers.scheduler)
+
+  def cancel(id: UUID): Option[Pipeline[_, _]] = {
+    pipelinesById.remove(id) match {
+      case None =>
+        logger.info(s"Couldn't cancel the pipeline: $id")
+        None
+      case Some(p) =>
+        logger.info(s"Canceled pipeline: $id")
+        p.cancel()
+        Some(p)
+    }
+  }
+
+  def pipelines(): concurrent.Map[UUID, Pipeline[_, _]] = pipelinesById
+  def pipelinesForSource(sourceId: String) = {
+    pipelines().values.filter(_.sourceId == sourceId)
+  }
+  def pipelinesForSink(sinkId: String) = {
+    pipelines().values.filter(_.sinkId == sinkId)
+  }
+  def pipelinesForSourceAndSink(sourceId: String, sinkId: String) = {
+    pipelines().values.filter { p =>
+      p.root.id.exists(_ == sourceId) &&
+      p.sink.id.exists(_ == sinkId)
+    }
+  }
+
   def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_, _]] = {
     import pipelineMatch._
     val foundPipelines: Seq[Pipeline[_, _]] = for {
@@ -155,7 +171,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
     }
 
     if (foundPipelines.nonEmpty) {
-      Left(s"Source ${pipelineMatch.source.id} is already connected to ${pipelineMatch.sink.id}")
+      Left(s"Source ${pipelineMatch.source} is already connected to ${pipelineMatch.sink}: ${foundPipelines.map(_.matchId)}}")
     } else {
 
       create()
@@ -186,7 +202,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
       val metadata = queryParams.updated(tags.Name, name)
       DataSource
         .push[A](metadata)
-        .ensuringId()
+        .ensuringId(Ids.next())
         .ensuringMetadata(tags.SourceType, tags.typeValues.Push)
         .ensuringContentType()
     }
@@ -198,7 +214,6 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
       case Some(other)  => Future.failed(new Exception(s"Sink '$name' is not a ${implicitly[ClassTag[S]].runtimeClass.getName}: $other"))
       case None if createIfMissing =>
         val dataSink: S = newSink
-
         def readBack(): Future[(Boolean, S)] = {
           getOrCreateSink(MetadataCriteria(Map(tags.Name -> name)), dataSink) match {
             case Seq()         => Future.failed(new Exception(s"Compute says no  - sink $name not created"))

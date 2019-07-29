@@ -2,12 +2,12 @@ package pipelines.users.mongo
 
 import java.time.ZonedDateTime
 
-import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, Encoder}
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
+import org.mongodb.scala.MongoDatabase
 import pipelines.audit.AuditVersion
 import pipelines.audit.mongo.AuditServiceMongo
 import pipelines.auth.{AuthModel, UserRoles}
@@ -89,17 +89,16 @@ final class RefDataMongo[T: Encoder: Decoder](val repo: AuditServiceMongo, pollF
 }
 
 object RefDataMongo extends LowPriorityMongoImplicits with StrictLogging {
-  def apply[T: Encoder: Decoder](rootConfig: Config, collectionName: String)(implicit ioSched: Scheduler): CancelableFuture[RefDataMongo[T]] = {
-    val settings = CollectionSettings(rootConfig, collectionName)
-    apply(settings)
-  }
 
-  def apply[T: Encoder: Decoder](settings: CollectionSettings)(implicit ioSched: Scheduler): CancelableFuture[RefDataMongo[T]] = {
+  def apply[T: Encoder: Decoder](mongoDb: MongoDatabase, settings: CollectionSettings)(implicit ioSched: Scheduler): CancelableFuture[RefDataMongo[T]] = {
 
-    AuditServiceMongo(settings).map { service: AuditServiceMongo =>
-      import args4c.implicits._
-      val pollFreq = settings.mongo.databaseConfig(settings.collectionName).config.asFiniteDuration("pollFrequency")
+    import args4c.implicits._
+    val pollFreq = settings.dbConfig.config.asFiniteDuration("pollFrequency")
+
+    settings.ensureCreated(mongoDb).map { collection =>
+      val service = AuditServiceMongo(mongoDb, collection)
       new RefDataMongo(service, pollFreq)
+
     }
   }
 }

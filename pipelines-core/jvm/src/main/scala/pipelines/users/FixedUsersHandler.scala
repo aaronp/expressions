@@ -2,7 +2,7 @@ package pipelines.users
 
 import java.util.concurrent.TimeUnit
 
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.Future
@@ -25,5 +25,21 @@ class FixedUsersHandler(userConfig: Config) extends LoginHandler[Future] with St
     val success = result.toOption.flatten.exists(_.name == request.user)
     logger.info(s"Login from '${request.user}' ${if (success) "ok" else "failed"}")
     Future.fromTry(result)
+  }
+}
+
+object FixedUsersHandler {
+  def apply(firstUserAndCreds: (String, String), usersAndCreds: (String, String)*): FixedUsersHandler = {
+    val configs = (firstUserAndCreds +: usersAndCreds).map {
+      case (user, pwd) =>
+        val map = Map(s"fixed.${user}" -> pwd)
+        import scala.collection.JavaConverters._
+        ConfigFactory.parseMap(map.asJava)
+    }
+
+    val userConf = configs.reduce(_ withFallback _)
+
+    val all = userConf.withFallback(ConfigFactory.parseString("sessionDuration : 5m"))
+    new FixedUsersHandler(all)
   }
 }

@@ -7,7 +7,7 @@ val repo = "pipelines"
 name := repo
 
 val username            = "aaronp"
-val scalaTwelve         = "2.12.8"
+val scalaTwelve         = "2.12.9"
 val scalaThirteen       = "2.13.0"
 val defaultScalaVersion = scalaTwelve
 val scalaVersions       = Seq(scalaTwelve) //, scalaThirteen)

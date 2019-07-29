@@ -6,14 +6,15 @@ import pipelines.client.jvm.PipelinesClient
 import pipelines.{BaseCoreTest, DevRestMain, rest}
 import pipelines.rest.RunningServer
 import pipelines.users.{CreateUserRequest, CreateUserResponse}
+import args4c.implicits._
+import pipelines.rest.socket.AddressedMessageRouter
 
-  import args4c.implicits._
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
 class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures {
 
-  private var server: RunningServer = null
+  private var server: RunningServer[AddressedMessageRouter] = null
 
   "PipelinesClient.newUser" should {
     "be able to create new users" in {
@@ -35,7 +36,7 @@ class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Sca
     }
     super.beforeAll()
 
-    val Some(started) = rest.RestMain.runMain(DevRestMain.devArgs)
+    val Some(started: RunningServer[AddressedMessageRouter]) = rest.RestMain.runMain(DevRestMain.devArgs)
     server = started
   }
 

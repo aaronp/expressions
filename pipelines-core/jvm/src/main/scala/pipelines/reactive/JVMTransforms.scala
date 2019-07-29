@@ -17,7 +17,7 @@ object JVMTransforms {
     val newType = ContentType.of[(Array[Byte], String)]
     forTypes(ContentType.of[Array[Byte]], newType) {
       case (original, obs) =>
-        val dataSource = original.ensuringId()
+        val dataSource = original.ensuringId(Ids.next())
         import eie.io._
         val dir = baseDir.resolve(dataSource.id.get).mkDirs()
         val newObs = obs.zipWithIndex.map {

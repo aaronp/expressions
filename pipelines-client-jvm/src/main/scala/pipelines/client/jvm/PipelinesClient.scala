@@ -8,7 +8,7 @@ import javax.net.ssl.{HttpsURLConnection, SSLContext}
 import pipelines.Env
 import pipelines.auth.AuthEndpoints
 import pipelines.reactive.repo.{SourceEndpoints, TransformEndpoints}
-import pipelines.rest.socket.{EventDto, SocketEndpoint}
+import pipelines.rest.socket.SocketEndpoint
 import pipelines.ssl.SSLConfig
 import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginEndpoints, LoginRequest, LoginResponse, UserEndpoints, UserRoleEndpoints, UserSchemas}
 
@@ -35,11 +35,11 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
 
   def login(user: String, password: String): R[LoginResponse] = login(LoginRequest(user, password))
 
-  def newSession(user: String, password: String)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession] = {
+  def newSession(user: String, password: String)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSocketStateJVM] = {
     newSession(LoginRequest(user, password))
   }
 
-  def newSession(request: LoginRequest)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSession] = {
+  def newSession(request: LoginRequest)(implicit ev: R[LoginResponse] =:= Future[LoginResponse], env: Env): Future[ClientSocketStateJVM] = {
     implicit val execContent = env.ioScheduler
 
     val loginRespFuture: Future[LoginResponse] = ev(login(request))
@@ -47,15 +47,10 @@ class PipelinesClient[R[_]](val host: String, backend: sttp.SttpBackend[R, _], d
     loginRespFuture.flatMap { response: LoginResponse =>
       response.jwtToken match {
         case Some(jwt) =>
-          val socketRequest: SttpRequest = sockets.request(Unit)
-          val webSocketUri               = socketRequest.uri.toString.replaceAllLiterally("http", "ws")
-
+          val socketRequest: SttpRequest  = sockets.request(Unit)
+          val webSocketUri                = socketRequest.uri.toString.replaceAllLiterally("http", "ws")
           val me: PipelinesClient[Future] = this.asInstanceOf[PipelinesClient[Future]]
-
-          ClientSession(me, jwt, defaultSslContext, webSocketUri, request.user).map { session: ClientSession =>
-            session.send(EventDto("hello", Map("x" -> "y")))
-            session
-          }
+          ClientSocketStateJVM(me, jwt, defaultSslContext, webSocketUri, request.user)
         case None => Future.failed(new Exception(s"Login request for ${request.user} failed - no token"))
       }
     }
@@ -74,21 +69,19 @@ object PipelinesClient extends StrictLogging {
       forHostSync(s"https://${hostPort(rootConfig)}", Option(ctxt))
     }
   }
-  private def hostPort(rootConfig: Config) = rootConfig.getString("pipelines.client.hostport")
+  def hostPort(rootConfig: Config) = rootConfig.getString("pipelines.client.hostport")
 
   def forHost(host: String, sslContext: Option[SSLContext] = None)(implicit executionContext: ExecutionContext): PipelinesClient[Future] = {
     object futureBackend extends SttpBackend[Future, Nothing] {
       val backend = HttpURLConnectionBackend(customizeConnection = {
-        case conn: HttpsURLConnection => sslContext.map(_.getSocketFactory).foreach(conn.setSSLSocketFactory)
-        case _                        =>
+        case conn: HttpsURLConnection =>
+          val sf = sslContext.map(_.getSocketFactory)
+          sf.foreach(conn.setSSLSocketFactory)
+        case _ =>
       })
       override def send[T](request: Request[T, Nothing]): Future[Response[T]] = {
         val promise = Promise[Response[T]]
-        executionContext.execute(new Runnable {
-          override def run(): Unit = {
-            promise.tryComplete(Try(backend.send(request)))
-          }
-        })
+        executionContext.execute(() => promise.tryComplete(Try(backend.send(request))))
         promise.future
       }
 

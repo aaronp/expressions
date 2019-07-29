@@ -6,10 +6,9 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.execution.{CancelableFuture, Scheduler}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Completed, Document, MongoCollection, MongoDatabase, MongoWriteException, SingleObservable}
-import pipelines.auth.SetRolesForUserRequest
 import pipelines.core.{GenericErrorResult, GenericMessageResult}
 import pipelines.mongo.{BsonUtil, CollectionSettings, LowPriorityMongoImplicits}
-import pipelines.users.jvm.UserHash
+import pipelines.users.jvm.PasswordHash
 import pipelines.users.{CreateUserRequest, RegisteredUser}
 
 import scala.concurrent.Future
@@ -22,7 +21,7 @@ import scala.util.control.NonFatal
   * @param hasher
   * @param ioSched
   */
-final class UserRepoMongo(private[users] val mongoDb: MongoDatabase, private[users] val users: MongoCollection[Document], val hasher: UserHash)(implicit val ioSched: Scheduler)
+final class UserRepoMongo(private[users] val mongoDb: MongoDatabase, private[users] val users: MongoCollection[Document], val hasher: PasswordHash)(implicit val ioSched: Scheduler)
     extends LowPriorityMongoImplicits
     with StrictLogging {
 
@@ -103,14 +102,14 @@ final class UserRepoMongo(private[users] val mongoDb: MongoDatabase, private[use
 
 object UserRepoMongo extends LowPriorityMongoImplicits with StrictLogging {
 
-  def apply(rootConfig: Config, usersCollectionName: String = "users")(implicit ioSched: Scheduler): CancelableFuture[UserRepoMongo] = {
-    val hasher: UserHash = UserHash(rootConfig)
-    apply(CollectionSettings(rootConfig, usersCollectionName), hasher)
+  def apply(mongoDb: MongoDatabase, rootConfig: Config, usersCollectionName: String = "users")(implicit ioSched: Scheduler): CancelableFuture[UserRepoMongo] = {
+    val coll = CollectionSettings(rootConfig, usersCollectionName)
+    coll.ensureCreated(mongoDb).map { users =>
+      apply(mongoDb, users, PasswordHash(rootConfig))
+    }
   }
 
-  def apply(config: CollectionSettings, hasher: UserHash)(implicit ioSched: Scheduler): CancelableFuture[UserRepoMongo] = {
-    config.ensureCreated.map { users =>
-      new UserRepoMongo(config.mongoDb, users, hasher)
-    }
+  def apply(mongoDb: MongoDatabase, users: MongoCollection[Document], hasher: PasswordHash)(implicit ioSched: Scheduler): UserRepoMongo = {
+    new UserRepoMongo(mongoDb, users, hasher)
   }
 }

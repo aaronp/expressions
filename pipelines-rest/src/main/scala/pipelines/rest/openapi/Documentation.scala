@@ -9,6 +9,7 @@ import pipelines.core.GenericMessageResult
 import pipelines.reactive.ContentType
 import pipelines.reactive.repo.{ListRepoSourcesRequest, SourceEndpoints, TransformEndpoints}
 import pipelines.users.{
+  Claims,
   CreateUserRequest,
   CreateUserResponse,
   LoginEndpoints,
@@ -69,10 +70,11 @@ object Documentation //
     )
   }
   def loginDocs: List[Documentation.DocumentedEndpoint] = {
+    import concurrent.duration._
     List(
       userLogin.loginEndpoint(
         document(LoginRequest("user", "pwd")),
-        document(LoginResponse(true, Some("jwt"), Some("redirectx")))
+        document(LoginResponse(true, Some("jwt"), Some(Claims.after(1.minute).forUser("dave").withId("123")), Some("redirectx")))
       )
     )
   }

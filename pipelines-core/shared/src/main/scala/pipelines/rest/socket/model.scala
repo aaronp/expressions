@@ -75,7 +75,7 @@ final case class SocketSubscribeRequest(socketSinkId: String,
                                         retainAfterMatch: Boolean = false) {
   def sourceAsCriteria: MetadataCriteria = MetadataCriteria(sourceCriteria)
   def sinkAsCriteria: MetadataCriteria   = MetadataCriteria.forId(socketSinkId)
-  def asAddressedMessage                 = AddressedMessage(this)
+  def asAddressedMessage: AddressedMessage = AddressedMessage(this)
 }
 object SocketSubscribeRequest {
   implicit val encoder: ObjectEncoder[SocketSubscribeRequest] = io.circe.generic.semiauto.deriveEncoder[SocketSubscribeRequest]

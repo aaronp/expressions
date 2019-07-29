@@ -2,6 +2,7 @@ package pipelines.users.mongo
 
 import com.typesafe.config.Config
 import monix.execution.{CancelableFuture, Scheduler}
+import org.mongodb.scala.MongoDatabase
 import pipelines.audit.VersionDetails
 import pipelines.auth.{SetRolesForUserRequest, UserRoles}
 import pipelines.core.{GenericErrorResult, GenericMessageResult}
@@ -34,8 +35,8 @@ class UserServiceMongo(override val loginHandler: LoginHandlerMongo) extends Use
 }
 
 object UserServiceMongo {
-  def apply(rootConfig: Config)(implicit ioSched: Scheduler): Future[UserServiceMongo] = {
-    LoginHandlerMongo(rootConfig).map { login =>
+  def apply(mongo: MongoDatabase, rootConfig: Config)(implicit ioSched: Scheduler): Future[UserServiceMongo] = {
+    LoginHandlerMongo(mongo, rootConfig).map { login =>
       new UserServiceMongo(login)
     }
   }

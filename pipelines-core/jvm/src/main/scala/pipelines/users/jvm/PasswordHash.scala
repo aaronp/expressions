@@ -7,7 +7,7 @@ import com.typesafe.config.Config
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-class UserHash private[jvm] (random: SecureRandom, salt: Array[Byte], iterationCount: Int, keyLen: Int) {
+final class PasswordHash private[jvm] (random: SecureRandom, salt: Array[Byte], iterationCount: Int, keyLen: Int) {
 
   private val skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
   private val enc = Base64.getEncoder
@@ -18,9 +18,9 @@ class UserHash private[jvm] (random: SecureRandom, salt: Array[Byte], iterationC
   }
 }
 
-object UserHash {
+object PasswordHash {
 
-  def apply(rootConfig: Config): UserHash = {
+  def apply(rootConfig: Config): PasswordHash = {
     val config = rootConfig.getConfig("pipelines.tls.userHash")
     apply(
       salt = config.getString("salt").getBytes("UTF-8"),
@@ -29,8 +29,8 @@ object UserHash {
     )
   }
 
-  def apply(salt: Array[Byte], iterationCount: Int, keyLen: Int): UserHash = {
+  def apply(salt: Array[Byte], iterationCount: Int, keyLen: Int): PasswordHash = {
     val random = new SecureRandom(salt)
-    new UserHash(random, salt.toList.toArray, iterationCount, keyLen)
+    new PasswordHash(random, salt.toList.toArray, iterationCount, keyLen)
   }
 }

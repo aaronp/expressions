@@ -16,4 +16,15 @@ case class Trigger(sourceCriteria: MetadataCriteria = MetadataCriteria(), sinkCr
     sourceCriteria.matches(dataSource.metadata)
   }
   def matchesSink(dataSink: DataSink): Boolean = sinkCriteria.matches(dataSink.metadata)
+
+  override def toString() = {
+    s"""Trigger {
+      |  ${sourceCriteria.render("sourceCriteria")}
+      |
+      |  ${sinkCriteria.render("sinkCriteria")}
+      |
+      |  via ${transforms.size} transforms: ${transforms.mkString("\n", "\n", "")}
+      |}
+      |""".stripMargin
+  }
 }

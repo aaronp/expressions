@@ -32,7 +32,9 @@ trait DataSink extends HasMetadata {
 
   def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): ConnectResult
 
-  def ensuringId(id : => String = UUID.randomUUID.toString): T = ensuringMetadata(tags.Id, id)
+  def ensuringId(id : => String): T = ensuringMetadata(tags.Id, id)
+
+  def ensuringContentType(): T = ensuringMetadata(tags.ContentType, inputType.toString)
 
   def ensuringMetadata(key : String, value : => String): T = {
     if (metadata.contains(key)) {

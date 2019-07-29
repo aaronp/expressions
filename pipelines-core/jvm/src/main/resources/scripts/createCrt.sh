@@ -41,7 +41,7 @@ export CRT_DETAILS_O=${CRT_DETAILS_O:-End Point}
 export CRT_DETAILS_OU=${CRT_DETAILS_OU:-Testing Domain}
 export CRT_DETAILS_emailAddress=${CRT_DETAILS_emailAddress:-your-administrative-address@your-awesome-existing-domain.com}
 
-export CRT_JKS_PW=${CRT_JKS_PW:-changeThisPassword}
+export CRT_JKS_PWD=${CRT_JKS_PWD:-changeThisPassword}
 
 CRT_CREATED_PW_FILE=false
 INFO=">>> "
@@ -156,10 +156,10 @@ ensureSignedCrt () {
 	if [ ! -f $CRT_CERT_FILE ]; then
   		echo "$INFO creating CRT_CERT_FILE $CRT_CERT_FILE"
 
-      # we need to sign our crert w/ the CA private key 
-	    ensureCA
+      # we need to sign our cert w/ the CA private key
+	  ensureCA
 
-	    # we need the cert signing request
+	  # we need the cert signing request
       ensureCrtCR
 
       # we need to reference an 'extfile' for the config of this CSR
@@ -180,10 +180,10 @@ ensureJKSFromSignedCertificate () {
       ensureSignedCrt
       ensureCrtJKSPassword
 
-      keytool -noprompt -importcert -alias ${CRT_CERT_FILE_JKS_ALIAS} -file ${CRT_CERT_FILE} -keystore $CRT_CERT_FILE_JKS -storepass ${CRT_JKS_PW}
+      keytool -noprompt -importcert -alias ${CRT_CERT_FILE_JKS_ALIAS} -file ${CRT_CERT_FILE} -keystore $CRT_CERT_FILE_JKS -storepass ${CRT_JKS_PWD}
 
       #echo "$INFO created jks file $CRT_CERT_FILE_JKS from  $CRT_CERT_FILE with alias $CRT_CERT_FILE_JKS_ALIAS :"
-      #keytool -list -v -keystore $CRT_CERT_FILE_JKS -storepass ${CRT_JKS_PW}
+      #keytool -list -v -keystore $CRT_CERT_FILE_JKS -storepass ${CRT_JKS_PWD}
     else
       echo "$INFO JKS file CRT_CERT_FILE_JKS $CRT_CERT_FILE_JKS exists, skipping"
     fi

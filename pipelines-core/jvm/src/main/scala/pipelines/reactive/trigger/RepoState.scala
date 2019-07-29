@@ -2,6 +2,7 @@ package pipelines.reactive.trigger
 
 import java.util.UUID
 
+import pipelines.layout.AsciiTable
 import pipelines.reactive._
 
 import scala.util.control.NonFatal

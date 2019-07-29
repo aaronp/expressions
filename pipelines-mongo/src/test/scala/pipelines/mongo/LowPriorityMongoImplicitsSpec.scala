@@ -1,7 +1,7 @@
 package pipelines.mongo
 
 import org.mongodb.scala.model.CreateCollectionOptions
-import pipelines.{Schedulers, WithScheduler}
+import pipelines.Schedulers
 
 trait LowPriorityMongoImplicitsSpec extends BasePipelinesMongoSpec {
 

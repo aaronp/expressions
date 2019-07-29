@@ -3,8 +3,10 @@ package pipelines.rest.socket
 import akka.http.scaladsl.model.headers.{HttpChallenges, RawHeader}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
+import pipelines.core.GenericMessageResult
 import pipelines.rest.RestMain
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, WebSocketTokenCache}
+import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.users.Claims
 
 /**
@@ -14,9 +16,9 @@ import pipelines.users.Claims
   * user successfully creates a [[ServerSocket]]. The additional query params from the GET request are included
   *
   * @param settings the secure settings required for JWT
-  * @param handleSocket the logic of what to do with the new socket
+  * @param subscriptionHandler the logic of what to do with the new socket
   */
-final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, handleSocket: (Claims, ServerSocket, Map[String, String]) => Unit)
+class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, subscriptionHandler: SubscriptionHandler)
     extends BaseSocketRoutes(settings)
     with SocketEndpoint
     with SocketSchemas
@@ -35,17 +37,30 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
     }
   }
 
-  def subscribeSocket: Route = {
+  def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
+    socket.register(user, queryMetadata, subscriptionHandler.pipelinesService)
+  }
 
-    authenticated { user =>
-      socketSubscribe.subscribe.implementedBy { request: SocketSubscribeRequest =>
-        ???
+  def subscribeSocket: Route = {
+    authenticated { _ =>
+      socketSubscribe.subscribe.implementedByAsync(subscriptionHandler.onSocketSubscribe)
+    }
+  }
+
+  def unsubscribeSocket: Route = {
+    authenticated { _ =>
+      socketUnsubscribe.unsubscribe.implementedBy { request =>
+        val unsubscribed = subscriptionHandler.onUnsubscribe(request)
+        if (unsubscribed) {
+          GenericMessageResult(s"Unsubscribed from '${request.addressedMessageId}'")
+        } else {
+          GenericMessageResult(s"Could not unsubscribe from '${request.addressedMessageId}'")
+        }
       }
     }
   }
 
   def connectSocket: Route = {
-
     authenticatedConnect {
       case (tokenProtocol, user) =>
         logger.info(s"${user.name} created socket at ${timestamp()} from '$tokenProtocol'")
@@ -61,7 +76,6 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
           }
         }
     }
-
   }
 
   /**
@@ -81,7 +95,7 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
   private def authenticatedConnect: Directive[Tuple1[(String, Claims)]] = sockets.connect(wtf).request.flatMap { _ =>
     val connectTokenAndClaims: Directive[Tuple1[(String, Claims)]] = {
       val fromTempToken: Directive[(String, Claims)] = socketTokenOpt.collect({
-        case SocketTokenClaims(tokenAndClaims) => tokenAndClaims
+        case Some(SocketTokenClaims((token, claims))) => (token, claims)
       }, authFailedRejection)
 
       fromTempToken.tflatMap {
@@ -117,11 +131,10 @@ final class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCa
 
   // custom extractor used to support a .collect call in authenticatedConnect
   private object SocketTokenClaims {
-    def unapply(socketTokenOpt: Option[String]): Option[(String, Claims)] = {
+    def unapply(socketToken: String): Option[(String, Claims)] = {
       for {
-        socketToken <- socketTokenOpt
-        jwtString   <- tokens.get(socketToken)
-        jwt         <- parseJwt(jwtString).right.toOption
+        jwtString <- tokens.get(socketToken)
+        jwt       <- parseJwt(jwtString).right.toOption
         if !isExpired(jwt)
       } yield {
         socketToken -> jwt.claims

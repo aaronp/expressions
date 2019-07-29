@@ -77,14 +77,12 @@ object TraceRoute {
     val RequestBlackList = Set("/js/", "/jslib/", "site.webmanifest", "favicon", ".css", ".html")
     override def onRequest(request: HttpRequest): Unit = {
       val uriStr = request.uri.toString
+
       if (!RequestBlackList.exists(uriStr.contains)) {
         logger.debug(s"onRequest(${pretty(request)})")
       } else {
         logger.trace(s"onRequest(${pretty(request)})")
       }
-//      val detail = request.headers.mkString(s"${pretty(request)} ${request.headers.size} HEADERS: \n\t", "\n\t", "\n")
-//      logger.debug(detail)
-
     }
 
     private val ResponseBlacklist = Set(".js", ".html", ".css", ".webmanifest", ".png", ".ico")
