@@ -15,7 +15,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
   "PipelineRestService" should {
     "be able to create a transform which joins two data sources" in {
 
-      WithScheduler { implicit sched =>
+      withScheduler { implicit sched =>
         //
         //
         //
@@ -84,7 +84,7 @@ class PipelineRestServiceTest extends BaseCoreTest with ScalaFutures {
       */
     "be able to create, automagically trigger a connection, and then push to a push source" in {
       WithTempDir { dir =>
-        WithScheduler { implicit sched =>
+        withScheduler { implicit sched =>
           val settings = Settings(dir, sched)
           Given("A new service")
           val service: PipelineRestService = PipelineRestService(settings)

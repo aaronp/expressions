@@ -2,7 +2,7 @@ package pipelines.rest.routes
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{Matchers, WordSpec}
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 
 import scala.concurrent.duration._
 
@@ -10,7 +10,7 @@ class WebSocketTokenCacheTest extends WordSpec with Matchers with Eventually {
 
   "WebSocketTokenCache" should {
     "remove tokens after a given time" in {
-      WithScheduler { implicit s =>
+      Schedulers.using { implicit s =>
         val cache       = WebSocketTokenCache(10.millis)
         val key: String = cache.generate("some jwt token")
         eventually {
@@ -21,7 +21,7 @@ class WebSocketTokenCacheTest extends WordSpec with Matchers with Eventually {
   }
   "WebSocketTokenCache.validateAndRemove" should {
     "remove tokens after a given time" in {
-      WithScheduler { implicit s =>
+      Schedulers.using { implicit s =>
         val cache        = WebSocketTokenCache(20.seconds)
         val key: String  = cache.generate("another jwt token")
         val key2: String = cache.generate("one more jwt token")

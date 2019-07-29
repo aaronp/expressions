@@ -3,8 +3,8 @@ package pipelines.reactive
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import org.scalatest.concurrent.ScalaFutures
+import pipelines.BaseCoreTest
 import pipelines.reactive.trigger.{PipelineMatch, TriggerEvent}
-import pipelines.{BaseCoreTest, WithScheduler}
 
 import scala.collection.mutable.ListBuffer
 import scala.util.{Success, Try}
@@ -12,10 +12,10 @@ import scala.util.{Success, Try}
 class DataSinkTest extends BaseCoreTest with ScalaFutures {
 
   "DataSink.variable" should {
-    "support updating a transform" ignore {
+    "support updating a transform" in {
       import implicits._
 
-      WithScheduler { implicit sched =>
+      withScheduler { implicit sched =>
         Given("An original source and a control source")
         val first   = Var[String]("first")
         val control = Var[String]("control")
@@ -116,10 +116,10 @@ class DataSinkTest extends BaseCoreTest with ScalaFutures {
       }
 
     }
-    "support routing feeds" ignore {
+    "support routing feeds" in {
       import implicits._
 
-      WithScheduler { implicit sched =>
+      withScheduler { implicit sched =>
         Given("Three different sources")
         val first    = Var[String]("first")
         val second   = Var[String]("second")

@@ -315,6 +315,9 @@ lazy val expressions = project
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= testDependencies)
   .settings(libraryDependencies ++= circeDependencies.map(artifact => "io.circe" %% artifact % circeVersion))
+  .settings(libraryDependencies ++= monix.map { art =>
+    "io.monix" %% art % "3.0.0-RC2" % "test"
+  })
   .settings(
     libraryDependencies ++= List(
       "org.apache.avro" % "avro"           % "1.8.2",

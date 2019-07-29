@@ -63,7 +63,7 @@ object TraceRoute {
         s"[${h.name} : ${h.value}]"
       }
       .getOrElse("")
-    s"${r.method.value} $token ${r.uri}"
+    s"${r.method.value} ${r.uri} $token"
   }
 
   /**

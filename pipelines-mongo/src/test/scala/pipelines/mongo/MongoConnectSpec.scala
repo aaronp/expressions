@@ -4,13 +4,13 @@ import java.util.UUID
 
 import io.circe.Json
 import org.mongodb.scala.bson.collection.immutable.Document
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 
 trait MongoConnectSpec extends BasePipelinesMongoSpec {
 
   "MongoConnect" should {
     "connect" in {
-      WithScheduler { implicit scheduler =>
+      Schedulers.using { implicit scheduler =>
         val collection = mongoDb.getCollection(s"coll_${UUID.randomUUID()}".filter(_.isLetter))
 
         import io.circe.literal._

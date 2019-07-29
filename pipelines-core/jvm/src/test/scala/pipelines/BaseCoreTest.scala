@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 
 abstract class BaseCoreTest extends WordSpec with Matchers with Eventually with GivenWhenThen with ScalaFutures {
 
-  def withScheduler[A](f: Scheduler => A): A = WithScheduler(f)
+  def withScheduler[A](f: Scheduler => A): A = Schedulers.using(f)
 
   def testTimeout: FiniteDuration = 3.seconds
 

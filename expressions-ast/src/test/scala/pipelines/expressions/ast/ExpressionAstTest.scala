@@ -6,36 +6,6 @@ import org.scalatest.{Matchers, WordSpec}
 
 class ExpressionAstTest extends WordSpec with Matchers {
 
-  "ExpressionAst.evalExpr" ignore {
-
-    import pipelines.expresssions.ast.ExpressionAst.ast._
-    "parse op expressions" in {
-      val result = parse("4.56 + 7.12", evalExpr(_)).get.value
-      println(result)
-      parse("4.56+7", full(_)).get.value shouldBe EvalExpression(ConstExpression(Right(DoubleValue(4.56))), Plus, ConstExpression(Right(DoubleValue(7))))
-//      parse("true - false", full(_)).get.value shouldBe EvalExpression(ConstExpression(Right(DoubleValue(4.56))), Plus, ConstExpression(Right(DoubleValue(7))))
-
-    }
-  }
-  "parse" ignore {
-
-    import ExpressionAst.ast._
-    "parse term expressions" in {
-      parse("'foo.bar", full(_)).get.value shouldBe ConstExpression(Left(PropertyPath(List("foo", "bar"))))
-      parse("123", full(_)).get.value shouldBe ConstExpression(Right(IntValue(123)))
-      parse("true", full(_)).get.value shouldBe ConstExpression(Right(BooleanValue(true)))
-      parse("4.56", full(_)).get.value shouldBe ConstExpression(Right(DoubleValue(4.56)))
-    }
-
-    "parse op expressions" in {
-      parse("4.56 + 7", full(_)).get.value shouldBe EvalExpression(ConstExpression(Right(DoubleValue(4.56))), Plus, ConstExpression(Right(DoubleValue(7))))
-      parse("4.56+7", full(_)).get.value shouldBe EvalExpression(ConstExpression(Right(DoubleValue(4.56))), Plus, ConstExpression(Right(DoubleValue(7))))
-      parse("true - false", full(_)).get.value shouldBe EvalExpression(ConstExpression(Right(DoubleValue(4.56))), Plus, ConstExpression(Right(DoubleValue(7))))
-
-    }
-//    "parse grouped expressions" in {}
-//    "parse predicate expressions" in {}
-  }
   "ExpressionAst.ast.term" should {
     import ExpressionAst.ast._
     "parse properties" in {

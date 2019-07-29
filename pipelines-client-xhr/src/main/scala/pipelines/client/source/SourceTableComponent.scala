@@ -2,7 +2,6 @@ package pipelines.client.source
 
 import pipelines.client.tables.Clusterize
 import pipelines.client.{ClientSocketState, HtmlUtils, PipelinesXhr}
-import pipelines.reactive.tags
 import pipelines.rest.socket.{AddressedBinaryMessage, AddressedTextMessage}
 import scalatags.Text.all.{div, _}
 
@@ -10,7 +9,6 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
-import scala.util.control.NonFatal
 
 @JSExportTopLevel("SourceTableComponent")
 object SourceTableComponent {
@@ -57,13 +55,12 @@ object SourceTableComponent {
     val socketFuture: Future[ClientSocketState] = PipelinesXhr.createSocket()
 
     import PipelinesXhr.implicits._
-    socketFuture.foreach { socket =>
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SourceEvents), Seq(tags.transforms.`SourceEvent.asAddressedMessage`), retainAfterMatch = true)
-      socket.subscribe(Map(tags.Label -> tags.labelValues.SinkEvents), Seq(tags.transforms.`SinkEvent.asAddressedMessage`), retainAfterMatch = true)
-      import socket._
+    socketFuture.foreach { socket: ClientSocketState =>
+      socket.subscribeToSourceEvents()
+      socket.subscribeToSinkEvents()
 
       val inst = {
-        HtmlUtils.log(s"Creating clusterize")
+        HtmlUtils.log(s"Creating clusterize with $socket")
         Clusterize(config)
       }
 
@@ -72,7 +69,7 @@ object SourceTableComponent {
           inst.append(Seq(s"<tr><td>to:${to}</td><td>${data.size} bytes</td></tr>"))
         case AddressedTextMessage(to, msg) =>
           inst.append(Seq(s"<tr><td>to:${to}</td><td>text:${msg}</td></tr>"))
-      }
+      }(socket.scheduler)
     }
 
     divText

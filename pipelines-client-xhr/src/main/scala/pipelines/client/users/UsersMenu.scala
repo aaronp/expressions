@@ -14,7 +14,7 @@ import scala.util.{Failure, Success}
 
 object UsersMenu {
 
-  def init(myLayout: GoldenLayout) : Unit = {
+  def init(myLayout: GoldenLayout): Unit = {
 
     PipelinesXhr.userStatus.statusEndpoint.apply().onComplete {
       case Failure(_) =>

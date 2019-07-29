@@ -1,7 +1,7 @@
 package pipelines.reactive
 
 import monix.reactive.Observable
-import pipelines.{BaseCoreTest, WithScheduler}
+import pipelines.BaseCoreTest
 
 import scala.collection.mutable.ListBuffer
 
@@ -10,7 +10,7 @@ class RepoTest extends BaseCoreTest {
   "Repo.add" should {
     "add and remove sources" in {
       import implicits._
-      WithScheduler { s =>
+      withScheduler { s =>
         val sources = Repo.sources(s)
         val events  = ListBuffer[SourceEvent]()
         sources.events.foreach { e: SourceEvent =>

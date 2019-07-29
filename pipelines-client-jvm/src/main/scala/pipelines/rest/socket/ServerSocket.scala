@@ -98,9 +98,9 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
       logger.info(s"Sending ack on new socket: $handshake")
       socket.sendToClient(handshake)
 
-      val clientAcks: Observable[SocketClientConnectionAck] = socket.fromRemoteOutput.flatMap { fromClient =>
-        logger.info(s"""Got a client addressed messsage: $fromClient""".stripMargin)
-        Observable.fromIterable(fromClient.as[SocketClientConnectionAck].toOption)
+      val clientAcks: Observable[SocketConnectionAckRequest] = socket.fromRemoteOutput.flatMap { fromClient =>
+        logger.info(s"""Got a client addressed message: $fromClient""".stripMargin)
+        Observable.fromIterable(fromClient.as[SocketConnectionAckRequest].toOption)
       }
 
       // respond to client ack

@@ -1,6 +1,6 @@
 package pipelines.users.mongo
 
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 import pipelines.audit.AuditVersion
 import pipelines.auth.{AuthModel, UserRoles}
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
@@ -9,7 +9,7 @@ trait UserRolesServiceSpec extends BasePipelinesMongoSpec {
 
   "UsersMongo" should {
     "be able to associate users with permissions" in {
-      WithScheduler { implicit sched =>
+      Schedulers.using { implicit sched =>
         val userService: UserRolesService = {
           val usersCollectionName = s"users-${System.currentTimeMillis}"
           val rolesCollectionName = s"roles-${System.currentTimeMillis}"

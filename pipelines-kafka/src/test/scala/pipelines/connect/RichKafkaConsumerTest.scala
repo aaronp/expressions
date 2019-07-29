@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import dockerenv.BaseKafkaSpec
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.{Using, WithScheduler}
+import pipelines.{Schedulers, Using, WithScheduler}
 
 import scala.concurrent.duration._
 
@@ -19,7 +19,7 @@ class RichKafkaConsumerTest extends BaseKafkaSpec with ScalaFutures with BeforeA
 
   "RichKafkaConsumer" should {
     "consume kafka messages" in {
-      WithScheduler { implicit sched =>
+      Schedulers.using { implicit sched =>
         val config = ConfigFactory.load()
         Using(RichKafkaProducer.strings(config)) { producer =>
           producer.send("foo", "testkey", "test").futureValue

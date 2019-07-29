@@ -1,13 +1,13 @@
 package pipelines.mongo
 
 import org.mongodb.scala.model.CreateCollectionOptions
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 
 trait LowPriorityMongoImplicitsSpec extends BasePipelinesMongoSpec {
 
   "RichMongoDatabase.createRequiredCollections" should {
     "createRequiredCollections" in {
-      WithScheduler { implicit scheduler =>
+      Schedulers.using { implicit scheduler =>
         val capped  = s"capped${System.currentTimeMillis}"
         val limited = s"limit${System.currentTimeMillis}"
 

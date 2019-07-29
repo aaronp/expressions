@@ -63,8 +63,6 @@ object Menu {
   }
 
   def menuContainer = elmById(css.MenuContainer)
-
-
   @JSExport
   def initialise(myLayout: GoldenLayout) = {
     SourceMenu.init(myLayout)

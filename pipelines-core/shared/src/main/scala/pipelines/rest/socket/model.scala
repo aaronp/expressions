@@ -7,14 +7,15 @@ import pipelines.reactive.{MetadataCriteria, tags}
 import pipelines.users.Claims
 
 /**
-  * The first message to send from the client
+  * The first message which should be sent from the client.
+  * This is a one-off heartbeat, which is replied to with a 'SocketConnectionAck'.
+  *
+  * In practice, any time this is sent the server should reply with a [[SocketConnectionAck]]
   */
-final case class SocketClientConnectionAck(fromTheClient : Boolean = true) {
-
-}
-object SocketClientConnectionAck {
-  implicit val encoder: ObjectEncoder[SocketClientConnectionAck] = io.circe.generic.semiauto.deriveEncoder[SocketClientConnectionAck]
-  implicit val decoder: Decoder[SocketClientConnectionAck] = io.circe.generic.semiauto.deriveDecoder[SocketClientConnectionAck]
+final case class SocketConnectionAckRequest(fromTheClient: Boolean = true)
+object SocketConnectionAckRequest {
+  implicit val encoder: ObjectEncoder[SocketConnectionAckRequest] = io.circe.generic.semiauto.deriveEncoder[SocketConnectionAckRequest]
+  implicit val decoder: Decoder[SocketConnectionAckRequest]       = io.circe.generic.semiauto.deriveDecoder[SocketConnectionAckRequest]
 }
 
 /**
@@ -32,7 +33,10 @@ final case class SocketConnectionAck(commonId: String, sourceMetadata: Map[Strin
     * @param subscriptionId a unique id which can be used in order to cancel the subscription
     * @return a request which can connect the sink for this websocket to the given source id via the specified transforms (provided the types match up)
     */
-  def subscribeToSource(sourceId: String, transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString, retainAfterMatch : Boolean = false): SocketSubscribeRequest = {
+  def subscribeToSource(sourceId: String,
+                        transforms: Seq[String] = Nil,
+                        subscriptionId: String = UUID.randomUUID.toString,
+                        retainAfterMatch: Boolean = false): SocketSubscribeRequest = {
     subscribeTo(Map(tags.Id -> sourceId), transforms, subscriptionId, retainAfterMatch)
   }
 
@@ -42,7 +46,10 @@ final case class SocketConnectionAck(commonId: String, sourceMetadata: Map[Strin
     * @param subscriptionId a unique id which can be used in order to cancel the subscription
     * @return a request which can connect the sink for this websocket to the given source id via the specified transforms (provided the types match up)
     */
-  def subscribeTo(sourceCriteria: Map[String, String], transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString, retainAfterMatch : Boolean = false): SocketSubscribeRequest = {
+  def subscribeTo(sourceCriteria: Map[String, String],
+                  transforms: Seq[String] = Nil,
+                  subscriptionId: String = UUID.randomUUID.toString,
+                  retainAfterMatch: Boolean = false): SocketSubscribeRequest = {
     SocketSubscribeRequest(commonId, sourceCriteria, subscriptionId, transforms, retainAfterMatch)
   }
 }
@@ -61,7 +68,11 @@ object SocketConnectionAck {
   * @param addressedMessageId a unique ID which can be used to reference/unsubscribe from the source
   * @param transforms any transformations to apply between the sources identified by the
   */
-final case class SocketSubscribeRequest(socketSinkId: String, sourceCriteria: Map[String, String], addressedMessageId: String, transforms: Seq[String] = Nil, retainAfterMatch : Boolean = false) {
+final case class SocketSubscribeRequest(socketSinkId: String,
+                                        sourceCriteria: Map[String, String],
+                                        addressedMessageId: String,
+                                        transforms: Seq[String] = Nil,
+                                        retainAfterMatch: Boolean = false) {
   def sourceAsCriteria: MetadataCriteria = MetadataCriteria(sourceCriteria)
   def sinkAsCriteria: MetadataCriteria   = MetadataCriteria.forId(socketSinkId)
   def asAddressedMessage                 = AddressedMessage(this)

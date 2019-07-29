@@ -1,7 +1,7 @@
 package pipelines.reactive
 
 import org.scalatest.concurrent.ScalaFutures
-import pipelines.{BaseCoreTest, WithScheduler}
+import pipelines.BaseCoreTest
 
 import scala.collection.mutable.ListBuffer
 
@@ -9,7 +9,7 @@ class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
 
   "PipelineService.pushSourceForName" should {
     "create a new source if one doesn't already exist" in {
-      WithScheduler { implicit scheduler =>
+      withScheduler { implicit scheduler =>
         val service           = PipelineService()
         val (true, created)   = service.pushSourceForName("test", true, false, Map("foo" -> "bar")).futureValue
         val (false, existing) = service.pushSourceForName("test", true, false, Map("foo" -> "bar")).futureValue
@@ -21,7 +21,7 @@ class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
   }
   "PipelineService.getOrCreateSink" should {
     "link a sink which matches an existing source" in {
-      WithScheduler { implicit scheduler =>
+      withScheduler { implicit scheduler =>
         val service = PipelineService()
 
         val received = ListBuffer[String]()
@@ -75,7 +75,7 @@ class PipelineServiceTest extends BaseCoreTest with ScalaFutures {
   }
   "PipelineService.getOrCreateSource" should {
     "be able to register and connect to new sources" in {
-      WithScheduler { implicit scheduler =>
+      withScheduler { implicit scheduler =>
         val service = PipelineService()
 
         val Seq(source)  = service.getOrCreateSource(DataSource.push[String](Map("user" -> "dave")))

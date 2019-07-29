@@ -1,6 +1,6 @@
 package pipelines.users.mongo
 
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
 import pipelines.users.CreateUserRequest
 import pipelines.users.jvm.UserHash
@@ -9,7 +9,7 @@ trait UserRepoMongoSpec extends BasePipelinesMongoSpec {
 
   "UserServiceMongo.find" should {
     "find users by email or password" in {
-      WithScheduler { implicit s =>
+      Schedulers.using { implicit s =>
         val usersCollectionName = s"users-${System.currentTimeMillis}"
         val config              = configForCollection(usersCollectionName)
         val settings            = CollectionSettings(config, usersCollectionName)
@@ -36,7 +36,7 @@ trait UserRepoMongoSpec extends BasePipelinesMongoSpec {
   }
   "UserServiceMongo.createUser" should {
     "not be able to create a user w/ the same name or email" in {
-      WithScheduler { implicit s =>
+      Schedulers.using { implicit s =>
         val usersCollectionName = s"users-${System.currentTimeMillis}"
         val config              = configForCollection(usersCollectionName)
         val settings            = CollectionSettings(config, usersCollectionName)

@@ -3,7 +3,7 @@ package pipelines.audit.mongo
 import java.time.ZonedDateTime
 
 import io.circe.literal._
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 import pipelines.audit.AuditVersion
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
 
@@ -15,7 +15,7 @@ trait AuditServiceMongoSpec extends BasePipelinesMongoSpec {
   "AuditServiceMongo.find" should {
 
     "be able find based on revision, time and user" in {
-      WithScheduler { implicit sched =>
+      Schedulers.using { implicit sched =>
         val collectionName = s"test.audit${System.currentTimeMillis}"
 
         val cs      = CollectionSettings(configForCollection(collectionName, basedOn = "audit"), collectionName)

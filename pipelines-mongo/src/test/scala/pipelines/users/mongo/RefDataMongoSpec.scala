@@ -2,7 +2,7 @@ package pipelines.users.mongo
 
 import java.time.ZonedDateTime
 
-import pipelines.WithScheduler
+import pipelines.{Schedulers, WithScheduler}
 import pipelines.auth.AuthModel
 import pipelines.mongo.{BasePipelinesMongoSpec, CollectionSettings}
 
@@ -10,7 +10,7 @@ trait RefDataMongoSpec extends BasePipelinesMongoSpec {
 
   "AuthServiceMongo.update" should {
     "fail if we try to update an old revision" in {
-      WithScheduler { implicit s =>
+      Schedulers.using { implicit s =>
         Given("An authentication service")
         val usersCollectionName = s"auth-${System.currentTimeMillis}"
         val settings            = CollectionSettings(configForCollection(usersCollectionName, basedOn = "roles"), usersCollectionName)

@@ -1,18 +1,13 @@
 package pipelines.client
 
-import java.util.UUID
-
 import io.circe
-import io.circe.{Decoder, Encoder}
-import monix.execution.{CancelableFuture, Scheduler}
+import monix.execution.Scheduler
 import monix.reactive.{Observable, Observer, Pipe}
 import org.scalajs.dom
 import org.scalajs.dom.raw.{MessageEvent, WebSocket}
-import pipelines.rest.socket.{AddressedMessage, SocketClientConnectionAck, SocketConnectionAck, SocketUnsubscribeRequest}
+import pipelines.rest.socket.{AddressedMessage, ClientSocketSessionState, SocketConnectionAckRequest}
 
-import scala.reflect.ClassTag
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
 
 /**
   * This class wraps access to an underly WebSocket, the responsibility
@@ -20,14 +15,13 @@ import scala.util.{Failure, Success, Try}
   *
   * @param socket
   */
-final class ClientSocketState private (socket: WebSocket) {
-  implicit val socketScheduler = Scheduler.global
+final class ClientSocketState private (socket: WebSocket) extends ClientSocketSessionState(Scheduler.global) {
 
   /**
     * Let's drive the socket access via our good friend, the Monix Pipe
     */
   val (input: Observer[MessageEvent], messageEvents: Observable[MessageEvent]) = {
-    val (a, b) = Pipe.replayLimited[MessageEvent](10).multicast
+    val (a, b) = Pipe.publish[MessageEvent].multicast(scheduler)
     (a, b.dump("ClientSocketState"))
   }
 
@@ -37,61 +31,8 @@ final class ClientSocketState private (socket: WebSocket) {
     * As we can only open a single socket, the messages are wrapped as AddressedMessage so that
     * individual pieces of the UI can filter on the parts intended for them
     */
-  val messages: Observable[AddressedMessage] = messageEvents.collect {
+  override val messages: Observable[AddressedMessage] = messageEvents.collect {
     case ClientSocketState.AsAddressMessage(msg) => msg
-  }
-
-  /**
-    * Immediately subscribe for our handshake ack, which we can use to add/remove subscriptions to our socket source/sink.
-    */
-  private val connectionAck: CancelableFuture[Try[SocketConnectionAck]] = observerOf[SocketConnectionAck].headL.runToFuture
-
-  def subscribeToSource(sourceId: String, transforms: Seq[String] = Nil, subscriptionId: String = UUID.randomUUID.toString, retainAfterMatch: Boolean = false) = {
-    connectionAck.foreach {
-      case Success(ack: SocketConnectionAck) =>
-        val request = ack.subscribeToSource(sourceId, transforms, subscriptionId, retainAfterMatch)
-        send(request)
-      case Failure(err) =>
-        HtmlUtils.raiseError(s"Failure getting socket ack: $err")
-    }
-    subscriptionId
-  }
-
-  def subscribe(sourceCriteria: Map[String, String],
-                transforms: Seq[String] = Nil,
-                subscriptionId: String = UUID.randomUUID.toString,
-                retainAfterMatch: Boolean = false): String = {
-    connectionAck.foreach {
-      case Success(ack: SocketConnectionAck) =>
-        HtmlUtils.log(s"Subscribing w/ $subscriptionId to socket ${ack.commonId}")
-        val request = ack.subscribeTo(sourceCriteria, transforms, subscriptionId, retainAfterMatch)
-        send(request)
-      case Failure(err) =>
-        HtmlUtils.raiseError(s"Failure getting socket ack: $err")
-    }
-    subscriptionId
-  }
-
-  def unSubscribe(subscriptionId: String): Unit = {
-    HtmlUtils.log(s"Unsubscribing w/ $subscriptionId from socket")
-    send(SocketUnsubscribeRequest(subscriptionId))
-  }
-
-  def send[T: ClassTag: Encoder](data: T): Unit = {
-    val msg: AddressedMessage = AddressedMessage(data)
-    sendMessage(msg)
-  }
-
-  /**
-    * Convenience to filter [[AddressedMessage]]s coming through the web socket on a particular 'to' topic
-    * which corresponds to a classname, as well as trying to unmarshal the body of the message as the 'T' type
-    *
-    * @tparam T
-    * @return a stream of 'T' messages
-    */
-  def observerOf[T: ClassTag: Decoder]: Observable[Try[T]] = {
-    val topicName = AddressedMessage.topics.forClass[T]
-    messages.filter(_.to == topicName).map(_.as[T])
   }
 
   def sendMessage(data: AddressedMessage): Unit = {
@@ -107,12 +48,20 @@ final class ClientSocketState private (socket: WebSocket) {
     input.onError(new Exception(s"Socket error: $evt"))
   }
   socket.onmessage = { msg =>
-    HtmlUtils.log(s"onMessage ${msg}")
+    HtmlUtils.log(s"onMessage: ${msg.data}")
     input.onNext(msg)
   }
   socket.onopen = { msg =>
     HtmlUtils.log(s"onopen ${msg}")
-    sendMessage(AddressedMessage(SocketClientConnectionAck(true)))
+    send(SocketConnectionAckRequest(true))
+  }
+
+  override protected def logInfo(msg: String): Unit = {
+    HtmlUtils.log(msg)
+  }
+
+  override protected def raiseError(msg: String): Unit = {
+    HtmlUtils.raiseError(msg)
   }
 }
 object ClientSocketState {

@@ -3,10 +3,10 @@ package pipelines.reactive.trigger
 import monix.execution.Ack
 import monix.reactive.subjects.Var
 import monix.reactive.{Consumer, Observable}
+import pipelines.BaseCoreTest
 import pipelines.reactive.DataSink.syntax._
 import pipelines.reactive.DataSource.syntax._
 import pipelines.reactive._
-import pipelines.{BaseCoreTest, WithScheduler}
 
 import scala.collection.mutable.ListBuffer
 
@@ -14,7 +14,7 @@ class RepoStatePipeTest extends BaseCoreTest {
 
   "TriggerPipe" should {
     "match sources with sinks when a new trigger is added" in {
-      WithScheduler { implicit sched =>
+      withScheduler { implicit sched =>
         val ignoredConsumer = Consumer
           .foreach[Any] { _ =>
             }
@@ -50,7 +50,7 @@ class RepoStatePipeTest extends BaseCoreTest {
 
     }
     "match sources with sinks" in {
-      WithScheduler { implicit sched =>
+      withScheduler { implicit sched =>
         Given("Two sources with different metadata")
         val sources: Sources      = Sources(sched)
         val (firstDataSource, _)  = sources.add(Observable.fromIterable(List(1, 2, 3)).asDataSource("topic" -> "first"))

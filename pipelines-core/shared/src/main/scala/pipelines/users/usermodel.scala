@@ -118,7 +118,9 @@ object UserReminderRequest {
   implicit val decoder: Decoder[UserReminderRequest]       = io.circe.generic.semiauto.deriveDecoder[UserReminderRequest]
 }
 
-final case class LoginResponse(ok: Boolean, jwtToken: Option[String], redirectTo: Option[String])
+final case class LoginResponse(ok: Boolean, jwtToken: Option[String], redirectTo: Option[String]) {
+
+}
 object LoginResponse {
   implicit def encoder = deriveEncoder[LoginResponse]
   implicit def decoder = deriveDecoder[LoginResponse]

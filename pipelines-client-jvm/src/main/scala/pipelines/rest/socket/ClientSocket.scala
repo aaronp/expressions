@@ -37,10 +37,14 @@ class ClientSocket private (private val fromServerInput: Observer[AddressedMessa
       .runToFuture(scheduler)
   }
 
-  def requestHandshake(): Future[Ack] = send(SocketClientConnectionAck(true))
+  def requestHandshake(): Future[Ack] = send(SocketConnectionAckRequest(true))
 
   def send[T: ClassTag: Encoder](data: T): Future[Ack] = {
-    toServerInput.onNext(AddressedMessage(data))
+    sendAddressedMessage(AddressedMessage(data))
+  }
+
+  def sendAddressedMessage(data: AddressedMessage): Future[Ack] = {
+    toServerInput.onNext(data)
   }
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
