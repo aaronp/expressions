@@ -11,28 +11,41 @@ import pipelines.reactive.repo.{CreatedPushSourceResponse, PushSourceResponse}
 import pipelines.reactive.{ContentType, PushEvent}
 import pipelines.rest.RunningServer
 import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketConnectionAck}
-import pipelines.users.{LoginRequest, LoginResponse}
+import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Success
+import scala.util.{Success, Try}
 
 class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures with StrictLogging {
 
   private var server: RunningServer[AddressedMessageRouter] = null
 
-  "PipelinesClient.login" ignore {
-    "reject invalid passwords" in {
-      val client = {
-        val config = DevRestMain.devArgs.asConfig().resolve()
-        PipelinesClient.sync(config).get
-      }
+  def newClient() = {
 
-      client.login(LoginRequest("admin", "wrong")).isFailure shouldBe true
-      val Success(LoginResponse(true, Some(token), Some(user), None)) = client.login(LoginRequest("admin", "password"))
-      token.count(_ == '.') shouldBe 2
-      user.name shouldBe "admin"
+    val config = DevRestMain.devArgs.asConfig().resolve()
+    PipelinesClient.sync(config).get
+
+  }
+  "PipelinesClient.login" should {
+
+    "accept valid logins" in {
+      val client: PipelinesClient[Try] = newClient()
+
+      val userName = createNewUser(client)
+
+      val Success(LoginResponse(true, tokenOpt, Some(user), None)) = client.login(LoginRequest(userName, "correct password"))
+      tokenOpt.get.count(_ == '.') shouldBe 2
+      user.name shouldBe userName
+    }
+
+    "reject invalid logins" in {
+      val client: PipelinesClient[Try] = newClient()
+      client.login(LoginRequest("admin", "wrong")) shouldBe Success(LoginResponse.failed)
+
+      val userName                                        = createNewUser(client)
+      val Success(LoginResponse(false, None, None, None)) = client.login(LoginRequest(userName, "wrong password"))
     }
   }
 
@@ -59,7 +72,10 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
     }
     "receive source and sink events after subscribing to them" in {
       Using(Env()) { implicit clientEnv =>
-        val state = IntegrationTestState().futureValue
+        val client: PipelinesClient[Try] = newClient()
+        val userName                     = createNewUser(client)
+
+        val state = IntegrationTestState(userName, "correct password").futureValue
 
         implicit val sched = clientEnv.ioScheduler
         val received       = ListBuffer[AddressedMessage]()
@@ -112,8 +128,16 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
     }
   }
 
+  def createNewUser(client: PipelinesClient[Try], userName: String = s"${getClass} user ${UUID.randomUUID()}".filter(_.isLetterOrDigit)) = {
+    val email                                       = userName + "@email.com"
+    val Success(createResponse: CreateUserResponse) = client.newUser(CreateUserRequest(userName, email, "correct password"))
+    createResponse.ok shouldBe true
+    createResponse.jwtToken.isDefined shouldBe true
+    createResponse.error shouldBe empty
+    userName
+  }
+
   override def beforeAll(): Unit = {
-    import eie.io._
 //    "./target/certificates/".asPath match {
 //      case dir if dir.isDir => dir.delete()
 //      case _                =>

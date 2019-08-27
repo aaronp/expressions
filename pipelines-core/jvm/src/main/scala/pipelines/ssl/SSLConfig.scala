@@ -59,7 +59,6 @@ object SSLConfig {
     keyManagerFactory.init(ks, password)
 
     val algo = TrustManagerFactory.getDefaultAlgorithm
-    println(algo)
     val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     tmf.init(ks)
 
@@ -95,12 +94,6 @@ object SSLConfig {
       val lc = path.toLowerCase
       lc.endsWith(".p12") || lc.endsWith(".pfx")
     }
-  }
-
-  private def withArray[A, T](array: Array[A], clear: A)(f: Array[A] => T): T = {
-    val result = f(array)
-    array.indices.foreach(i => array(i) = clear)
-    result
   }
 
 }

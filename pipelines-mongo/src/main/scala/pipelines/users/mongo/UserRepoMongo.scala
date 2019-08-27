@@ -95,7 +95,7 @@ final class UserRepoMongo(private[users] val mongoDb: MongoDatabase, private[use
         } catch {
           case NonFatal(e) => fail(e)
         }
-      case errors => fail(new GenericErrorResult(s"Error creating user '${request.userName}'", errors))
+      case errors => fail(new GenericErrorResult(s"Error creating user '${request.userName}': ${errors.mkString(",")}", errors))
     }
   }
 }

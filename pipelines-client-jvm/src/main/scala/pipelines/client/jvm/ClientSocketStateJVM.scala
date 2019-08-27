@@ -22,6 +22,8 @@ final class ClientSocketStateJVM private (val client: PipelinesClient[Future], v
   override val messages: Observable[AddressedMessage] = {
     socket.fromServer.dump("client toClientOutput")
   }
+
+  // FIXME
   val messages2: Observable[AddressedMessage] = {
     socket.toServerOutput.dump("client toServerOutput")
   }

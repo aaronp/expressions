@@ -21,7 +21,6 @@ import scala.util.Try
   * @param bindingFuture
   */
 class RunningServer[A] private (val settings: Settings, val service: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
-//  def service: PipelineService = commandHandler.pipelinesService
   override def close(): Unit = settings.env.close()
 }
 

@@ -31,7 +31,7 @@ object PipelineServerRoutes {
       }
     }
 
-    val login = settings.loginRoutes(sslConf, loginHandler)(settings.env.ioScheduler).routes
+    val login = settings.loginRoutes(loginHandler)(settings.env.ioScheduler).routes
 
     import settings.env._
     val repoRoutes: Seq[Route] = {

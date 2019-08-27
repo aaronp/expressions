@@ -7,6 +7,7 @@ final case class GenericErrorResult(message: String, details: Seq[String] = Nil)
     case Seq() => message
     case other => other.mkString(s"$message:", ", ", "")
   }
+  override def toString = description
 }
 object GenericErrorResult {
   implicit val encoder: ObjectEncoder[GenericErrorResult] = io.circe.generic.semiauto.deriveEncoder[GenericErrorResult]

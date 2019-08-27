@@ -58,18 +58,24 @@ class UserLoginRoutes(secret: SecretKeySpec, loginRejection: Rejection, doLogin:
           }
         }
       case None =>
-        logger.info(s"Login response rejecting with $loginRejection")
-        Directives.reject(loginRejection)
+        require(!resp.ok, "a valid login response is not returning a token")
+        logger.info("Login response failing")
+        Directives.complete(LoginResponse.failed)
     }
   }
 
   def loginAndRedirect(loginRequest: LoginRequest, redirectTo: Option[String]): Future[LoginResponse] = {
+
+    logger.info(s"loginAndRedirect(${loginRequest.user}, redirectTo=$redirectTo)")
+
     doLogin(loginRequest).map {
       case claimsOpt @ Some(claims) =>
         logger.info(s"Successful login for ${claims.name}, redirectTo=$redirectTo")
         val token = JsonWebToken.asHmac256Token(claims, secret)
         LoginResponse(true, Option(token), claimsOpt, redirectTo)
-      case None => LoginResponse(false, None, None, None)
+      case None =>
+        logger.warn(s"Failed login attempt for '${loginRequest.user}'")
+        LoginResponse(false, None, None, None)
     }
   }
 

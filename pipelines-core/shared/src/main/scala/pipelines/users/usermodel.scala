@@ -121,6 +121,7 @@ object UserReminderRequest {
 final case class LoginResponse(ok: Boolean, jwtToken: Option[String], user: Option[Claims], redirectTo: Option[String])
 
 object LoginResponse {
+  def failed = LoginResponse(false, None, None, None)
   implicit def encoder = deriveEncoder[LoginResponse]
   implicit def decoder = deriveDecoder[LoginResponse]
 }
