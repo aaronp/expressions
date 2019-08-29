@@ -103,7 +103,7 @@ class PipelinesClientTest extends BaseCoreTest {
 
         val https = ConnectionContext.https(ctxt)
 
-        Using(RunningServer(settings, None, "your service goes here", loginRoutes)) { runningServer =>
+        Using(RunningServer.start(settings, None, "your service goes here", loginRoutes)) { runningServer =>
           When("We connect a client which uses the sslConf")
           val url = PipelinesClient.hostPort(config)
 

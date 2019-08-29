@@ -24,10 +24,11 @@ class SocketRoutesTest extends BaseRoutesTest {
     "echo client messages back" in Using(Env()) { env =>
       val client = ClientSocket(SocketSettings("client"))(env.ioScheduler)
 
-      val commandRouter = new AddressedMessageRouter(PipelineService()(env.ioScheduler))
-      val subsc         = SubscriptionHandler.register(commandRouter)
+      val service       = PipelineService()(env.ioScheduler)
+      val commandRouter = new AddressedMessageRouter()
+      val subsc         = SubscriptionHandler.register(commandRouter, service)
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc) {
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service) {
         override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]) = {
           implicit val s = env.ioScheduler
           socket.fromRemoteOutput.subscribe(socket.toClient)
@@ -62,10 +63,11 @@ class SocketRoutesTest extends BaseRoutesTest {
     "upgrade a GET request to a WS request for new users" in Using(Env()) { env =>
       val socketList = ListBuffer[(Claims, ServerSocket)]()
 
-      val commandRouter = new AddressedMessageRouter(PipelineService()(env.ioScheduler))
-      val subsc         = SubscriptionHandler.register(commandRouter)
+      val service = PipelineService()(env.ioScheduler)
+      val commandRouter = new AddressedMessageRouter()
+      val subsc         = SubscriptionHandler.register(commandRouter, service)
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc) {
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service) {
         override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]) = {
           socketList += (user -> socket)
           user.name

@@ -3,32 +3,22 @@ package pipelines.server
 import java.util.UUID
 
 import args4c.implicits._
-import com.typesafe.scalalogging.StrictLogging
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import pipelines._
 import pipelines.client.jvm.{ClientSocketStateJVM, PipelinesClient}
 import pipelines.reactive.repo.{CreatedPushSourceResponse, PushSourceResponse}
 import pipelines.reactive.{ContentType, PushEvent}
 import pipelines.rest.RunningServer
-import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, ClientSocket, SocketConnectionAck}
-import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse}
+import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketConnectionAck}
+import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
-class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures with StrictLogging {
+class ServerIntegrationTest extends BaseServiceSpec {
 
-  private var server: RunningServer[AddressedMessageRouter] = null
+  override type ServiceType = AddressedMessageRouter
 
-  def newClient() = {
-
-    val config = DevRestMain.devArgs.asConfig().resolve()
-    PipelinesClient.sync(config).get
-
-  }
   "PipelinesClient.login" ignore {
 
     "accept valid logins" in {
@@ -69,31 +59,6 @@ class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Sca
 
         val List(handshake) = ackReply.futureValue
         handshake.commonId should not be null
-      }
-    }
-    "send AddressedMessage records over websockets" in {
-      Using(Env()) { implicit clientEnv =>
-        val config = DevRestMain.devArgs.asConfig().resolve()
-        val session: ClientSocketStateJVM = eventually {
-          val client: PipelinesClient[Future] = PipelinesClient(config)(clientEnv.ioScheduler).get
-          client.newSession("admin", "password").futureValue
-        }
-
-        val wsClient: ClientSocket = session.socket
-
-        val ackReply = wsClient.expect[SocketConnectionAck](1)
-        session.requestHandshake()
-
-        implicit val sched = clientEnv.computeScheduler
-
-        val List(handshake) = ackReply.futureValue
-        handshake.commonId should not be null
-
-        wsClient.send(123)
-        wsClient.send("Hello")
-        wsClient.send(true)
-
-        val router: AddressedMessageRouter = server.service
       }
     }
     "receive source and sink events after subscribing to them" ignore {
@@ -160,33 +125,8 @@ class ServerIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Sca
     }
   }
 
-  def createNewUser(client: PipelinesClient[Try], userName: String = s"${getClass} user ${UUID.randomUUID()}".filter(_.isLetterOrDigit)) = {
-    val email                                       = userName + "@email.com"
-    val Success(createResponse: CreateUserResponse) = client.newUser(CreateUserRequest(userName, email, "correct password"))
-    createResponse.ok shouldBe true
-    createResponse.jwtToken.isDefined shouldBe true
-    createResponse.error shouldBe empty
-    userName
-  }
-
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    import eie.io._
-    "./target/certificates/".asPath match {
-      case dir if dir.isDir => dir.delete()
-      case _                =>
-    }
-
+  override def startServer(): RunningServer[ServiceType] = {
     val Some(started) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
-    server = started
+    started
   }
-
-  override def afterAll(): Unit = {
-    if (server != null) {
-      server.close()
-      server.bindingFuture.futureValue
-    }
-  }
-
-  override def testTimeout: FiniteDuration = 1.minute
 }

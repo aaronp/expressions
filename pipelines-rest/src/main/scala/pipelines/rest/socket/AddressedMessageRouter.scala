@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
   *
   *
   */
-final class AddressedMessageRouter(val pipelinesService: PipelineService) extends StrictLogging {
+final class AddressedMessageRouter() extends StrictLogging {
 
   private def listenerMetadata = Map(tags.SinkType -> tags.typeValues.SubscriptionListener)
 
@@ -57,31 +57,35 @@ final class AddressedMessageRouter(val pipelinesService: PipelineService) extend
     handlersByTo.computeIfAbsent(to, createHandlers)
   }
 
+  private[socket] def onAddressedMessage(msg: AddressedMessage): Unit = {
+    val text = s"\taddressedMessageRoutingSink.foreach -- $msg"
+    logger.info(text)
+
+    val handlers = handlersByTo.get(msg.to)
+    if (handlers != null) {
+      val found = handlers.asScala.values
+      found.zipWithIndex.foreach {
+        case (handler, i) =>
+          logger.debug(s"Handling $i: '${msg.to}' w/ $handler")
+          try {
+            handler(msg)
+          } catch {
+            case NonFatal(e) =>
+              logger.error(s"Handler $i for '${msg.to}' failed with $e on: ${msg}", e)
+          }
+      }
+    } else {
+      logger.warn(s"IGNORING MESSAGE addressed to '${msg.to}'")
+    }
+  }
+
   /**
-    * A consumer of new SocketSource DataSources which will listen for [[AddressedMessage]]s for SocketSubscribeRequest
-    * and SocketUnsubscribeRequest.
+    * A consumer of new SocketSource DataSources which will listen for [[AddressedMessage]]s and dispatch them to the
+    * registered handlers
     */
   val addressedMessageRoutingSink: DataSink.Instance[AddressedMessage, Unit] = DataSink
     .foreach[AddressedMessage](listenerMetadata) { msg: AddressedMessage =>
-      val text = s"\taddressedMessageRoutingSink.foreach -- $msg"
-      logger.info(text)
-
-      val handlers = handlersByTo.get(msg.to)
-      if (handlers != null) {
-        val found = handlers.asScala.values
-        found.zipWithIndex.foreach {
-          case (handler, i) =>
-            logger.debug(s"Handling $i: '${msg.to}' w/ $handler")
-            try {
-              handler(msg)
-            } catch {
-              case NonFatal(e) =>
-                logger.error(s"Handler $i for '${msg.to}' failed with $e on: ${msg}", e)
-            }
-        }
-      } else {
-        logger.warn(s"IGNORING MESSAGE addressed to '${msg.to}'")
-      }
+      onAddressedMessage(msg)
     }
 }
 
@@ -96,7 +100,7 @@ object AddressedMessageRouter {
     */
   def apply(pipelinesService: PipelineService): AddressedMessageRouter = {
 
-    val subscribeOnMatchSink                   = new AddressedMessageRouter(pipelinesService)
+    val subscribeOnMatchSink                   = new AddressedMessageRouter()
     val (listenForSubscriptionMessagesSink, _) = pipelinesService.sinks.add(subscribeOnMatchSink.addressedMessageRoutingSink)
 
     implicit val sched = pipelinesService.sources.scheduler

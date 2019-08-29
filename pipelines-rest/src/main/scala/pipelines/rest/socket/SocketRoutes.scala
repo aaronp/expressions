@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, RawHeader}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import pipelines.core.GenericMessageResult
+import pipelines.reactive.PipelineService
 import pipelines.rest.RestMain
 import pipelines.rest.routes.{BaseCirceRoutes, SecureRouteSettings, WebSocketTokenCache}
 import pipelines.rest.socket.handlers.SubscriptionHandler
@@ -18,7 +19,7 @@ import pipelines.users.Claims
   * @param settings the secure settings required for JWT
   * @param subscriptionHandler the logic of what to do with the new socket
   */
-class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, subscriptionHandler: SubscriptionHandler)
+class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, subscriptionHandler: SubscriptionHandler, pipelinesService : PipelineService)
     extends BaseSocketRoutes(settings)
     with SocketEndpoint
     with SocketSchemas
@@ -38,7 +39,7 @@ class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, s
   }
 
   def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
-    socket.register(user, queryMetadata, subscriptionHandler.pipelinesService)
+    socket.register(user, queryMetadata, pipelinesService)
   }
 
   def subscribeSocket: Route = {

@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Route
 import args4c.obscurePassword
 import com.typesafe.config.Config
 import pipelines.Env
+import pipelines.reactive.PipelineService
 import pipelines.reactive.rest.{SourceRoutes, TransformRoutes}
 import pipelines.rest.routes.{SecureRouteSettings, StaticFileRoutes, WebSocketTokenCache}
 import pipelines.rest.socket.SocketRoutes
@@ -33,17 +34,17 @@ case class RestSettings(rootConfig: Config, host: String, port: Int, env: Env) {
     rootConfig.asFiniteDuration("pipelines.rest.socket.tokenValidityDuration")
   }
 
-  def repoRoutes(socketHandler: SubscriptionHandler): Route = {
+  def repoRoutes(socketHandler: SubscriptionHandler, pipelinesService : PipelineService): Route = {
     import akka.http.scaladsl.server.Directives._
-    val srcRoutes  = SourceRoutes(socketHandler.pipelinesService, secureSettings).routes
-    val transRoute = TransformRoutes(socketHandler.pipelinesService, secureSettings).routes
-    srcRoutes ~ transRoute ~ createSocketRoute(socketHandler).routes
+    val srcRoutes  = SourceRoutes(pipelinesService, secureSettings).routes
+    val transRoute = TransformRoutes(pipelinesService, secureSettings).routes
+    srcRoutes ~ transRoute ~ createSocketRoute(socketHandler, pipelinesService).routes
   }
 
-  def createSocketRoute(socketHandler: SubscriptionHandler): SocketRoutes = {
+  def createSocketRoute(socketHandler: SubscriptionHandler, service : PipelineService): SocketRoutes = {
     // create a temp look-up from a string which can be used as the websocket protocol to the user's JWT
     val tokens = WebSocketTokenCache(tokenValidityDuration)(env.ioScheduler)
-    new SocketRoutes(secureSettings, tokens, socketHandler)
+    new SocketRoutes(secureSettings, tokens, socketHandler, service)
   }
 
   override def toString: String = {

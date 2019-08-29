@@ -6,17 +6,22 @@ import java.util.concurrent.ConcurrentHashMap
 import com.typesafe.scalalogging.StrictLogging
 import pipelines.reactive.trigger.Trigger
 import pipelines.reactive.{PipelineService, TriggerCallback}
-import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketSubscribeRequest, SocketSubscribeResponse, SocketUnsubscribeRequest}
+import pipelines.rest.socket._
 
 import scala.concurrent.Future
 
 object SubscriptionHandler {
-  def register(commandRouter: AddressedMessageRouter): SubscriptionHandler = {
-    val subscriptionHandler: SubscriptionHandler = new SubscriptionHandler(commandRouter.pipelinesService)
+  def register(commandRouter: AddressedMessageRouter, pipelinesService: PipelineService): SubscriptionHandler = {
+    val subscriptionHandler = new SubscriptionHandlerInst(pipelinesService)
     commandRouter.addHandler[SocketSubscribeRequest](subscriptionHandler.onSubscribeMsg)
     commandRouter.addHandler[SocketUnsubscribeRequest](subscriptionHandler.onUnsubscribeMsg)
     subscriptionHandler
   }
+}
+
+trait SubscriptionHandler {
+  def onSocketSubscribe(request: SocketSubscribeRequest): Future[SocketSubscribeResponse]
+  def onUnsubscribe(unsubscribe: SocketUnsubscribeRequest): Boolean
 }
 
 /**
@@ -25,7 +30,7 @@ object SubscriptionHandler {
   *
   * @param pipelinesService
   */
-final class SubscriptionHandler(val pipelinesService: PipelineService) extends StrictLogging {
+final class SubscriptionHandlerInst(val pipelinesService: PipelineService) extends SubscriptionHandler with StrictLogging {
   private val pipelinesBySubscriptionId = new ConcurrentHashMap[String, UUID]()
 
   def onSubscribeMsg(msg: AddressedMessage): Unit = {

@@ -56,7 +56,7 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
   }
 
   /**
-    * What to do when a new WebSocket is opened? Register a source and sink!
+    * What to do when a new WebSocket is opened? Register a new source and sink!
     */
   final def register(user: Claims, queryMetadata: Map[String, String], pipelinesService: PipelineService): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
     val socket = this

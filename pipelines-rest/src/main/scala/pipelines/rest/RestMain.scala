@@ -20,7 +20,7 @@ import scala.concurrent.Future
   *
   */
 object RestMain extends ConfigApp with StrictLogging {
-  type Result = RunningServer[AddressedMessageRouter]
+  type Result = RunningServer[(AddressedMessageRouter ,PipelineService)]
 
   override val configKeyForRequiredEntries = "pipelines.rest.requiredConfig"
 
@@ -43,37 +43,37 @@ object RestMain extends ConfigApp with StrictLogging {
     * @param commandRouter
     * @return
     */
-  case class DefaultHandlers(commandRouter: AddressedMessageRouter) {
-    val subscriptionHandler = SubscriptionHandler.register(commandRouter)
-    PipelineService.registerOwnSourcesAndSink(commandRouter.pipelinesService)
+  case class DefaultHandlers(commandRouter: AddressedMessageRouter, pipelinesService: PipelineService) {
+    val subscriptionHandler = SubscriptionHandler.register(commandRouter, pipelinesService)
+    PipelineService.registerOwnSourcesAndSink(pipelinesService)
   }
 
   def run(rootConfig: Config): Result = {
-    val config   = CertSetup.ensureCerts(rootConfig)
-    val settings = RestSettings(config)
-    val service  = PipelineService()(settings.env.ioScheduler)
+    val config                   = CertSetup.ensureCerts(rootConfig)
+    val settings                 = RestSettings(config)
+    val service: PipelineService = PipelineService()(settings.env.ioScheduler)
 
     val commandRouter: AddressedMessageRouter = AddressedMessageRouter(service)
 
     logger.warn(s"Starting with\n${settings}\n\n")
 
-    run(settings, commandRouter)
+    run(settings, service, commandRouter)
   }
 
-  def run(settings: RestSettings, commandRouter: AddressedMessageRouter): Result = {
+  def run(settings: RestSettings, service: PipelineService, commandRouter: AddressedMessageRouter): Result = {
     val sslConf: SSLConfig                 = SSLConfig(settings.rootConfig)
     val loginHandler: LoginHandler[Future] = LoginHandler(settings.rootConfig)
 
     val login    = settings.loginRoutes(loginHandler)(settings.env.ioScheduler).routes
-    val handlers = DefaultHandlers(commandRouter)
+    val handlers = DefaultHandlers(commandRouter, service)
 
-    val repoRoutes = settings.repoRoutes(handlers.subscriptionHandler)
+    val repoRoutes = settings.repoRoutes(handlers.subscriptionHandler, service)
 
     val route: Route = {
       import settings.env._
       RunningServer.makeRoutes(Seq(login, repoRoutes))
     }
-    RunningServer.start(settings, sslConf, commandRouter, route)
+    RunningServer.start(settings, sslConf, commandRouter -> service, route)
   }
 
   /** @param config the config used to start this app

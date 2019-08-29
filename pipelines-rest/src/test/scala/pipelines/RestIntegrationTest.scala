@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.client.jvm.{ClientSocketStateJVM, PipelinesClient}
 import pipelines.reactive.repo.{CreatedPushSourceResponse, PushSourceResponse}
-import pipelines.reactive.{ContentType, PushEvent}
+import pipelines.reactive.{ContentType, PipelineService, PushEvent}
 import pipelines.rest.RunningServer
 import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketConnectionAck}
 import pipelines.users.{CreateUserRequest, CreateUserResponse, LoginRequest, LoginResponse}
@@ -20,14 +20,13 @@ import scala.util.{Success, Try}
 
 class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures with StrictLogging {
 
-  private var server: RunningServer[AddressedMessageRouter] = null
+  private var server: RunningServer[(AddressedMessageRouter, PipelineService)] = null
 
   def newClient() = {
-
     val config = DevRestMain.devArgs.asConfig().resolve()
     PipelinesClient.sync(config).get
-
   }
+
   "PipelinesClient.login" should {
 
     "accept valid logins" in {
@@ -90,8 +89,9 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
         }
 
         withClue("Initially there should be one trigger which listens for new sources/sinks in order to add handlers") {
+          val (commandHandler, pipelinesService) = server.service
           eventually {
-            server.service.pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
+            pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
           }
         }
 
