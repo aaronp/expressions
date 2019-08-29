@@ -5,6 +5,8 @@ import java.net.URI
 
 import pipelines.DevRestMain
 import pipelines.mongo.StartMongo
+import pipelines.rest.RunningServer
+import pipelines.rest.socket.AddressedMessageRouter
 
 import scala.io.StdIn
 
@@ -14,10 +16,7 @@ object PipelinesMainDev {
 
   def main(a: Array[String]): Unit = {
 
-    // let's get mon-going!
-    StartMongo.main(a)
-
-    PipelinesMain.runMain(a ++: devArgs) match {
+    run(a) match {
       case None =>
         println("Goodbye!")
         sys.exit(0)
@@ -28,5 +27,11 @@ object PipelinesMainDev {
         }
         StdIn.readLine("Running dev main - hit any key to stop...")
     }
+  }
+  def run(a: Array[String]): Option[RunningServer[AddressedMessageRouter]] = {
+    // let's get mon-going!
+    StartMongo.main(a)
+
+    PipelinesMain.runMain(a ++ devArgs)
   }
 }

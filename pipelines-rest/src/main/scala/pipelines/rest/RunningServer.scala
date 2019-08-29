@@ -18,24 +18,26 @@ import scala.util.Try
   * Represents our started REST service
   *
   * @param settings
+  * @param service the service which is represented (wrapped) by this running service
   * @param bindingFuture
+  * @tparam A
   */
-class RunningServer[A] private (val settings: Settings, val service: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
+class RunningServer[A] private (val settings: RestSettings, val service: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
   override def close(): Unit = settings.env.close()
 }
 
 object RunningServer extends StrictLogging {
 
-  def apply[A](settings: Settings, sslConf: SSLConfig, service: A, httpsRoutes: Route): RunningServer[A] = {
+  def start[A](settings: RestSettings, sslConf: SSLConfig, service: A, httpsRoutes: Route): RunningServer[A] = {
     val https = Option(loadHttps(sslConf).get) // let it throw, let it throw! can't hold me back anymore...
-    apply[A](settings, https, service, httpsRoutes)
+    start[A](settings, https, service, httpsRoutes)
   }
 
-  def apply[A](settings: Settings, https: Option[HttpsConnectionContext], service: A, httpsRoutes: Route): RunningServer[A] = {
+  def start[A](settings: RestSettings, https: Option[HttpsConnectionContext], service: A, httpsRoutes: Route): RunningServer[A] = {
     import settings.env._
     val flow: Flow[HttpRequest, HttpResponse, NotUsed] = route2HandlerFlow(httpsRoutes)
-    val http = Http()
-    val connectionContext = https.getOrElse(http.defaultServerHttpContext)
+    val http                                           = Http()
+    val connectionContext                              = https.getOrElse(http.defaultServerHttpContext)
     val httpsBindingFuture                             = http.bindAndHandle(flow, settings.host, settings.port, connectionContext = connectionContext)
     val bindingFuture                                  = httpsBindingFuture
     new RunningServer(settings, service, bindingFuture)

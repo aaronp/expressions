@@ -9,7 +9,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import eie.io._
 import javax.net.ssl.{SSLContext, TrustManagerFactory}
 import pipelines.rest.routes.TraceRoute
-import pipelines.rest.{RunningServer, Settings}
+import pipelines.rest.{RunningServer, RestSettings}
 import pipelines.ssl.{CertSetup, GenCerts, SSLConfig}
 import pipelines.users.FixedUsersHandler
 import pipelines.{BaseCoreTest, Env, Using}
@@ -40,13 +40,13 @@ class PipelinesClientTest extends BaseCoreTest {
         Given("Some SSLConfig")
         val (pathToCert, pwd) = CertSetup.ensureCert(config)
 
-        val settings           = Settings(config)
+        val settings           = RestSettings(config)
         val sslConf: SSLConfig = SSLConfig(config)
 
         And("A server running with that config with a login route")
         val loginHandler: FixedUsersHandler = FixedUsersHandler("testUser" -> "the password")
         val loginRoutes: Route              = settings.loginRoutes(loginHandler)(clientEnv.ioScheduler).routes
-        Using(RunningServer(settings, sslConf, "doesn't matter", loginRoutes)) { _ =>
+        Using(RunningServer.start(settings, sslConf, "doesn't matter", loginRoutes)) { _ =>
           When("We connect a client which uses the sslConf")
           val Success(client) = PipelinesClient(config)(clientEnv.ioScheduler)
 
@@ -65,7 +65,7 @@ class PipelinesClientTest extends BaseCoreTest {
 
         And("A server running with that config with a login route")
         val loginHandler = FixedUsersHandler("testUser" -> "the password")
-        val settings     = Settings(config, clientEnv)
+        val settings     = RestSettings(config, clientEnv)
         val loginRoutes: Route = {
           val base = settings.loginRoutes(loginHandler)(clientEnv.ioScheduler).routes
           TraceRoute.log.wrap(base)

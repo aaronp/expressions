@@ -2,7 +2,7 @@ package pipelines.server
 
 import akka.http.scaladsl.server.Route
 import pipelines.rest.RunningServer.reduce
-import pipelines.rest.Settings
+import pipelines.rest.RestSettings
 import pipelines.rest.openapi.DocumentationRoutes
 import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.ssl.SSLConfig
@@ -14,7 +14,7 @@ import scala.concurrent.Future
 
 object PipelineServerRoutes {
 
-  def apply(sslConf: SSLConfig, settings: Settings, socketHandler: SubscriptionHandler, loginHandler: LoginHandler[Future]): Route = {
+  def apply(sslConf: SSLConfig, settings: RestSettings, socketHandler: SubscriptionHandler, loginHandler: LoginHandler[Future]): Route = {
 
     val additionalRoutes: Seq[Route] = {
       loginHandler match {

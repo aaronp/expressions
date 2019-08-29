@@ -15,7 +15,7 @@ import scala.compat.Platform
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
+case class RestSettings(rootConfig: Config, host: String, port: Int, env: Env) {
 
   def loginRoutes(loginHandler: LoginHandler[Future] = LoginHandler(rootConfig))(implicit ec: ExecutionContext): UserLoginRoutes = {
     UserLoginRoutes(
@@ -63,9 +63,9 @@ case class Settings(rootConfig: Config, host: String, port: Int, env: Env) {
   }
 }
 
-object Settings {
+object RestSettings {
 
-  def apply(rootConfig: Config, env: Env = pipelines.Env()): Settings = {
-    new Settings(rootConfig, host = rootConfig.getString("pipelines.rest.host"), port = rootConfig.getInt("pipelines.rest.port"), env)
+  def apply(rootConfig: Config, env: Env = pipelines.Env()): RestSettings = {
+    new RestSettings(rootConfig, host = rootConfig.getString("pipelines.rest.host"), port = rootConfig.getInt("pipelines.rest.port"), env)
   }
 }

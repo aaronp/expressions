@@ -50,7 +50,7 @@ object RestMain extends ConfigApp with StrictLogging {
 
   def run(rootConfig: Config): Result = {
     val config   = CertSetup.ensureCerts(rootConfig)
-    val settings = Settings(config)
+    val settings = RestSettings(config)
     val service  = PipelineService()(settings.env.ioScheduler)
 
     val commandRouter: AddressedMessageRouter = AddressedMessageRouter(service)
@@ -60,7 +60,7 @@ object RestMain extends ConfigApp with StrictLogging {
     run(settings, commandRouter)
   }
 
-  def run(settings: Settings, commandRouter: AddressedMessageRouter): Result = {
+  def run(settings: RestSettings, commandRouter: AddressedMessageRouter): Result = {
     val sslConf: SSLConfig                 = SSLConfig(settings.rootConfig)
     val loginHandler: LoginHandler[Future] = LoginHandler(settings.rootConfig)
 
@@ -73,7 +73,7 @@ object RestMain extends ConfigApp with StrictLogging {
       import settings.env._
       RunningServer.makeRoutes(Seq(login, repoRoutes))
     }
-    RunningServer(settings, sslConf, commandRouter, route)
+    RunningServer.start(settings, sslConf, commandRouter, route)
   }
 
   /** @param config the config used to start this app

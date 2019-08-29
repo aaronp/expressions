@@ -85,7 +85,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
         //          fromServer
         }
         state.session.messages.foreach { fromServer =>
-          println(s"\tXXXX fromServer -> $fromServer")
+          println(s"\tYYYYY fromServer -> $fromServer")
           received += fromServer
         }
 
@@ -138,14 +138,15 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
   }
 
   override def beforeAll(): Unit = {
-//    "./target/certificates/".asPath match {
-//      case dir if dir.isDir => dir.delete()
-//      case _                =>
-//    }
+    import eie.io._
+    "./target/certificates/".asPath match {
+      case dir if dir.isDir => dir.delete()
+      case _                =>
+    }
     super.beforeAll()
 
-//    val Some(started) = rest.RestMain.runMain(DevRestMain.devArgs)
-//    server = started
+    val Some(started) = rest.RestMain.runMain(DevRestMain.devArgs)
+    server = started
   }
 
   override def afterAll(): Unit = {
@@ -155,5 +156,5 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
     }
   }
 
-  override def testTimeout: FiniteDuration = 7.minutes
+  override def testTimeout: FiniteDuration = 1.minute
 }
