@@ -84,7 +84,8 @@ class ServerIntegrationTest extends BaseServiceSpec {
         if (server != null) {
           withClue("Initially there should be one trigger which listens for new sources/sinks in order to add handlers") {
             eventually {
-              server.service.pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
+              val svc = server.service
+              svc.pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
             }
           }
         }
@@ -126,7 +127,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
   }
 
   override def startServer(): RunningServer[ServiceType] = {
-    val Some(started) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
+    val Some(started: RunningServer[AddressedMessageRouter]) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
     started
   }
 }

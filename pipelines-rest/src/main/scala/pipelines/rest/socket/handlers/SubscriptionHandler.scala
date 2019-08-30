@@ -43,7 +43,7 @@ final class SubscriptionHandlerInst(val pipelinesService: PipelineService) exten
     onUnsubscribe(request)
   }
 
-  def onUnsubscribe(unsubscribe: SocketUnsubscribeRequest): Boolean = {
+  override def onUnsubscribe(unsubscribe: SocketUnsubscribeRequest): Boolean = {
     val matchIdOpt = Option(pipelinesBySubscriptionId.remove(unsubscribe.addressedMessageId))
     matchIdOpt match {
       case None =>
@@ -59,7 +59,7 @@ final class SubscriptionHandlerInst(val pipelinesService: PipelineService) exten
         success
     }
   }
-  def onSocketSubscribe(request: SocketSubscribeRequest): Future[SocketSubscribeResponse] = {
+  override def onSocketSubscribe(request: SocketSubscribeRequest): Future[SocketSubscribeResponse] = {
     val SocketSubscribeRequest(_, _, subscriptionId, transforms, retainAfterMatch) = request
     val trigger                                                                    = Trigger(request.sourceAsCriteria, request.sinkAsCriteria, transforms)
 

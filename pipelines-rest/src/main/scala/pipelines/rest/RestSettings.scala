@@ -34,11 +34,11 @@ case class RestSettings(rootConfig: Config, host: String, port: Int, env: Env) {
     rootConfig.asFiniteDuration("pipelines.rest.socket.tokenValidityDuration")
   }
 
-  def repoRoutes(socketHandler: SubscriptionHandler, pipelinesService : PipelineService): Route = {
+  def repoRoutes(socketHandler: SubscriptionHandler, pipelineService : PipelineService): Route = {
     import akka.http.scaladsl.server.Directives._
-    val srcRoutes  = SourceRoutes(pipelinesService, secureSettings).routes
-    val transRoute = TransformRoutes(pipelinesService, secureSettings).routes
-    srcRoutes ~ transRoute ~ createSocketRoute(socketHandler, pipelinesService).routes
+    val srcRoutes  = SourceRoutes(pipelineService, secureSettings).routes
+    val transRoute = TransformRoutes(pipelineService, secureSettings).routes
+    srcRoutes ~ transRoute ~ createSocketRoute(socketHandler, pipelineService).routes
   }
 
   def createSocketRoute(socketHandler: SubscriptionHandler, service : PipelineService): SocketRoutes = {

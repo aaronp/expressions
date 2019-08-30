@@ -7,6 +7,7 @@ import pipelines.DevRestMain
 import pipelines.mongo.StartMongo
 import pipelines.rest.RunningServer
 import pipelines.rest.socket.AddressedMessageRouter
+import pipelines.server.PipelinesMain.Bootstrap
 
 import scala.io.StdIn
 
@@ -28,7 +29,8 @@ object PipelinesMainDev {
         StdIn.readLine("Running dev main - hit any key to stop...")
     }
   }
-  def run(a: Array[String]): Option[RunningServer[AddressedMessageRouter]] = {
+
+  def run(a: Array[String]): Option[RunningServer[Bootstrap]] = {
     // let's get mon-going!
     StartMongo.main(a)
 

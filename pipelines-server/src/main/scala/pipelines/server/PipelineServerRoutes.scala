@@ -1,6 +1,7 @@
 package pipelines.server
 
 import akka.http.scaladsl.server.Route
+import pipelines.reactive.PipelineService
 import pipelines.rest.RunningServer.reduce
 import pipelines.rest.RestSettings
 import pipelines.rest.openapi.DocumentationRoutes
@@ -14,7 +15,7 @@ import scala.concurrent.Future
 
 object PipelineServerRoutes {
 
-  def apply(sslConf: SSLConfig, settings: RestSettings, socketHandler: SubscriptionHandler, loginHandler: LoginHandler[Future]): Route = {
+  def apply(sslConf: SSLConfig, settings: RestSettings, socketHandler: SubscriptionHandler, pipelineService : PipelineService, loginHandler: LoginHandler[Future]): Route = {
 
     val additionalRoutes: Seq[Route] = {
       loginHandler match {
@@ -23,7 +24,7 @@ object PipelineServerRoutes {
           implicit val ec                   = settings.env.ioScheduler
           val userRoutes                    = UserRoutes(userService, settings.secureSettings)
           val userRoleRoutes                = UserRoleRoutes(userService, settings.secureSettings)
-          val repoRoutes                    = settings.repoRoutes(socketHandler)
+          val repoRoutes                    = settings.repoRoutes(socketHandler, pipelineService)
           Seq(repoRoutes, userRoutes.routes, userRoleRoutes.routes)
         case _ =>
           // TODO - expose routes for e.g. local NIO handlers, or different databases
@@ -41,7 +42,7 @@ object PipelineServerRoutes {
         additionalRoutes
     }
 
-    val trace = RouteTraceAsSource(socketHandler.pipelinesService)(settings.env.ioScheduler)
+    val trace = RouteTraceAsSource(pipelineService)(settings.env.ioScheduler)
     Route.seal(trace.wrap(reduce(repoRoutes)))
   }
 }

@@ -28,7 +28,7 @@ import scala.concurrent.{Await, Future}
   * w/ users, login, roles, etc.
   */
 object PipelinesMain extends ConfigApp with StrictLogging {
-  type Result = RunningServer[AddressedMessageRouter]
+  type Result = RunningServer[Bootstrap]
 
   override def defaultConfig(): Config = ConfigFactory.load()
 
@@ -40,7 +40,7 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     val settings: RestSettings = RestSettings(rootConfig)
 
     val bootstrap = new Bootstrap(settings, defaultTransforms)
-    RunningServer.start(settings, bootstrap.sslConf, bootstrap.commandRouter, bootstrap.routes())
+    RunningServer.start(settings, bootstrap.sslConf, bootstrap, bootstrap.routes())
   }
 
   /**
@@ -73,9 +73,9 @@ object PipelinesMain extends ConfigApp with StrictLogging {
 
     val service: PipelineService              = PipelineService(transforms)(settings.env.ioScheduler)
     val commandRouter: AddressedMessageRouter = AddressedMessageRouter(service)
-    val handlers: RestMain.DefaultHandlers    = RestMain.DefaultHandlers(commandRouter)
+    val handlers: RestMain.DefaultHandlers    = RestMain.DefaultHandlers(commandRouter, service)
 
-    def routes(socketHandler: SubscriptionHandler = handlers.subscriptionHandler) = PipelineServerRoutes(sslConf, settings, socketHandler, loginHandler)
+    def routes(socketHandler: SubscriptionHandler = handlers.subscriptionHandler) = PipelineServerRoutes(sslConf, settings, socketHandler, service, loginHandler)
   }
 
   def defaultTransforms: Map[String, Transform] =
