@@ -1,7 +1,5 @@
 package pipelines.reactive
 
-import java.util.UUID
-
 import monix.eval.Task
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.subjects.Var
@@ -30,13 +28,21 @@ trait DataSink extends HasMetadata {
 
   def addMetadata(entries: Map[String, String]): T
 
-  def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): ConnectResult
+  /**
+    * connect this data sink to the given observable
+    * @param contentType the input content type, akin to REST content types. e.g. the typed input might be 'String', but the content type could be 'xml' or 'json'
+    * @param observable the data source to connect to
+    * @param sourceMetadata additional metadata (ids, names, tags, etc) of the observable. Could be used for auth/permission checks, etc
+    * @param scheduler
+    * @return
+    */
+  def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata: Map[String, String])(implicit scheduler: Scheduler): ConnectResult
 
-  def ensuringId(id : => String): T = ensuringMetadata(tags.Id, id)
+  def ensuringId(id: => String): T = ensuringMetadata(tags.Id, id)
 
   def ensuringContentType(): T = ensuringMetadata(tags.ContentType, inputType.toString)
 
-  def ensuringMetadata(key : String, value : => String): T = {
+  def ensuringMetadata(key: String, value: => String): T = {
     if (metadata.contains(key)) {
       this.asInstanceOf[T]
     } else {
@@ -58,11 +64,11 @@ object DataSink {
   object syntax extends LowPriorityDataSinkImplicits
 
   case class Instance[In, Out](consumer: Consumer[In, Out], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink {
-    override type T      = Instance[In, Out]
-    override type Input  = In
-    override type Output = Out
+    override type T             = Instance[In, Out]
+    override type Input         = In
+    override type Output        = Out
     override type ConnectResult = CancelableFuture[Output]
-    override def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
+    override def connect(contentType: ContentType, observable: Observable[Input], sourceMetadata: Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Out] = {
       val result: Task[Out] = consumer(observable)
       result.runToFuture(scheduler)
     }
@@ -75,14 +81,14 @@ object DataSink {
   /**
     */
   case class VarSink[A](current: Var[A], override val metadata: Map[String, String], override val inputType: ContentType) extends DataSink {
-    override type T      = VarSink[A]
-    override type Input  = A
-    override type Output = Unit
+    override type T             = VarSink[A]
+    override type Input         = A
+    override type Output        = Unit
     override type ConnectResult = CancelableFuture[Output]
 
     override def addMetadata(entries: Map[String, String]): VarSink[A] = copy(metadata = metadata ++ entries)
 
-    override def connect(contentType: ContentType, observable: Observable[A], sourceMetadata : Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
+    override def connect(contentType: ContentType, observable: Observable[A], sourceMetadata: Map[String, String])(implicit scheduler: Scheduler): CancelableFuture[Unit] = {
       observable.foreach { next =>
         current := next
       }

@@ -149,7 +149,7 @@ object ListSinkRequest {
   implicit val decoder: Decoder[ListSinkRequest]       = deriveDecoder[ListSinkRequest]
 }
 
-case class ListSinkResponse(results: Seq[ListedDataSink]) extends RepoResponse
+case class ListSinkResponse(sinks: Seq[ListedDataSink]) extends RepoResponse
 object ListSinkResponse {
   implicit val encoder: ObjectEncoder[ListSinkResponse] = deriveEncoder[ListSinkResponse]
   implicit val decoder: Decoder[ListSinkResponse]       = deriveDecoder[ListSinkResponse]

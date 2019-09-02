@@ -31,7 +31,7 @@ class SocketRoutesTest extends BaseRoutesTest {
       val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service) {
         override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
           implicit val s = env.ioScheduler
-          socket.fromRemoteOutput.subscribe(socket.toClient)
+          socket.dataFromClientOutput.subscribe(socket.toClient)
         }
       }
 
