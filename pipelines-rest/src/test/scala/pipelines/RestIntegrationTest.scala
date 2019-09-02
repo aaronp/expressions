@@ -89,7 +89,7 @@ class RestIntegrationTest extends BaseCoreTest with BeforeAndAfterAll with Scala
         }
 
         withClue("Initially there should be one trigger which listens for new sources/sinks in order to add handlers") {
-          val (commandHandler, pipelinesService) = server.service
+          val (commandHandler, pipelinesService) = server.serverData
           eventually {
             pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
           }

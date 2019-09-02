@@ -1,5 +1,6 @@
 package pipelines.client.jvm
 
+import cats.FlatMap
 import com.softwaremill.sttp
 import com.softwaremill.sttp.{FutureMonad, HttpURLConnectionBackend, MonadError, Request, Response, SttpBackend, TryHttpURLConnectionBackend}
 import com.typesafe.config.Config

@@ -18,11 +18,11 @@ import scala.util.Try
   * Represents our started REST service
   *
   * @param settings
-  * @param service the service which is represented (wrapped) by this running service
+  * @param serverData some underlying object wrapped by this running service
   * @param bindingFuture
   * @tparam A
   */
-class RunningServer[A] private (val settings: RestSettings, val service: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
+class RunningServer[A] private (val settings: RestSettings, val serverData: A, val bindingFuture: Future[Http.ServerBinding]) extends AutoCloseable {
   override def close(): Unit = settings.env.close()
 }
 

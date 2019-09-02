@@ -3,12 +3,14 @@ package pipelines.server
 import java.util.UUID
 
 import args4c.implicits._
+import cats.instances.try_._
 import pipelines._
 import pipelines.client.jvm.{ClientSocketStateJVM, PipelinesClient}
 import pipelines.reactive.repo.{CreatedPushSourceResponse, PushSourceResponse}
 import pipelines.reactive.{ContentType, PushEvent}
 import pipelines.rest.RunningServer
 import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketConnectionAck}
+import pipelines.server.PipelinesMain.Bootstrap
 import pipelines.users.{LoginRequest, LoginResponse}
 
 import scala.collection.mutable.ListBuffer
@@ -17,14 +19,14 @@ import scala.util.{Success, Try}
 
 class ServerIntegrationTest extends BaseServiceSpec {
 
-  override type ServiceType = AddressedMessageRouter
+  override type ServiceType = Bootstrap
 
   "PipelinesClient.login" ignore {
 
     "accept valid logins" in {
       val client: PipelinesClient[Try] = newClient()
 
-      val userName = createNewUser(client)
+      val userName = createNewUser(client).get
 
       val Success(LoginResponse(true, tokenOpt, Some(user), None)) = client.login(LoginRequest(userName, "correct password"))
       tokenOpt.get.count(_ == '.') shouldBe 2
@@ -35,7 +37,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
       val client: PipelinesClient[Try] = newClient()
       client.login(LoginRequest("admin", "wrong")) shouldBe Success(LoginResponse.failed)
 
-      val userName                                        = createNewUser(client)
+      val userName                                        = createNewUser(client).get
       val Success(LoginResponse(false, None, None, None)) = client.login(LoginRequest(userName, "wrong password"))
     }
   }
@@ -65,7 +67,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
       Using(Env()) { implicit clientEnv =>
         Given("A new session for a test user")
         val client: PipelinesClient[Try] = newClient()
-        val userName                     = createNewUser(client)
+        val userName                     = createNewUser(client).get
 
         val state = IntegrationTestState(userName, "correct password").futureValue
 
@@ -81,11 +83,11 @@ class ServerIntegrationTest extends BaseServiceSpec {
           received += fromServer
         }
 
-        if (server != null) {
+        if (runningServer != null) {
           withClue("Initially there should be one trigger which listens for new sources/sinks in order to add handlers") {
             eventually {
-              val svc = server.service
-              svc.pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
+              val pipelinesService = runningServer.serverData.pipelineService
+              pipelinesService.triggers.currentState.fold(0)(_.triggers.size) shouldBe 1
             }
           }
         }
@@ -127,7 +129,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
   }
 
   override def startServer(): RunningServer[ServiceType] = {
-    val Some(started: RunningServer[AddressedMessageRouter]) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
+    val Some(started: RunningServer[Bootstrap]) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
     started
   }
 }

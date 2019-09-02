@@ -8,7 +8,7 @@ import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.subjects.Var
 import pipelines.Pipeline
-import pipelines.reactive.repo.{ListRepoSourcesResponse, ListedDataSource}
+import pipelines.reactive.repo.{ListRepoSourcesResponse, ListSinkResponse, ListedDataSink, ListedDataSource}
 import pipelines.reactive.trigger.{PipelineMatch, RepoState, RepoStatePipe, TriggerEvent}
 import pipelines.rest.socket.AddressedMessage
 
@@ -115,6 +115,14 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
       new ListedDataSource(found.metadataWithContentType, Option(found.contentType))
     }
     ListRepoSourcesResponse(results)
+  }
+
+  def listSinks(queryParams: Map[String, String]): ListSinkResponse = {
+    val criteria = MetadataCriteria(queryParams)
+    val results = sinks.list().withFilter(ds => criteria.matches(ds.metadata)).map { sink =>
+      new ListedDataSink(sink.metadata, sink.inputType)
+    }
+    ListSinkResponse(results)
   }
 
   def state(): Option[RepoState]        = latest().map(_._1)

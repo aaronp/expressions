@@ -6,7 +6,6 @@ import java.net.URI
 import pipelines.DevRestMain
 import pipelines.mongo.StartMongo
 import pipelines.rest.RunningServer
-import pipelines.rest.socket.AddressedMessageRouter
 import pipelines.server.PipelinesMain.Bootstrap
 
 import scala.io.StdIn

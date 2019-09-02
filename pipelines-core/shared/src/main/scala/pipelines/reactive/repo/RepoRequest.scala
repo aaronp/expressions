@@ -4,7 +4,7 @@ import cats.syntax.functor._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, ObjectEncoder}
-import pipelines.reactive.ContentType
+import pipelines.reactive.{ContentType, HasMetadata}
 
 /**
   * A request for operating on a repository
@@ -13,10 +13,10 @@ sealed trait RepoRequest
 
 object RepoRequest {
   implicit val encoder = Encoder.instance[RepoRequest] {
-    case request @ ListRepoSourcesRequest(_, _)     => request.asJson
+    case request @ ListRepoSourcesRequest(_, _)      => request.asJson
     case request @ CreateSourceAliasRequest(_, _, _) => request.asJson
-    case request @ ListTransformationRequest(_)     => request.asJson
-    case request @ ListSinkRequest(_, _)            => request.asJson
+    case request @ ListTransformationRequest(_)      => request.asJson
+    case request @ ListSinkRequest(_, _)             => request.asJson
   }
 
   implicit val decoder: Decoder[RepoRequest] = {
@@ -36,7 +36,7 @@ sealed trait RepoResponse
 object RepoResponse {
   implicit val encoder = Encoder.instance[RepoResponse] {
     case request @ ListRepoSourcesResponse(_)    => request.asJson
-    case request @ CreateSourceAliasResponse(_)   => request.asJson
+    case request @ CreateSourceAliasResponse(_)  => request.asJson
     case request @ ListTransformationResponse(_) => request.asJson
     case request @ ListSinkResponse(_)           => request.asJson
   }
@@ -57,7 +57,7 @@ object DataTransform {
   implicit val decoder: Decoder[DataTransform]       = deriveDecoder[DataTransform]
 }
 
-final case class ListedDataSource(metadata: Map[String, String], contentType: Option[ContentType]) {
+final case class ListedDataSource(override val metadata: Map[String, String], contentType: Option[ContentType]) extends HasMetadata {
   import pipelines.reactive.tags._
   def name(default: String = "")          = getOrElse(Name, default)
   def tag(default: String = "")           = getOrElse(Tag, default)
@@ -83,18 +83,12 @@ object ListedDataSource {
   implicit val decoder: Decoder[ListedDataSource]       = deriveDecoder[ListedDataSource]
 }
 
-final case class ListedSink(name: String) //, contentType: Option[ContentType])
-object ListedSink {
-  implicit val encoder: ObjectEncoder[ListedSink] = deriveEncoder[ListedSink]
-  implicit val decoder: Decoder[ListedSink]       = deriveDecoder[ListedSink]
-}
 
 final case class ListedTransformation(name: String, inputType: Option[ContentType], resultType: Option[ContentType], config: Option[Json])
 object ListedTransformation {
   implicit val encoder: ObjectEncoder[ListedTransformation] = deriveEncoder[ListedTransformation]
   implicit val decoder: Decoder[ListedTransformation]       = deriveDecoder[ListedTransformation]
 }
-
 
 /**
   *  LIST DATA SOURCE
@@ -131,13 +125,31 @@ object ListTransformationResponse {
 /**
   *  LIST SINKS
   */
+final case class ListedDataSink(override val metadata: Map[String, String], inputContentType: ContentType) extends HasMetadata {
+  import pipelines.reactive.tags._
+  def name(default: String = "")          = getOrElse(Name, default)
+  def tag(default: String = "")           = getOrElse(Tag, default)
+  def label(default: String = "")         = getOrElse(Label, default)
+  def createdBy(default: String = "anon") = getOrElse(CreatedBy, default)
+  def id(default: String = "empty")       = getOrElse(Id, default)
+  private def getOrElse(tag: String, default: String = "") = {
+    metadata.getOrElse(tag, default)
+  }
+  private def get(key: String) = metadata.get(key)
+}
+object ListedDataSink {
+  implicit val encoder: ObjectEncoder[ListedDataSink] = io.circe.generic.semiauto.deriveEncoder[ListedDataSink]
+  implicit val decoder: Decoder[ListedDataSink] = io.circe.generic.semiauto.deriveDecoder[ListedDataSink]
+}
+
+
 case class ListSinkRequest(metadataCriteria: Map[String, String], ofType: Option[ContentType]) extends RepoRequest
 object ListSinkRequest {
   implicit val encoder: ObjectEncoder[ListSinkRequest] = deriveEncoder[ListSinkRequest]
   implicit val decoder: Decoder[ListSinkRequest]       = deriveDecoder[ListSinkRequest]
 }
 
-case class ListSinkResponse(results: Seq[ListedSink]) extends RepoResponse
+case class ListSinkResponse(results: Seq[ListedDataSink]) extends RepoResponse
 object ListSinkResponse {
   implicit val encoder: ObjectEncoder[ListSinkResponse] = deriveEncoder[ListSinkResponse]
   implicit val decoder: Decoder[ListSinkResponse]       = deriveDecoder[ListSinkResponse]

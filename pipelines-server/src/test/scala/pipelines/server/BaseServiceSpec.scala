@@ -3,22 +3,23 @@ package pipelines.server
 import java.util.UUID
 
 import args4c.implicits._
+import cats.Functor
 import com.typesafe.scalalogging.StrictLogging
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import pipelines.client.jvm.PipelinesClient
 import pipelines.rest.RunningServer
-import pipelines.users.{CreateUserRequest, CreateUserResponse}
+import pipelines.users.CreateUserRequest
 import pipelines.{BaseCoreTest, DevRestMain}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{Success, Try}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 abstract class BaseServiceSpec extends BaseCoreTest with BeforeAndAfterAll with ScalaFutures with StrictLogging {
 
   type ServiceType
-  protected var server: RunningServer[ServiceType] = null
+  protected var runningServer: RunningServer[ServiceType] = null
 
   def defaultPassword = "correct password"
   def newClient(): PipelinesClient[Try] = {
@@ -31,13 +32,16 @@ abstract class BaseServiceSpec extends BaseCoreTest with BeforeAndAfterAll with 
     PipelinesClient(config)(ec)
   }
 
-  def createNewUser(client: PipelinesClient[Try], userName: String = s"${getClass} user ${UUID.randomUUID()}".filter(_.isLetterOrDigit)) = {
-    val email                                       = userName + "@email.com"
-    val Success(createResponse: CreateUserResponse) = client.newUser(CreateUserRequest(userName, email, defaultPassword))
-    createResponse.ok shouldBe true
-    createResponse.jwtToken.isDefined shouldBe true
-    createResponse.error shouldBe empty
-    userName
+  def createNewUser[F[_]: Functor](client: PipelinesClient[F], userName: String = s"${getClass} user ${UUID.randomUUID()}".filter(_.isLetterOrDigit)): F[String] = {
+    val email = userName + "@email.com"
+
+    val responseF = client.newUser(CreateUserRequest(userName, email, defaultPassword))
+    implicitly[Functor[F]].map(responseF) { createResponse =>
+      createResponse.ok shouldBe true
+      createResponse.jwtToken.isDefined shouldBe true
+      createResponse.error shouldBe empty
+      userName
+    }
   }
 
   def startServer(): RunningServer[ServiceType]
@@ -50,12 +54,12 @@ abstract class BaseServiceSpec extends BaseCoreTest with BeforeAndAfterAll with 
       case _                =>
     }
 
-    server = startServer()
+    runningServer = startServer()
   }
   override def afterAll(): Unit = {
-    if (server != null) {
-      server.close()
-      server.bindingFuture.futureValue
+    if (runningServer != null) {
+      runningServer.close()
+      runningServer.bindingFuture.futureValue
     }
   }
 
