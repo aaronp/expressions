@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.circe.Encoder
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.{Observable, Observer}
-import pipelines.reactive.{HasMetadata, Ids, PipelineService, tags}
+import pipelines.reactive.{Ids, PipelineService, tags}
 import pipelines.users.Claims
 
 import scala.concurrent.Future
@@ -29,15 +29,17 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
                                   val toClientAkkaInput: Observable[AddressedMessage],
                                   val dataFromClientInput: Observer[AddressedMessage],
                                   val dataFromClientOutput: Observable[AddressedMessage],
-                                  val scheduler: Scheduler)
+                                  val scheduler: Scheduler,
+                                  leaveSinkOpen: Boolean,
+                                  leaveSourceOpen: Boolean)
     extends StrictLogging {
 
   def sendToClient[T: ClassTag: Encoder](value: T): Future[Ack] = {
     toClient.onNext(AddressedMessage(value))
   }
 
-  val akkaSink: Sink[Message, _]                = ObserverAsAkkaSink("\t!\tServerSocket.akkaSink", dataFromClientInput, scheduler)
-  val akkaSource: Source[Message, NotUsed]      = ObservableAsAkkaSource(s"\t!\tServerSocket.akkaSource", toClientAkkaInput, scheduler)
+  val akkaSink: Sink[Message, _]                = ObserverAsAkkaSink("\t!\tServerSocket.akkaSink", dataFromClientInput, scheduler, leaveSinkOpen)
+  val akkaSource: Source[Message, NotUsed]      = ObservableAsAkkaSource(s"\t!\tServerSocket.akkaSource", toClientAkkaInput, scheduler, leaveSourceOpen)
   val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
 
   private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
@@ -61,7 +63,7 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
   final def register(user: Claims, queryMetadata: Map[String, String], pipelinesService: PipelineService): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
     val socket = this
 
-    val name    = queryMetadata.getOrElse(tags.Name, s"socket-${user.userId}")
+    val name    = queryMetadata.getOrElse(tags.Name, s"socket for user ${user.name}")
     val persist = queryMetadata.getOrElse(tags.Persist, false.toString).toBoolean
 
     // use the same ID for both the source and sink so we can more easily associate them when needed.
@@ -131,6 +133,6 @@ object ServerSocket {
       PipeSettings.pipeForSettings(s"ServerSocket '$name' input", settings.input)
     }
 
-    new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler)
+    new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler, settings.leaveSourceOpen, settings.leaveSinkOpen)
   }
 }

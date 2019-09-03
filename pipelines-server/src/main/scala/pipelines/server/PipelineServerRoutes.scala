@@ -15,7 +15,7 @@ import scala.concurrent.Future
 
 object PipelineServerRoutes {
 
-  def apply(sslConf: SSLConfig, settings: RestSettings, socketHandler: SubscriptionHandler, pipelineService : PipelineService, loginHandler: LoginHandler[Future]): Route = {
+  def apply(sslConf: SSLConfig, settings: RestSettings, socketHandler: SubscriptionHandler, pipelineService: PipelineService, loginHandler: LoginHandler[Future]): Route = {
 
     val additionalRoutes: Seq[Route] = {
       loginHandler match {

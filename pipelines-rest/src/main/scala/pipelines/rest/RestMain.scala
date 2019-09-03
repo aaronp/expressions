@@ -20,7 +20,7 @@ import scala.concurrent.Future
   *
   */
 object RestMain extends ConfigApp with StrictLogging {
-  type Result = RunningServer[(AddressedMessageRouter ,PipelineService)]
+  type Result = RunningServer[(AddressedMessageRouter, PipelineService)]
 
   override val configKeyForRequiredEntries = "pipelines.rest.requiredConfig"
 

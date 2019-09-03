@@ -63,5 +63,5 @@ abstract class BaseServiceSpec extends BaseCoreTest with BeforeAndAfterAll with 
     }
   }
 
-  override def testTimeout: FiniteDuration = 1.minute
+  override def testTimeout: FiniteDuration = 10.seconds
 }

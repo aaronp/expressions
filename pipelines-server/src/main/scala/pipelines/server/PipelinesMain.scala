@@ -71,7 +71,7 @@ object PipelinesMain extends ConfigApp with StrictLogging {
 
     // init the handlers
 
-    val pipelineService: PipelineService              = PipelineService(transforms)(settings.env.ioScheduler)
+    val pipelineService: PipelineService      = PipelineService(transforms)(settings.env.ioScheduler)
     val commandRouter: AddressedMessageRouter = AddressedMessageRouter(pipelineService)
     val handlers: RestMain.DefaultHandlers    = RestMain.DefaultHandlers(commandRouter, pipelineService)
 

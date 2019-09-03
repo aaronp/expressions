@@ -59,7 +59,7 @@ object SSLConfig {
     keyManagerFactory.init(ks, password)
 
     val algo = TrustManagerFactory.getDefaultAlgorithm
-    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    val tmf  = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     tmf.init(ks)
 
     val ctxt: SSLContext = SSLContext.getInstance("TLS")

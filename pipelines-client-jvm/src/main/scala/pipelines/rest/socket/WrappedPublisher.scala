@@ -6,12 +6,12 @@ import com.typesafe.scalalogging.StrictLogging
 import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import pipelines.rest.socket
 
-final class WrappedPublisher[A](prefix: String, publisher: Publisher[A]) extends Publisher[A] {
+final class WrappedPublisher[A](prefix: String, publisher: Publisher[A], leaveOpen: Boolean) extends Publisher[A] {
   private val subscriptions = new AtomicInteger(0)
   override def subscribe(s: Subscriber[_ >: A]): Unit = {
     val newPrefix = s"$prefix-${subscriptions.incrementAndGet}"
     WrappedPublisher.info(s"$newPrefix::subscribe($s)")
-    val wrapped = new socket.WrappedPublisher.WrappedSubscriber[A](newPrefix, s)
+    val wrapped = new socket.WrappedPublisher.WrappedSubscriber[A](newPrefix, s, leaveOpen)
     publisher.subscribe(wrapped)
   }
 }
@@ -32,7 +32,7 @@ object WrappedPublisher extends StrictLogging {
     }
   }
 
-  class WrappedSubscriber[A](prefix: String, subscriber: Subscriber[_ >: A]) extends Subscriber[A] {
+  class WrappedSubscriber[A](prefix: String, subscriber: Subscriber[_ >: A], leaveOpen: Boolean) extends Subscriber[A] {
     override def onSubscribe(s: Subscription): Unit = {
       val w = new WrappedSubscription(prefix, s)
       info(s"$prefix::onSubscribe($s)")
@@ -50,9 +50,12 @@ object WrappedPublisher extends StrictLogging {
     }
 
     override def onComplete(): Unit = {
-      info(s"$prefix::onComplete()")
-      subscriber.onComplete()
-
+      if (leaveOpen) {
+        info(s"$prefix::onComplete() -- leaveOpen set to true, NOT completing...")
+      } else {
+        info(s"$prefix::onComplete()")
+        subscriber.onComplete()
+      }
     }
   }
 }

@@ -27,10 +27,16 @@ class UserLoginRoutesTest extends BaseRoutesTest {
 
     "reject invalid logins" in {
       Post("/users/login", LoginRequest("admin", "bad password")) ~> loginRoute.loginRoute ~> check {
-        rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
+        //rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
+        status.intValue shouldBe 200
+        responseAs[LoginResponse].ok shouldBe false
+        responseAs[LoginResponse].user shouldBe None
       }
       Post("/users/login", LoginRequest("guest", "password")) ~> loginRoute.loginRoute ~> check {
-        rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
+//        rejection shouldBe AuthenticationFailedRejection(CredentialsRejected, HttpChallenges.oAuth2(null))
+        status.intValue shouldBe 200
+        responseAs[LoginResponse].ok shouldBe false
+        responseAs[LoginResponse].user shouldBe None
       }
     }
     "redirect successful logins the user was redirected from another attempted page" ignore {

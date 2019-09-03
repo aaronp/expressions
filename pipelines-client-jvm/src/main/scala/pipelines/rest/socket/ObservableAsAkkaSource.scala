@@ -9,7 +9,7 @@ import monix.reactive.Observable
 
 object ObservableAsAkkaSource {
 
-  def apply(prefix: String, messages: Observable[AddressedMessage], scheduler: Scheduler): Source[Message, NotUsed] = {
+  def apply(prefix: String, messages: Observable[AddressedMessage], scheduler: Scheduler, leaveOpen: Boolean): Source[Message, NotUsed] = {
     val wsMessages = messages.map { msg: AddressedMessage =>
       import io.circe.syntax._
       val json = msg.asJson.noSpaces
@@ -20,7 +20,7 @@ object ObservableAsAkkaSource {
       }
     }
 
-    val reactive = new WrappedPublisher(prefix, wsMessages.toReactivePublisher(scheduler))
+    val reactive = new WrappedPublisher(prefix, wsMessages.toReactivePublisher(scheduler), leaveOpen)
     Source.fromPublisher(reactive)
 
   }

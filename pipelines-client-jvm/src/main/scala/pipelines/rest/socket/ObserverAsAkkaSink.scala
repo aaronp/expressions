@@ -11,8 +11,8 @@ import scala.util.control.NonFatal
 
 object ObserverAsAkkaSink {
 
-  def apply(prefix: String, messages: Observer[AddressedMessage], scheduler: Scheduler): Sink[Message, NotUsed] = {
-    val reactiveSub = new WrappedSubscriber[AddressedMessage](prefix, messages.toReactive(scheduler))
+  def apply(prefix: String, messages: Observer[AddressedMessage], scheduler: Scheduler, leaveOpen: Boolean): Sink[Message, NotUsed] = {
+    val reactiveSub = new WrappedSubscriber[AddressedMessage](prefix, messages.toReactive(scheduler), leaveOpen)
 
     Sink.fromSubscriber(reactiveSub).contramap[Message] { fromRemote: Message =>
       val addressed: AddressedMessage = try {

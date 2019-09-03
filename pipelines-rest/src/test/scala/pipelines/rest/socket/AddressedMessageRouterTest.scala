@@ -115,10 +115,11 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
         val router  = AddressedMessageRouter(service)
         SubscriptionHandler.register(router, service)
 
+        
         When("A new SocketSource and sink are created")
         val socket                       = ServerSocket(sched)
         val user                         = Claims.after(1.minute).forUser("bob")
-        val (socketSource, handshake, _) = socket.register(user, Map.empty, service).futureValue
+        val (socketSource, handshake, _) = socket.register(user, Map("test" ->"handshake"), service).futureValue
 
         And("Some push source to which we can subscribe")
         val (true, pushSource) = service.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue

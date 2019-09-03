@@ -63,7 +63,7 @@ class SocketRoutesTest extends BaseRoutesTest {
     "upgrade a GET request to a WS request for new users" in Using(Env()) { env =>
       val socketList = ListBuffer[(Claims, ServerSocket)]()
 
-      val service = PipelineService()(env.ioScheduler)
+      val service       = PipelineService()(env.ioScheduler)
       val commandRouter = new AddressedMessageRouter()
       val subsc         = SubscriptionHandler.register(commandRouter, service)
 

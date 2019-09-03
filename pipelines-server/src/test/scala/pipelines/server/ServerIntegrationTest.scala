@@ -73,11 +73,6 @@ class ServerIntegrationTest extends BaseServiceSpec {
 
         implicit val sched = clientEnv.ioScheduler
         val received       = ListBuffer[AddressedMessage]()
-        state.session.messages2.foreach { fromServer =>
-          println(s"\tXXXX fromServer2 -> $fromServer")
-        //          received += fromServer
-        //          fromServer
-        }
         state.session.messages.foreach { fromServer =>
           println(s"\tYYYYY fromServer -> $fromServer")
           received += fromServer

@@ -1,12 +1,12 @@
 package pipelines.server
 
 import args4c.implicits._
+import cats.instances.future._
 import com.typesafe.config.ConfigFactory
+import monix.reactive.Observable
 import pipelines.client.jvm.PipelinesClient
-import pipelines.layout.AsciiTable
 import pipelines.mongo.StartMongo
 import pipelines.reactive._
-import pipelines.reactive.repo.ListSinkResponse
 import pipelines.rest.socket.{AddressedMessage, ClientSocket, SocketConnectionAck}
 import pipelines.rest.{RestSettings, RunningServer}
 import pipelines.server.PipelinesMain.{Bootstrap, defaultTransforms}
@@ -15,7 +15,6 @@ import pipelines.{Env, Using}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import cats.instances.future._
 
 class SocketIntegrationTest extends BaseServiceSpec {
 
@@ -38,7 +37,7 @@ class SocketIntegrationTest extends BaseServiceSpec {
         Given("A client connected to our server for some new user")
         val client: PipelinesClient[Future] = newAsyncClient(clientEnv.ioScheduler).get
 
-        val userName               = createNewUser(client).futureValue
+        val userName               = createNewUser(client, userName = s"FirstTestUser-${System.currentTimeMillis}").futureValue
         val session                = client.newSession(userName, defaultPassword).futureValue
         val wsClient: ClientSocket = session.socket
 
@@ -71,7 +70,7 @@ class SocketIntegrationTest extends BaseServiceSpec {
         Given("A client connected to our server for some new user")
         val client: PipelinesClient[Future] = newAsyncClient(clientEnv.ioScheduler).get
 
-        val userName = createNewUser(client).futureValue
+        val userName = createNewUser(client, userName = s"MiddleTestUser-${System.currentTimeMillis}").futureValue
         serverSinkEvents.clear()
         serverSourceEvents.clear()
         val session = client.newSession(userName, defaultPassword).futureValue
@@ -105,8 +104,8 @@ class SocketIntegrationTest extends BaseServiceSpec {
 
         Then("We should see that data arrive on the server via its socket source")
         val expectedFirstMessages = List(AddressedMessage(123), AddressedMessage("Hello"), AddressedMessage(true))
-        receivedOnTheServer1 should contain theSameElementsAs(expectedFirstMessages)
-        receivedOnTheServer2 should contain theSameElementsAs(expectedFirstMessages)
+        receivedOnTheServer1 should contain theSameElementsAs (expectedFirstMessages)
+        receivedOnTheServer2 should contain theSameElementsAs (expectedFirstMessages)
       }
     }
     "send AddressedMessage records to clients from the server over a websocket" in {
@@ -127,8 +126,36 @@ class SocketIntegrationTest extends BaseServiceSpec {
 
         Given("A client connected to our server for some new user")
         val client: PipelinesClient[Future] = newAsyncClient(clientEnv.ioScheduler).get
+        val userName                        = createNewUser(client, userName = s"LastTestUser-${System.currentTimeMillis}").futureValue
+        serverSinkEvents.clear()
 
+        val session = client.newSession(userName, defaultPassword).futureValue
+        val serverSideSink: DataSink = eventually {
+          val List(OnSinkAdded(newSink, _)) = serverSinkEvents.toList
+          newSink
+        }
 
+        val receivedOnClient = ListBuffer[AddressedMessage]()
+        session.messages.foreach { msg: AddressedMessage =>
+          logger.info(s"debugging: session.messages.foreach($msg)")
+          receivedOnClient += msg
+        }
+
+        val fromServerMessages: Observable[AddressedMessage] = Observable(5, 6, 7).map { n =>
+          AddressedMessage(n)
+        }
+
+        // send some data to the client via the socket sink
+        serverSideSink.connect(ContentType.of[AddressedMessage], fromServerMessages.asInstanceOf[Observable[serverSideSink.Input]], Map.empty)
+
+        Then("We should see the data appear on the client")
+        eventually {
+          receivedOnClient should contain only (
+            AddressedMessage(5),
+            AddressedMessage(6),
+            AddressedMessage(7)
+          )
+        }
       }
     }
   }

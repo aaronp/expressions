@@ -34,7 +34,7 @@ private[ssl] case class SSLWrapper(val keystoreType: String, val keystorePw: Str
   keyManagerFactory.init(ks, keystorePw.toCharArray)
 
   val algo = TrustManagerFactory.getDefaultAlgorithm
-  val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+  val tmf  = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
   tmf.init(ks)
 
   val ctxt: SSLContext = {

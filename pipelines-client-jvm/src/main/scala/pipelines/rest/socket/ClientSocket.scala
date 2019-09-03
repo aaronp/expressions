@@ -74,8 +74,8 @@ object ClientSocket {
       PipeSettings.pipeForSettings(s"ClientSocket '${settings.name}' output", settings.output)
     }
 
-    val akkaSink: Sink[Message, _]           = ObserverAsAkkaSink(s"\t!ClientSocket!\t${settings.name}-sink", fromServerInput, scheduler)
-    val akkaSource: Source[Message, NotUsed] = ObservableAsAkkaSource(s"\t!ClientSocket!\t${settings.name}-src", toServerOutput, scheduler)
+    val akkaSink: Sink[Message, _]           = ObserverAsAkkaSink(s"\t!ClientSocket!\t${settings.name}-sink", fromServerInput, scheduler, settings.leaveSinkOpen)
+    val akkaSource: Source[Message, NotUsed] = ObservableAsAkkaSource(s"\t!ClientSocket!\t${settings.name}-src", toServerOutput, scheduler, settings.leaveSourceOpen)
 
     new ClientSocket(fromServerInput, toClientOutput, toServerInput, toServerOutput, akkaSource, akkaSink, scheduler)
   }

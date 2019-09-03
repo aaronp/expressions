@@ -52,7 +52,7 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
     }
     .share(scheduler)
 
-  def onEvent(newState: RepoState, input: TriggerInput, event: TriggerEvent): Unit = {
+  private def onEvent(newState: RepoState, input: TriggerInput, event: TriggerEvent): Unit = {
 
     logger.info(s"""
         !VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV _-=[ onEvent ]=-_ VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
@@ -181,10 +181,8 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
     if (foundPipelines.nonEmpty) {
       Left(s"Source ${pipelineMatch.source} is already connected to ${pipelineMatch.sink}: ${foundPipelines.map(_.matchId)}}")
     } else {
-
       create()
     }
-
   }
 
   def sourceMetadata(): Seq[Map[String, String]] = sources.list().map(_.metadata)
