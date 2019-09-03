@@ -139,8 +139,11 @@ object Claims extends io.circe.java8.time.JavaTimeEncoders with io.circe.java8.t
     }
   }
 
-  def after(expiry: FiniteDuration, now: ZonedDateTime = ZonedDateTime.now()) = new {
+  def forUser(name: String): Claims = {
+    new Claims(name = name, exp = Long.MaxValue, iat = asNumericDate(ZonedDateTime.now()))
+  }
 
+  def after(expiry: FiniteDuration, now: ZonedDateTime = ZonedDateTime.now()) = new {
     def forUser(name: String): Claims = {
       val expires = now.plusNanos(expiry.toNanos)
       new Claims(name = name, exp = asNumericDate(expires), iat = asNumericDate(now))

@@ -160,9 +160,13 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
 
   def onPipelineMatch(input: TriggerInput, pipelineMatch: PipelineMatch): Either[String, Pipeline[_, _]] = {
     import pipelineMatch._
+
+    val matchSourceIds = pipelineMatch.source.id.toSeq
+    val matchSinkIds   = pipelineMatch.sink.id.toSeq
+
     val foundPipelines: Seq[Pipeline[_, _]] = for {
-      sourceId <- pipelineMatch.source.id.toSeq
-      sinkId   <- pipelineMatch.sink.id.toSeq
+      sourceId <- matchSourceIds
+      sinkId   <- matchSinkIds
       p        <- pipelinesForSourceAndSink(sourceId, sinkId)
     } yield {
       p
@@ -179,7 +183,12 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
     }
 
     if (foundPipelines.nonEmpty) {
-      Left(s"Source ${pipelineMatch.source} is already connected to ${pipelineMatch.sink}: ${foundPipelines.map(_.matchId)}}")
+      foundPipelines.foreach(println)
+      val result = Left(
+        s"Found ${foundPipelines.size} pipelines for ${matchSourceIds.size} sourceIds ${matchSourceIds.mkString("[", ",", "]")} and ${matchSinkIds.size} sinkIds ${matchSinkIds
+          .mkString("[", ",", "]")} ...\nSource ${pipelineMatch.source} is already connected to ${pipelineMatch.sink}: ${foundPipelines.map(_.matchId)}}")
+      println()
+      result
     } else {
       create()
     }
@@ -238,6 +247,16 @@ class PipelineService(val sources: Sources, val sinks: Sinks, val streamDao: Str
         Future.failed(new Exception(s"Sink '${name}' doesn't exist and 'createIfMissing' query parameter not set"))
     }
   }
+
+  /**
+    *
+    * @param name the source name
+    * @param createIfMissing
+    * @param persist
+    * @param newSource
+    * @tparam S
+    * @return a tuple of a boolean to indicate if a new source was created (false if it was found) for the given name
+    */
   def getOrCreateSourceForName[S <: DataSource: ClassTag](name: String, createIfMissing: Boolean, persist: Boolean)(newSource: => S): Future[(Boolean, S)] = {
     sources.forName(name) match {
       case Some(src: S) => Future.successful(false -> src)

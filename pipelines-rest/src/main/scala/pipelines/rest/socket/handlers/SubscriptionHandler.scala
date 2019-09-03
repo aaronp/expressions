@@ -7,21 +7,17 @@ import com.typesafe.scalalogging.StrictLogging
 import pipelines.reactive.trigger.Trigger
 import pipelines.reactive.{PipelineService, TriggerCallback}
 import pipelines.rest.socket._
+import pipelines.users.Claims
 
 import scala.concurrent.Future
 
 object SubscriptionHandler {
   def register(commandRouter: AddressedMessageRouter, pipelinesService: PipelineService): SubscriptionHandler = {
-    val subscriptionHandler = new SubscriptionHandlerInst(pipelinesService)
+    val subscriptionHandler = new SubscriptionHandler(pipelinesService)
     commandRouter.addHandler[SocketSubscribeRequest](subscriptionHandler.onSubscribeMsg)
     commandRouter.addHandler[SocketUnsubscribeRequest](subscriptionHandler.onUnsubscribeMsg)
     subscriptionHandler
   }
-}
-
-trait SubscriptionHandler {
-  def onSocketSubscribe(request: SocketSubscribeRequest): Future[SocketSubscribeResponse]
-  def onUnsubscribe(unsubscribe: SocketUnsubscribeRequest): Boolean
 }
 
 /**
@@ -30,20 +26,20 @@ trait SubscriptionHandler {
   *
   * @param pipelinesService
   */
-final class SubscriptionHandlerInst(val pipelinesService: PipelineService) extends SubscriptionHandler with StrictLogging {
+final class SubscriptionHandler(val pipelinesService: PipelineService) extends StrictLogging {
   private val pipelinesBySubscriptionId = new ConcurrentHashMap[String, UUID]()
 
-  def onSubscribeMsg(msg: AddressedMessage): Unit = {
+  def onSubscribeMsg(user: Claims, msg: AddressedMessage): Unit = {
     val request = msg.as[SocketSubscribeRequest].get
-    onSocketSubscribe(request)
+    onSocketSubscribe(user, request)
   }
 
-  def onUnsubscribeMsg(msg: AddressedMessage): Unit = {
+  def onUnsubscribeMsg(user: Claims, msg: AddressedMessage): Unit = {
     val request = msg.as[SocketUnsubscribeRequest].get
-    onUnsubscribe(request)
+    onUnsubscribe(user, request)
   }
 
-  override def onUnsubscribe(unsubscribe: SocketUnsubscribeRequest): Boolean = {
+  def onUnsubscribe(user: Claims, unsubscribe: SocketUnsubscribeRequest): Boolean = {
     val matchIdOpt = Option(pipelinesBySubscriptionId.remove(unsubscribe.addressedMessageId))
     matchIdOpt match {
       case None =>
@@ -59,7 +55,8 @@ final class SubscriptionHandlerInst(val pipelinesService: PipelineService) exten
         success
     }
   }
-  override def onSocketSubscribe(request: SocketSubscribeRequest): Future[SocketSubscribeResponse] = {
+
+  def onSocketSubscribe(user: Claims, request: SocketSubscribeRequest): Future[SocketSubscribeResponse] = {
     val SocketSubscribeRequest(_, _, subscriptionId, transforms, retainAfterMatch) = request
     val trigger                                                                    = Trigger(request.sourceAsCriteria, request.sinkAsCriteria, transforms)
 

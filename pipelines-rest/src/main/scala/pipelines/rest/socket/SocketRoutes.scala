@@ -19,7 +19,11 @@ import pipelines.users.Claims
   * @param settings the secure settings required for JWT
   * @param subscriptionHandler the logic of what to do with the new socket
   */
-class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, subscriptionHandler: SubscriptionHandler, pipelinesService: PipelineService)
+class SocketRoutes(settings: SecureRouteSettings,
+                   tokens: WebSocketTokenCache,
+                   subscriptionHandler: SubscriptionHandler,
+                   pipelinesService: PipelineService,
+                   commandRouter: AddressedMessageRouter)
     extends BaseSocketRoutes(settings)
     with SocketEndpoint
     with SocketSchemas
@@ -39,19 +43,19 @@ class SocketRoutes(settings: SecureRouteSettings, tokens: WebSocketTokenCache, s
   }
 
   def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
-    socket.register(user, queryMetadata, pipelinesService)
+    socket.register(user, queryMetadata, pipelinesService, commandRouter)
   }
 
   def subscribeSocket: Route = {
-    authenticated { _ =>
-      socketSubscribe.subscribe.implementedByAsync(subscriptionHandler.onSocketSubscribe)
+    authenticated { user =>
+      socketSubscribe.subscribe.implementedByAsync(subscriptionHandler.onSocketSubscribe(user, _))
     }
   }
 
   def unsubscribeSocket: Route = {
-    authenticated { _ =>
+    authenticated { user =>
       socketUnsubscribe.unsubscribe.implementedBy { request =>
-        val unsubscribed = subscriptionHandler.onUnsubscribe(request)
+        val unsubscribed = subscriptionHandler.onUnsubscribe(user, request)
         if (unsubscribed) {
           GenericMessageResult(s"Unsubscribed from '${request.addressedMessageId}'")
         } else {

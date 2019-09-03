@@ -53,21 +53,20 @@ object RestMain extends ConfigApp with StrictLogging {
     val settings                 = RestSettings(config)
     val service: PipelineService = PipelineService()(settings.env.ioScheduler)
 
-    val commandRouter: AddressedMessageRouter = AddressedMessageRouter(service)
-
     logger.warn(s"Starting with\n${settings}\n\n")
 
-    run(settings, service, commandRouter)
+    run(settings, service)
   }
 
-  def run(settings: RestSettings, service: PipelineService, commandRouter: AddressedMessageRouter): Result = {
+  def run(settings: RestSettings, service: PipelineService): Result = {
+    val commandRouter = AddressedMessageRouter()
     val sslConf: SSLConfig                 = SSLConfig(settings.rootConfig)
     val loginHandler: LoginHandler[Future] = LoginHandler(settings.rootConfig)
 
     val login    = settings.loginRoutes(loginHandler)(settings.env.ioScheduler).routes
     val handlers = DefaultHandlers(commandRouter, service)
 
-    val repoRoutes = settings.repoRoutes(handlers.subscriptionHandler, service)
+    val repoRoutes = settings.repoRoutes(handlers.subscriptionHandler, service, commandRouter)
 
     val route: Route = {
       import settings.env._

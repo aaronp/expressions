@@ -1,6 +1,6 @@
 package pipelines.rest.socket
 
-import io.circe.{Decoder, Json, ObjectEncoder}
+import io.circe.Json
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Consumer, Observable}
 import pipelines.Pipeline
@@ -12,25 +12,8 @@ import pipelines.users.Claims
 import scala.concurrent.duration._
 import scala.util.Success
 
-class AddressedMessageRouterTest extends BaseRoutesTest {
-  import AddressedMessageRouterTest._
+class SocketHandlerTest extends BaseRoutesTest {
 
-  "AddressedMessageRouter.addHandler" should {
-    "route messages send via 'onAddressedMessage' to the given handler for the same type" in {
-      val router = new AddressedMessageRouter()
-
-      var receivedMessages: List[AddressedMessage] = List[AddressedMessage]()
-
-      router.addHandler[TestMsg] { next: AddressedMessage =>
-        receivedMessages = next :: receivedMessages
-      }
-
-      router.onAddressedMessage(AddressedMessage(TestMsg("Hello")))
-      router.onAddressedMessage(AddressedMessage("world"))
-      receivedMessages should contain(AddressedMessage(TestMsg("Hello")))
-      receivedMessages should not contain (AddressedMessage("world"))
-    }
-  }
   "SubscribeOnMatchSink.addressedMessageRoutingSink" should {
     "subscribe sources to sinks via transformations to AddressedMessages" in {
       withScheduler { implicit s =>
@@ -55,7 +38,7 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
         val underTest = new AddressedMessageRouter()
         SubscriptionHandler.register(underTest, service)
 
-        val consumer: Consumer[AddressedMessage, Unit] = underTest.addressedMessageRoutingSink.consumer
+        val consumer = underTest.addressedMessageRoutingSink.consumer.contramap[AddressedMessage](Claims.forUser("dave") -> _)
 
         //
         // SubscriptionHandler.register(AddressedMessageRouter(service))
@@ -87,40 +70,21 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
       }
     }
   }
-  "SubscribeOnMatchSink.isSocketMessage" should {
-    "return true for AddressedMessages containing only SocketSubscribeRequest or SocketUnsubscribeRequest messages" in {
-      withScheduler { implicit sched: Scheduler =>
-        val subscribeInput = SocketSubscribeRequest("socketId", Map("x" -> "y"), "bar")
 
-        val dataSource = DataSource[AddressedMessage](
-          Observable(
-            AddressedMessage(SocketUnsubscribeRequest("socketSinkId")),
-            AddressedMessage("Something Else"),
-            AddressedMessage(subscribeInput),
-            AddressedMessage("topic", "123")
-          ))
-        val Some(filtered) = AddressedMessageRouter.isSocketMessage.applyTo(dataSource)
-
-        val List(unsubscribe, subscribe) = filtered.asObservable[AddressedMessage].toListL.runSyncUnsafe(testTimeout)
-        unsubscribe.as[SocketUnsubscribeRequest] shouldBe Success(SocketUnsubscribeRequest("socketSinkId"))
-        subscribe.as[SocketSubscribeRequest] shouldBe Success(subscribeInput)
-      }
-    }
-  }
   "SubscribeOnMatchSink.apply" should {
     "Add socket listeners which will apply subscribe/unsubscribe requests from SocketSources in order to connect 'em to available sources/sinks" in {
       withScheduler { implicit sched: Scheduler =>
         Given("We've used listenToNewSocketSources to ensure 'subscribe' requests from new sockets are handled")
-        val service = PipelineService()(sched)
-        val router  = AddressedMessageRouter(service)
+        val service: PipelineService = PipelineService()(sched)
+        val router                   = AddressedMessageRouter()
         SubscriptionHandler.register(router, service)
 
-        
+        println()
         When("A new SocketSource and sink are created")
         val socket                       = ServerSocket(sched)
         val user                         = Claims.after(1.minute).forUser("bob")
-        val (socketSource, handshake, _) = socket.register(user, Map("test" ->"handshake"), service).futureValue
-
+        val (socketSource, handshake, _) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
+        println()
         And("Some push source to which we can subscribe")
         val (true, pushSource) = service.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue
 
@@ -128,7 +92,7 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
         val createPipelineFuture = service.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
         socketSource.socket.toClient
           .onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
-
+        println()
         Then("A new pipeline should be created between the push source and our socket sink")
         val list           = createPipelineFuture.futureValue
         val List(pipeline) = list
@@ -138,7 +102,9 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
         val readPushedDataFuture  = socketSource.socket.toClientAkkaInput.take(1).toListL.runToFuture
         val readPushed2DataFuture = socketSource.socket.toClientAkkaInput.take(2).toListL.runToFuture
         val firstSourceMessage    = PushEvent(Claims.after(10.seconds).forUser("alice"), Json.fromString("alice data"))
+        println()
         pushSource.push(firstSourceMessage)
+        println()
 
         Then("Data from that source should be connected w/ the socket sink")
         val List(readBack) = readPushedDataFuture.futureValue
@@ -146,7 +112,7 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
         When("A second source is added which also meets the subscription criteria")
         val createPipeline2Future = service.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
         val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId(Ids.next())
-
+        println()
         val (pushSource2, _)    = service.sources.add(newPush)
         val List(_)             = createPipeline2Future.futureValue
         val secondSourceMessage = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
@@ -159,14 +125,4 @@ class AddressedMessageRouterTest extends BaseRoutesTest {
       }
     }
   }
-}
-
-object AddressedMessageRouterTest {
-
-  case class TestMsg(name: String)
-  object TestMsg {
-    implicit val encoder: ObjectEncoder[TestMsg] = io.circe.generic.semiauto.deriveEncoder[TestMsg]
-    implicit val decoder: Decoder[TestMsg]       = io.circe.generic.semiauto.deriveDecoder[TestMsg]
-  }
-
 }

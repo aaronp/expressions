@@ -5,7 +5,7 @@ import pipelines.reactive.{ContentType, DataSource}
 import pipelines.users.Claims
 
 object SocketSource {
-  val contentType: ContentType = ContentType.of[AddressedMessage]
+  val contentType: ContentType = ContentType.of[(Claims, AddressedMessage)]
 }
 
 /**
@@ -21,10 +21,17 @@ final case class SocketSource(user: Claims, socket: ServerSocket, override val m
 
   override val contentType = SocketSource.contentType
 
-  override def data(ct: ContentType): Option[Observable[AddressedMessage]] = {
+  def socketAndUserData: Observable[(Claims, AddressedMessage)] = socketData.map(user -> _)
+
+  def socketData: Observable[AddressedMessage] = socket.dataFromClientOutput
+
+  override def data(ct: ContentType): Option[Observable[_]] = {
     if (ct == contentType) {
-//      Option(socket.toClientAkkaInput)
-      Option(socket.dataFromClientOutput)
+      Option(socketAndUserData)
+    } else if (ct == ContentType.of[Claims]) {
+      Option(socket.dataFromClientOutput.map(_ => user))
+    } else if (ct == ContentType.of[AddressedMessage]) {
+      Option(socketData)
     } else {
       None
     }

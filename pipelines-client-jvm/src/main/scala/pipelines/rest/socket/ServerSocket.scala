@@ -60,7 +60,10 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
   /**
     * What to do when a new WebSocket is opened? Register a new source and sink!
     */
-  final def register(user: Claims, queryMetadata: Map[String, String], pipelinesService: PipelineService): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
+  final def register(user: Claims,
+                     queryMetadata: Map[String, String],
+                     pipelinesService: PipelineService,
+                     commandRouter: AddressedMessageRouter): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
     val socket = this
 
     val name    = queryMetadata.getOrElse(tags.Name, s"socket for user ${user.name}")
@@ -78,7 +81,9 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
 
     val sourceFuture: Future[(Boolean, SocketSource)] = pipelinesService.getOrCreateSourceForName(name, true, persist) {
       val sourceMetadata = baseMetadata.updated(tags.SourceType, tags.typeValues.Socket)
-      SocketSource(user, socket, sourceMetadata)
+      val socketSource   = SocketSource(user, socket, sourceMetadata)
+      socketSource.socketAndUserData.consumeWith(commandRouter.addressedMessageRoutingSink.consumer)
+      socketSource
     }
     val sinkFuture: Future[(Boolean, SocketSink)] = pipelinesService.getOrCreateSinkForName(name, true, persist) {
       val sinkMetadata = baseMetadata.updated(tags.SinkType, tags.typeValues.Socket)

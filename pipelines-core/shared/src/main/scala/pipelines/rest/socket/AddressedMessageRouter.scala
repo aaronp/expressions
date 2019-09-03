@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import com.typesafe.scalalogging.StrictLogging
 import pipelines.reactive._
-import pipelines.reactive.trigger.Trigger
+import pipelines.users.Claims
 
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
@@ -29,9 +29,9 @@ import scala.util.control.NonFatal
   */
 final class AddressedMessageRouter() extends StrictLogging {
 
-  private def listenerMetadata = Map(tags.SinkType -> tags.typeValues.SubscriptionListener)
+  private def listenerMetadata: Map[String, String] = Map(tags.SinkType -> tags.typeValues.SubscriptionListener)
 
-  type Handler = AddressedMessage => Unit
+  type Handler = (Claims, AddressedMessage) => Unit
 
   import scala.collection.JavaConverters._
 
@@ -57,18 +57,18 @@ final class AddressedMessageRouter() extends StrictLogging {
     handlersByTo.computeIfAbsent(to, createHandlers)
   }
 
-  private[socket] def onAddressedMessage(msg: AddressedMessage): Unit = {
+  def onAddressedMessage(user: Claims, msg: AddressedMessage): Unit = {
     val text = s"\taddressedMessageRoutingSink.foreach -- $msg"
     logger.info(text)
 
     val handlers = handlersByTo.get(msg.to)
     if (handlers != null) {
-      val found = handlers.asScala.values
+      val found: Iterable[Handler] = handlers.asScala.values
       found.zipWithIndex.foreach {
         case (handler, i) =>
           logger.debug(s"Handling $i: '${msg.to}' w/ $handler")
           try {
-            handler(msg)
+            handler(user, msg)
           } catch {
             case NonFatal(e) =>
               logger.error(s"Handler $i for '${msg.to}' failed with $e on: ${msg}", e)
@@ -83,48 +83,37 @@ final class AddressedMessageRouter() extends StrictLogging {
     * A consumer of new SocketSource DataSources which will listen for [[AddressedMessage]]s and dispatch them to the
     * registered handlers
     */
-  val addressedMessageRoutingSink: DataSink.Instance[AddressedMessage, Unit] = DataSink
-    .foreach[AddressedMessage](listenerMetadata) { msg: AddressedMessage =>
-      onAddressedMessage(msg)
+  val addressedMessageRoutingSink: DataSink.Instance[(Claims, AddressedMessage), Unit] = DataSink
+    .foreach[(Claims, AddressedMessage)](listenerMetadata) {
+      case (user, msg) => onAddressedMessage(user, msg)
     }
 }
 
 object AddressedMessageRouter {
 
-  /**
-    * The client will subscribe to all new 'SocketSource' sources created (when clients open a websocket) and listen
-    * for
-    *
-    * @param pipelinesService
-    * @return
-    */
-  def apply(pipelinesService: PipelineService): AddressedMessageRouter = {
-
-    val subscribeOnMatchSink                   = new AddressedMessageRouter()
-    val (listenForSubscriptionMessagesSink, _) = pipelinesService.sinks.add(subscribeOnMatchSink.addressedMessageRoutingSink)
-
-    implicit val sched = pipelinesService.sources.scheduler
-    // add a transform (a predicate in this case) for filtering the messages we want
-    val isSocketMessageName = "isSocketMessage"
-    pipelinesService.addTransform(isSocketMessageName, isSocketMessage).foreach { _ =>
-      // now that the transform is added, add a trigger so that new socket sources will get consumed by this sink
-      // which filters on socket subscribe/unsubscribe messages
-      val trigger = Trigger(
-        MetadataCriteria(Map(tags.SourceType -> tags.typeValues.Socket)),
-        MetadataCriteria(Map(tags.Id         -> listenForSubscriptionMessagesSink.id.get)),
-        Seq(isSocketMessageName)
-      )
-      pipelinesService.triggers.connect(trigger, true, TriggerCallback.Ignore)
-    }
-    subscribeOnMatchSink
-  }
-
-  private[socket] val isSocketMessage: Transform.FixedTransform[AddressedMessage, AddressedMessage] = {
-    val subscribeRequestTopic   = AddressedMessage.topics.forClass[SocketSubscribeRequest]
-    val unsubscribeRequestTopic = AddressedMessage.topics.forClass[SocketUnsubscribeRequest]
-    Transform.filter[AddressedMessage] { msg =>
-      (msg.to == subscribeRequestTopic ||
-      msg.to == unsubscribeRequestTopic)
-    }
-  }
+  def apply(): AddressedMessageRouter = new AddressedMessageRouter()
+//  val (msgRouterSink, _) = pipelinesService.sinks.add(msgRouter.addressedMessageRoutingSink)
+//
+//  implicit val sched = pipelinesService.sources.scheduler
+//  // add a transform (a predicate in this case) for filtering the messages we want
+//  val isSocketMessageName = "isSocketSubscribeMessage"
+//
+//  pipelinesService.addTransform(isSocketMessageName, isSocketSubscribeMessage).foreach { _ =>
+//    // now that the transform is added, add a trigger so that new socket sources will get consumed by this sink
+//    // which filters on socket subscribe/unsubscribe messages
+//    val trigger = Trigger(
+//      MetadataCriteria(Map(tags.SourceType -> tags.typeValues.Socket)),
+//      MetadataCriteria(Map(tags.Id         -> msgRouterSink.id.get)),
+//      Seq(isSocketMessageName)
+//    )
+//    pipelinesService.triggers.connect(trigger, true, TriggerCallback.Ignore)
+//  }
+//  private[socket] val isSocketSubscribeMessage: Transform.FixedTransform[AddressedMessage, AddressedMessage] = {
+//    val subscribeRequestTopic   = AddressedMessage.topics.forClass[SocketSubscribeRequest]
+//    val unsubscribeRequestTopic = AddressedMessage.topics.forClass[SocketUnsubscribeRequest]
+//    Transform.filter[AddressedMessage] { msg =>
+//      (msg.to == subscribeRequestTopic ||
+//      msg.to == unsubscribeRequestTopic)
+//    }
+//  }
 }

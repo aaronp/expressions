@@ -28,7 +28,7 @@ class SocketRoutesTest extends BaseRoutesTest {
       val commandRouter = new AddressedMessageRouter()
       val subsc         = SubscriptionHandler.register(commandRouter, service)
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service) {
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service, commandRouter) {
         override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
           implicit val s = env.ioScheduler
           socket.dataFromClientOutput.subscribe(socket.toClient)
@@ -67,10 +67,9 @@ class SocketRoutesTest extends BaseRoutesTest {
       val commandRouter = new AddressedMessageRouter()
       val subsc         = SubscriptionHandler.register(commandRouter, service)
 
-      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service) {
-        override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]) = {
+      val underTest = new SocketRoutes(settings, WebSocketTokenCache(1.minute)(env.ioScheduler), subsc, service, commandRouter) {
+        override def handleSocket(user: Claims, socket: ServerSocket, queryMetadata: Map[String, String]): Unit = {
           socketList += (user -> socket)
-          user.name
         }
       }
 
