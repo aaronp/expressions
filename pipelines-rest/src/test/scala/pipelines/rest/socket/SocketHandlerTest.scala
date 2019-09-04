@@ -88,22 +88,7 @@ class SocketHandlerTest extends BaseRoutesTest {
 
         val receivedSocketSubscribeRequests = ListBuffer[SocketSubscribeRequest]()
         router.addHandler[SocketSubscribeRequest] {
-          case (user, msg) =>
-            receivedSocketSubscribeRequests ++= msg.as[SocketSubscribeRequest].toOption
-            println(s"""
-               |
-               |  @@@@@@@  user $user got $msg
-               |    
-               |""".stripMargin)
-        }
-
-        router.addGeneralHandler {
-          case (user, msg) =>
-            println(s"""
-               |
-               |  @@@@@@@ GENERAL  user $user got $msg
-               |
-               |""".stripMargin)
+          case (user, msg) => receivedSocketSubscribeRequests ++= msg.as[SocketSubscribeRequest].toOption
         }
 
         And("Create/register a new socket source with that pipeline")
@@ -123,7 +108,6 @@ class SocketHandlerTest extends BaseRoutesTest {
           }
         }
 
-        And("A new SocketSource and sink are created")
         And("Some push source to which we can subscribe")
         val (true, pushSource) = service.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue
 
@@ -134,7 +118,7 @@ class SocketHandlerTest extends BaseRoutesTest {
         socketSource.socket.dataFromClientInput.onNext(subscribeRequest.asAddressedMessage)
         Then("The command handler for the socket should receive the incoming message")
         eventually {
-          receivedSocketSubscribeRequests should contain only (subscribeRequest)
+          receivedSocketSubscribeRequests should contain(subscribeRequest)
         }
 
         Then("A new pipeline should be created between the push source and our socket sink")
@@ -145,21 +129,20 @@ class SocketHandlerTest extends BaseRoutesTest {
         When("The source pushes some data")
         val readPushedDataFuture  = socketSource.socket.toClientAkkaInput.take(1).toListL.runToFuture
         val readPushed2DataFuture = socketSource.socket.toClientAkkaInput.take(2).toListL.runToFuture
-        val firstSourceMessage    = PushEvent(Claims.after(10.seconds).forUser("alice"), Json.fromString("alice data"))
-        println()
+
+        val firstSourceMessage = PushEvent(Claims.forUser("alice"), Json.fromString("alice data"))
         pushSource.push(firstSourceMessage)
-        println()
 
         Then("Data from that source should be connected w/ the socket sink")
         val List(readBack) = readPushedDataFuture.futureValue
+        readBack.as[PushEvent] shouldBe Success(firstSourceMessage)
 
         When("A second source is added which also meets the subscription criteria")
         val createPipeline2Future = service.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
         val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId(Ids.next())
-        println()
-        val (pushSource2, _)    = service.sources.add(newPush)
-        val List(_)             = createPipeline2Future.futureValue
-        val secondSourceMessage = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
+        val (pushSource2, _)      = service.sources.add(newPush)
+        val List(_)               = createPipeline2Future.futureValue
+        val secondSourceMessage   = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
         pushSource2.push(secondSourceMessage)
 
         Then("data from both sources should come through the fucking socket")

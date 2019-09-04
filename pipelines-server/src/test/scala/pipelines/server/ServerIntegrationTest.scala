@@ -21,7 +21,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
 
   override type ServiceType = Bootstrap
 
-  "PipelinesClient.login" ignore {
+  "PipelinesClient.login" should {
 
     "accept valid logins" in {
       val client: PipelinesClient[Try] = newClient()
@@ -43,7 +43,7 @@ class ServerIntegrationTest extends BaseServiceSpec {
   }
 
   "The Rest server" should {
-    "respond to new websocket client handshakes" ignore {
+    "respond to new websocket client handshakes" in {
       Using(Env()) { implicit clientEnv =>
         val config = DevRestMain.devArgs.asConfig().resolve()
         val session: ClientSocketStateJVM = eventually {

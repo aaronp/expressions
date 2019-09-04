@@ -70,8 +70,8 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
                        |""".stripMargin)
         }
 
-        val socket                                   = ServerSocket(sched)
-        val user                                     = Claims.forUser("bob")
+        val socket                        = ServerSocket(sched)
+        val user                          = Claims.forUser("bob")
         val (socketSource, _, socketSink) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
 
         val received = ListBuffer[AddressedMessage]()

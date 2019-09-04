@@ -2,8 +2,8 @@ package pipelines.server
 
 import akka.http.scaladsl.server.Route
 import pipelines.reactive.PipelineService
-import pipelines.rest.RunningServer.reduce
 import pipelines.rest.RestSettings
+import pipelines.rest.RunningServer.reduce
 import pipelines.rest.openapi.DocumentationRoutes
 import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.ssl.SSLConfig
@@ -24,7 +24,8 @@ object PipelineServerRoutes {
           implicit val ec                   = settings.env.ioScheduler
           val userRoutes                    = UserRoutes(userService, settings.secureSettings)
           val userRoleRoutes                = UserRoleRoutes(userService, settings.secureSettings)
-          val repoRoutes                    = settings.repoRoutes(socketHandler, pipelineService)
+          val commandHandler                = AddressedMessageRouter()
+          val repoRoutes                    = settings.repoRoutes(socketHandler, pipelineService, commandHandler)
           Seq(repoRoutes, userRoutes.routes, userRoleRoutes.routes)
         case _ =>
           // TODO - expose routes for e.g. local NIO handlers, or different databases
