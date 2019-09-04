@@ -50,10 +50,7 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
     * @param commandRouter a router which will handle (route) messages received
     * @return a future of the registered source, ack and sink
     */
-  final def register(user: Claims,
-                     queryMetadata: Map[String, String],
-                     pipelinesService: PipelineService,
-                     commandRouter: AddressedMessageRouter): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
+  final def register(user: Claims, queryMetadata: Map[String, String], pipelinesService: PipelineService, commandRouter: AddressedMessageRouter) = {
     val socket = this
 
     implicit val s = scheduler
@@ -94,7 +91,6 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
     /**
       * Send our first message over the new socket - a [[SocketConnectionAck]] which can be used so subsequently subscribe to sources
       * (via a [[SocketSubscribeRequest]]) using the id/source/sink metadata from the ack.
-      *
       */
     for {
       newSource              <- sourceHandlerFuture
@@ -104,20 +100,11 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
         logger.warn(s"A socket sink was already found when one should've been created for '$name'")
       }
 
-      val handshake = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
-      logger.info(s"Sending ack on new socket: $handshake")
-      socket.sendToClient(handshake)
-
-      val clientAcks: Observable[SocketConnectionAckRequest] = socket.dataFromClientOutput.flatMap { fromClient =>
-        logger.info(s"""Got a client addressed message: $fromClient""".stripMargin)
-        Observable.fromIterable(fromClient.as[SocketConnectionAckRequest].toOption)
+      val handshake: SocketConnectionAck = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
+      val handshakes = commandRouter.addHandlerPipe[SocketConnectionAckRequest, AddressedMessage] {
+        case _ => AddressedMessage(handshake)
       }
-
-      // respond to client ack
-      clientAcks.foreach { clientAck =>
-        logger.info(s"""Sending client a handshake in response to a $clientAck""".stripMargin)
-        socket.sendToClient(handshake)
-      }
+      handshakes.dump("Requested SocketConnectionAckRequest").subscribe(newSink.toClient)
 
       (newSource, handshake, newSink)
     }
@@ -140,7 +127,6 @@ object ServerSocket {
     val (fromClientAkkaInput: Observer[AddressedMessage], fromClient: Observable[AddressedMessage]) = {
       PipeSettings.pipeForSettings(s"ServerSocket '$name' input", settings.input)
     }
-
 
     new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler, settings.leaveSourceOpen, settings.leaveSinkOpen)
   }

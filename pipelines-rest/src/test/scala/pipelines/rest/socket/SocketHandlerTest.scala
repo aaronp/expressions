@@ -82,6 +82,10 @@ class SocketHandlerTest extends BaseRoutesTest {
         // ... and have the SubscriptionHandler register interest in subscribe/unsubscribe messages
         SubscriptionHandler.register(router, service)
 
+        router.addHandler[SocketConnectionAckRequest] {
+          case (user, request) =>
+        }
+
         val receivedSocketSubscribeRequests = ListBuffer[SocketSubscribeRequest]()
         router.addHandler[SocketSubscribeRequest] {
           case (user, msg) =>

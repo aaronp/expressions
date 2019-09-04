@@ -4,6 +4,10 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 import com.typesafe.scalalogging.StrictLogging
+import io.circe.Decoder
+import monix.execution.Scheduler
+import monix.reactive.Observable
+import monix.reactive.subjects.ConcurrentSubject
 import pipelines.reactive._
 import pipelines.users.Claims
 
@@ -49,14 +53,40 @@ final class AddressedMessageRouter() extends StrictLogging {
     val to = AddressedMessage.topics.forClass[T]
     addHandler(to)(handler)
   }
-  def addHandler(to: String)(handler: Handler): UUID = {
+  def addHandlerPipe[T: ClassTag: Decoder, R: ClassTag](handler: (Claims, T) => R)(implicit s: Scheduler): Observable[R] = {
+    val to = AddressedMessage.topics.forClass[T]
+
+    val in, out = ConcurrentSubject.publish[R]
+
+    val handlerId = UUID.randomUUID()
+    addHandler(to, handlerId) {
+      case (user: Claims, msg) =>
+        try {
+          val input  = msg.as[T].get
+          val result = handler(user, input)
+          in.onNext(result)
+        } catch {
+          case NonFatal(e) =>
+            if (removeHandler(to, handlerId)) {
+              logger.error(s"Notifying handler pipe for '$to' of $e")
+              in.onError(e)
+            } else {
+              logger.error(s"Received handler pipe error for '$to', but no handler existed for $handlerId: $e")
+            }
+
+        }
+    }
+    out
+  }
+
+  def addHandler(to: String, key: UUID = UUID.randomUUID())(handler: Handler): UUID = {
     val byId: HandlersById = getOrCreateHandlerLookup(to)
-    val key                = UUID.randomUUID()
     byId.computeIfAbsent(key, _ => handler)
     key
   }
-  def removeHandler(to: String, key: UUID) = {
-    Option(handlersByTo.get(to)).foreach(_.remove(key))
+
+  def removeHandler(to: String, key: UUID): Boolean = {
+    Option(handlersByTo.get(to)).fold(false)(_.remove(key) != null)
   }
 
   private def createHandlers(key: String): HandlersById = {

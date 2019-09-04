@@ -56,11 +56,11 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
         }
       }
     }
-    "handle messages via a router" in {
+    "handle SocketConnectionAckRequest messages once registered" ignore {
       withScheduler { implicit sched: Scheduler =>
         val service: PipelineService = PipelineService()(sched)
         val router                   = AddressedMessageRouter()
-        SubscriptionHandler.register(router, service)
+
         router.addGeneralHandler {
           case (user, msg) =>
             println(s"""
@@ -70,24 +70,27 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
                        |""".stripMargin)
         }
 
-        val socket                                = ServerSocket(sched)
-        val user                                  = Claims.forUser("bob")
-        val (socketSource, handshake, socketSink) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
+        val socket                                   = ServerSocket(sched)
+        val user                                     = Claims.forUser("bob")
+        val (socketSource, _, socketSink) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
 
         val received = ListBuffer[AddressedMessage]()
-
-        val testSink = DataSink.foreach[AddressedMessage]() { msg =>
+        socketSink.socket.toClientAkkaInput.foreach { msg =>
+          println(s"""
+                     |
+                     |  @@@@@@@ HANDSHAKE $user got $msg
+                     |
+                     |""".stripMargin)
           received += msg
         }
-        service.sinks.add(testSink, id = "testSink")._2.futureValue
+        val fut: CancelableFuture[List[AddressedMessage]] = socketSink.socket.toClientAkkaInput.take(1).toListL.runToFuture
+        socketSource.socket.dataFromClientInput.onNext(AddressedMessage(SocketConnectionAckRequest())).futureValue
 
-        val r = SocketSubscribeRequest.sinkToSource(socketSink.id.get, socketSource.id.get)
-        // our command handler should handle 'SocketSubscribeRequest' messages
-        socket.dataFromClientInput.onNext(AddressedMessage(r)).futureValue
+        fut.futureValue.size shouldBe 1
 
-        socket.dataFromClientInput.onNext(AddressedMessage("Some Data")).futureValue
-
-        received.size shouldBe 1
+        eventually {
+          received.size shouldBe 1
+        }
       }
     }
   }
@@ -175,9 +178,9 @@ class ServerSocketTest extends BaseCoreTest with ScalaFutures {
         When("A second source is added which also meets the subscription criteria")
         val createPipeline2Future = service.pipelineCreatedEvents.dump("pipelineCreatedEvents (2)").take(1).toListL.runToFuture
         val newPush               = DataSource.push[PushEvent](Map("foo" -> "bar", "user" -> "two")).ensuringId(Ids.next())
-        val (pushSource2, _)    = service.sources.add(newPush)
-        val List(_)             = createPipeline2Future.futureValue
-        val secondSourceMessage = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
+        val (pushSource2, _)      = service.sources.add(newPush)
+        val List(_)               = createPipeline2Future.futureValue
+        val secondSourceMessage   = PushEvent(Claims.after(10.seconds).forUser("second"), Json.fromString("second"))
         pushSource2.push(secondSourceMessage)
 
         Then("data from both sources should come through the fucking socket")

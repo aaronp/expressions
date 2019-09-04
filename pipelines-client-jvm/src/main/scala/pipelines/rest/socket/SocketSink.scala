@@ -1,7 +1,7 @@
 package pipelines.rest.socket
 
 import monix.execution.{Cancelable, Scheduler}
-import monix.reactive.Observable
+import monix.reactive.{Observable, Observer}
 import pipelines.reactive.{ContentType, DataSink}
 import pipelines.users.Claims
 
@@ -23,7 +23,8 @@ final case class SocketSink(user: Claims, socket: ServerSocket, override val met
 
   override val inputType: ContentType = ContentType.of[AddressedMessage]
 
+  def toClient: Observer[AddressedMessage] = socket.toClient
   override def connect(contentType: ContentType, observable: Observable[AddressedMessage], sourceMetadata: Map[String, String])(implicit scheduler: Scheduler): Cancelable = {
-    observable.subscribe(socket.toClient)
+    observable.subscribe(toClient)
   }
 }
