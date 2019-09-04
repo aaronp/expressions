@@ -63,21 +63,34 @@ object SocketConnectionAck {
   * A message sent over the web socket indicated the sender wants to be sent messages for all sources which match the given
   * criteria.
   *
-  * @param socketSinkId the ID of the socket sink we want to connect to the source(s)
+  * @param sinkId the ID of the socket sink we want to connect to the source(s)
   * @param sourceCriteria the data to be used in the 'MetadataCriteria' to match sources
   * @param addressedMessageId a unique ID which can be used to reference/unsubscribe from the source
   * @param transforms any transformations to apply between the sources identified by the
   */
-final case class SocketSubscribeRequest(socketSinkId: String,
+final case class SocketSubscribeRequest(sinkId: String,
                                         sourceCriteria: Map[String, String],
                                         addressedMessageId: String,
                                         transforms: Seq[String] = Nil,
-                                        retainAfterMatch: Boolean = false) {
-  def sourceAsCriteria: MetadataCriteria = MetadataCriteria(sourceCriteria)
-  def sinkAsCriteria: MetadataCriteria   = MetadataCriteria.forId(socketSinkId)
+                                        retainAfterMatch: Boolean = true) {
+  def sourceAsCriteria: MetadataCriteria   = MetadataCriteria(sourceCriteria)
+  def sinkAsCriteria: MetadataCriteria     = MetadataCriteria.forId(sinkId)
   def asAddressedMessage: AddressedMessage = AddressedMessage(this)
 }
 object SocketSubscribeRequest {
+  def sinkToSource(sinkId: String,
+                   sourceId: String,
+                   addressedMessageId: String = UUID.randomUUID().toString,
+                   transforms: Seq[String] = Nil,
+                   retainAfterMatch: Boolean = true): SocketSubscribeRequest = {
+    new SocketSubscribeRequest(
+      sinkId = sinkId,
+      sourceCriteria = Map(pipelines.reactive.tags.Id -> sourceId),
+      addressedMessageId = addressedMessageId,
+      transforms = transforms,
+      retainAfterMatch = retainAfterMatch
+    )
+  }
   implicit val encoder: ObjectEncoder[SocketSubscribeRequest] = io.circe.generic.semiauto.deriveEncoder[SocketSubscribeRequest]
   implicit val decoder: Decoder[SocketSubscribeRequest]       = io.circe.generic.semiauto.deriveDecoder[SocketSubscribeRequest]
 }

@@ -1,14 +1,11 @@
 package pipelines.rest.socket
 
-import java.util.UUID
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-
 import akka.NotUsed
 import akka.http.scaladsl.model.ws.Message
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Encoder
-import monix.execution.{Ack, Cancelable, Scheduler}
+import monix.execution.{Ack, Scheduler}
 import monix.reactive.{Observable, Observer}
 import pipelines.reactive.{Ids, PipelineService, tags}
 import pipelines.users.Claims
@@ -42,29 +39,24 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
   val akkaSource: Source[Message, NotUsed]      = ObservableAsAkkaSource(s"\t!\tServerSocket.akkaSource", toClientAkkaInput, scheduler, leaveSourceOpen)
   val akkaFlow: Flow[Message, Message, NotUsed] = Flow.fromSinkAndSource(akkaSink, akkaSource)
 
-  private val subscriptions: ConcurrentMap[UUID, Cancelable] = new ConcurrentHashMap[UUID, Cancelable]()
-  def addClientSubscription(cancelable: Cancelable, id: UUID = UUID.randomUUID()): UUID = {
-    subscriptions.putIfAbsent(id, cancelable)
-    id
-  }
-  def getSubscription(id: UUID): Option[Cancelable] = {
-    Option(subscriptions.get(id))
-  }
-  def cancelSubscription(id: UUID): Boolean = {
-    Option(subscriptions.get(id)).fold(false) { c =>
-      c.cancel()
-      true
-    }
-  }
-
   /**
-    * What to do when a new WebSocket is opened? Register a new source and sink!
+    * A new WebSocket has been opened, so register it as a new source and sink
+    *
+    * This 'register' procedure sets up a Once created, a 'SocketConnectionAck' will be sent over the ServerSocket.
+    *
+    * @param user the authenticated user who opened the socket
+    * @param queryMetadata any query params, which should be added to the 'metadata' for the new source/sink
+    * @param pipelinesService the pipelines service against which the sources and sinks will be registered
+    * @param commandRouter a router which will handle (route) messages received
+    * @return a future of the registered source, ack and sink
     */
   final def register(user: Claims,
                      queryMetadata: Map[String, String],
                      pipelinesService: PipelineService,
                      commandRouter: AddressedMessageRouter): Future[(SocketSource, SocketConnectionAck, SocketSink)] = {
     val socket = this
+
+    implicit val s = scheduler
 
     val name    = queryMetadata.getOrElse(tags.Name, s"socket for user ${user.name}")
     val persist = queryMetadata.getOrElse(tags.Persist, false.toString).toBoolean
@@ -81,16 +73,23 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
 
     val sourceFuture: Future[(Boolean, SocketSource)] = pipelinesService.getOrCreateSourceForName(name, true, persist) {
       val sourceMetadata = baseMetadata.updated(tags.SourceType, tags.typeValues.Socket)
-      val socketSource   = SocketSource(user, socket, sourceMetadata)
-      socketSource.socketAndUserData.consumeWith(commandRouter.addressedMessageRoutingSink.consumer)
-      socketSource
+      SocketSource(user, socket, sourceMetadata)
     }
+
+    /**
+      * Consume the data coming through the socket with the command router
+      */
+    val sourceHandlerFuture: Future[SocketSource] = sourceFuture.map {
+      case (true, newSocketSource) => newSocketSource.handleWith(commandRouter)
+      case (false, socket) =>
+        logger.warn(s"A socket source was already found for '$name'")
+        socket
+    }
+
     val sinkFuture: Future[(Boolean, SocketSink)] = pipelinesService.getOrCreateSinkForName(name, true, persist) {
       val sinkMetadata = baseMetadata.updated(tags.SinkType, tags.typeValues.Socket)
       SocketSink(user, socket, sinkMetadata)
     }
-
-    implicit val s = scheduler
 
     /**
       * Send our first message over the new socket - a [[SocketConnectionAck]] which can be used so subsequently subscribe to sources
@@ -98,9 +97,13 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
       *
       */
     for {
-      (_, newSource) <- sourceFuture
-      (_, newSink)   <- sinkFuture
+      newSource              <- sourceHandlerFuture
+      (sinkCreated, newSink) <- sinkFuture
     } yield {
+      if (!sinkCreated) {
+        logger.warn(s"A socket sink was already found when one should've been created for '$name'")
+      }
+
       val handshake = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
       logger.info(s"Sending ack on new socket: $handshake")
       socket.sendToClient(handshake)
@@ -137,6 +140,7 @@ object ServerSocket {
     val (fromClientAkkaInput: Observer[AddressedMessage], fromClient: Observable[AddressedMessage]) = {
       PipeSettings.pipeForSettings(s"ServerSocket '$name' input", settings.input)
     }
+
 
     new ServerSocket(toClient, toClientAkkaInput, fromClientAkkaInput, fromClient, scheduler, settings.leaveSourceOpen, settings.leaveSinkOpen)
   }

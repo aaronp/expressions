@@ -2,13 +2,14 @@ package pipelines.rest.socket
 
 import io.circe.Json
 import monix.execution.{CancelableFuture, Scheduler}
-import monix.reactive.{Consumer, Observable}
+import monix.reactive.Observable
 import pipelines.Pipeline
 import pipelines.reactive.{tags => rTags, _}
 import pipelines.rest.routes.BaseRoutesTest
 import pipelines.rest.socket.handlers.SubscriptionHandler
 import pipelines.users.Claims
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.Success
 
@@ -74,25 +75,64 @@ class SocketHandlerTest extends BaseRoutesTest {
   "SubscribeOnMatchSink.apply" should {
     "Add socket listeners which will apply subscribe/unsubscribe requests from SocketSources in order to connect 'em to available sources/sinks" in {
       withScheduler { implicit sched: Scheduler =>
-        Given("We've used listenToNewSocketSources to ensure 'subscribe' requests from new sockets are handled")
+        Given("We've set up a SubscriptionHandler to handle subscribe/unsubscribe requests which are sent over the socket")
         val service: PipelineService = PipelineService()(sched)
-        val router                   = AddressedMessageRouter()
+        // create a new router...
+        val router = AddressedMessageRouter()
+        // ... and have the SubscriptionHandler register interest in subscribe/unsubscribe messages
         SubscriptionHandler.register(router, service)
 
-        println()
-        When("A new SocketSource and sink are created")
-        val socket                       = ServerSocket(sched)
-        val user                         = Claims.after(1.minute).forUser("bob")
-        val (socketSource, handshake, _) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
-        println()
+        val receivedSocketSubscribeRequests = ListBuffer[SocketSubscribeRequest]()
+        router.addHandler[SocketSubscribeRequest] {
+          case (user, msg) =>
+            receivedSocketSubscribeRequests ++= msg.as[SocketSubscribeRequest].toOption
+            println(s"""
+               |
+               |  @@@@@@@  user $user got $msg
+               |    
+               |""".stripMargin)
+        }
+
+        router.addGeneralHandler {
+          case (user, msg) =>
+            println(s"""
+               |
+               |  @@@@@@@ GENERAL  user $user got $msg
+               |
+               |""".stripMargin)
+        }
+
+        And("Create/register a new socket source with that pipeline")
+        val socket                                = ServerSocket(sched)
+        val user                                  = Claims.forUser("bob")
+        val (socketSource, handshake, socketSink) = socket.register(user, Map("test" -> "handshake"), service, router).futureValue
+
+        When("A 'subscribe' message is sent which connects the 'pipeline source events' source with this 'socket sink' sink")
+        locally {
+          service.pipelines.size shouldBe 0
+
+          val r = SocketSubscribeRequest.sinkToSource(socketSink.id.get, socketSource.id.get, "doesn't matter uuid")
+          socket.dataFromClientInput.onNext(AddressedMessage(r)).futureValue
+
+          eventually {
+            service.pipelines.size shouldBe 1
+          }
+        }
+
+        And("A new SocketSource and sink are created")
         And("Some push source to which we can subscribe")
         val (true, pushSource) = service.pushSourceForName[PushEvent]("pushMePullYou", true, false, Map("foo" -> "bar", "user" -> "one")).futureValue
 
         And("The socket sends a subscription request for a source")
         val createPipelineFuture = service.pipelineCreatedEvents.dump("pipelineCreatedEvents").take(1).toListL.runToFuture
-        socketSource.socket.toClient
-          .onNext(handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true).asAddressedMessage)
-        println()
+        val subscribeRequest: SocketSubscribeRequest =
+          handshake.subscribeTo(Map("foo" -> "bar"), transforms = Seq(Transform.keys.PushEventAsAddressedMessage), retainAfterMatch = true)
+        socketSource.socket.dataFromClientInput.onNext(subscribeRequest.asAddressedMessage)
+        Then("The command handler for the socket should receive the incoming message")
+        eventually {
+          receivedSocketSubscribeRequests should contain only (subscribeRequest)
+        }
+
         Then("A new pipeline should be created between the push source and our socket sink")
         val list           = createPipelineFuture.futureValue
         val List(pipeline) = list

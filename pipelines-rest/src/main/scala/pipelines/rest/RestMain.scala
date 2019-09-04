@@ -59,7 +59,7 @@ object RestMain extends ConfigApp with StrictLogging {
   }
 
   def run(settings: RestSettings, service: PipelineService): Result = {
-    val commandRouter = AddressedMessageRouter()
+    val commandRouter                      = AddressedMessageRouter()
     val sslConf: SSLConfig                 = SSLConfig(settings.rootConfig)
     val loginHandler: LoginHandler[Future] = LoginHandler(settings.rootConfig)
 

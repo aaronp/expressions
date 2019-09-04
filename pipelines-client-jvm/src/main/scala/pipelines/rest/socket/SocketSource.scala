@@ -1,5 +1,6 @@
 package pipelines.rest.socket
 
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import pipelines.reactive.{ContentType, DataSource}
 import pipelines.users.Claims
@@ -22,6 +23,11 @@ final case class SocketSource(user: Claims, socket: ServerSocket, override val m
   override val contentType = SocketSource.contentType
 
   def socketAndUserData: Observable[(Claims, AddressedMessage)] = socketData.map(user -> _)
+
+  def handleWith(commandRouter: AddressedMessageRouter)(implicit scheduler: Scheduler): SocketSource = {
+    socketAndUserData.consumeWith(commandRouter.addressedMessageRoutingSink.consumer).runAsyncAndForget(scheduler)
+    this
+  }
 
   def socketData: Observable[AddressedMessage] = socket.dataFromClientOutput
 

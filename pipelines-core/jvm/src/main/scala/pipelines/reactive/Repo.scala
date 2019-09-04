@@ -53,8 +53,7 @@ class Repo[Event, A <: HasMetadata](private val input: Observer[Event],
       input.onNext(removeEvent(instance, callback))
     }
   }
-  def add[T <: A](value: T, callback: TriggerCallback = TriggerCallback.Ignore): (T, Future[Ack]) = {
-    val id: String  = Ids.next()
+  def add[T <: A](value: T, callback: TriggerCallback = TriggerCallback.Ignore, id: String = Ids.next()): (T, Future[Ack]) = {
     val idSource: T = addId(value, id).asInstanceOf[T]
     Lock.synchronized {
       byId = byId.updated(id, idSource)

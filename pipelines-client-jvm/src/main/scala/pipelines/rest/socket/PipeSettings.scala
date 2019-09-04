@@ -1,13 +1,14 @@
 package pipelines.rest.socket
 
 import monix.execution.Scheduler
-import monix.reactive.{Observable, Observer, Pipe}
 import monix.reactive.subjects.ConcurrentSubject
+import monix.reactive.{Observable, Observer, Pipe}
+import pipelines.reactive.NoCompleteObserver
 
 case class PipeSettings(replay: Int = 0, concurrentSubject: Boolean = false)
 object PipeSettings {
   def pipeForSettings(name: String, settings: PipeSettings)(implicit scheduler: Scheduler): (Observer[AddressedMessage], Observable[AddressedMessage]) = {
-    settings match {
+    val (in, out: Observable[AddressedMessage]) = settings match {
       case PipeSettings(replay, true) if replay < 1 =>
         val sub = ConcurrentSubject.publish[AddressedMessage](scheduler)
         (sub, sub.share(scheduler).dump(s"$name [CP]"))
@@ -21,6 +22,12 @@ object PipeSettings {
         val (in, out) = Pipe.replayLimited[AddressedMessage](replay).multicast(scheduler)
         (in, out.share(scheduler).dump(s"$name [P-${replay}]"))
 
+    }
+
+    if (settings.concurrentSubject) {
+      (NoCompleteObserver(in), out)
+    } else {
+      (in, out)
     }
   }
 }

@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.StrictLogging
 import pipelines.reactive._
 import pipelines.users.Claims
 
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -36,7 +37,13 @@ final class AddressedMessageRouter() extends StrictLogging {
   import scala.collection.JavaConverters._
 
   type HandlersById = ConcurrentHashMap[UUID, Handler]
-  private val handlersByTo = new ConcurrentHashMap[String, HandlersById]()
+  private val handlersByTo    = new ConcurrentHashMap[String, HandlersById]()
+  private val generalHandlers = ListBuffer[Handler]()
+
+  def addGeneralHandler(handler: Handler): AddressedMessageRouter = {
+    generalHandlers += handler
+    this
+  }
 
   def addHandler[T: ClassTag](handler: Handler): UUID = {
     val to = AddressedMessage.topics.forClass[T]
@@ -52,8 +59,11 @@ final class AddressedMessageRouter() extends StrictLogging {
     Option(handlersByTo.get(to)).foreach(_.remove(key))
   }
 
+  private def createHandlers(key: String): HandlersById = {
+    new ConcurrentHashMap[UUID, Handler]()
+  }
+
   private def getOrCreateHandlerLookup(to: String): HandlersById = {
-    def createHandlers(key: String): HandlersById = new ConcurrentHashMap[UUID, Handler]()
     handlersByTo.computeIfAbsent(to, createHandlers)
   }
 
@@ -61,21 +71,24 @@ final class AddressedMessageRouter() extends StrictLogging {
     val text = s"\taddressedMessageRoutingSink.foreach -- $msg"
     logger.info(text)
 
-    val handlers = handlersByTo.get(msg.to)
-    if (handlers != null) {
-      val found: Iterable[Handler] = handlers.asScala.values
+    val found: Iterable[Handler] = handlersByTo.get(msg.to) match {
+      case null                             => generalHandlers
+      case byId if generalHandlers.nonEmpty => byId.asScala.values ++ generalHandlers
+      case byId                             => byId.asScala.values
+    }
+
+    if (found.isEmpty) {
+      logger.warn(s"Ignoring message $msg as no handlers found")
+    } else {
       found.zipWithIndex.foreach {
         case (handler, i) =>
           logger.debug(s"Handling $i: '${msg.to}' w/ $handler")
           try {
             handler(user, msg)
           } catch {
-            case NonFatal(e) =>
-              logger.error(s"Handler $i for '${msg.to}' failed with $e on: ${msg}", e)
+            case NonFatal(e) => logger.error(s"Handler $i for '${msg.to}' failed with $e on: ${msg}", e)
           }
       }
-    } else {
-      logger.warn(s"IGNORING MESSAGE addressed to '${msg.to}'")
     }
   }
 
