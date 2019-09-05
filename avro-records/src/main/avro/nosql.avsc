@@ -1,0 +1,29 @@
+[
+    {
+        "namespace": "nosql",
+        "type": "record",
+        "name": "Json",
+        "fields": [
+             { "name": "value", "type": [ "null", "Json", "string", "int", "double", "boolean", { "type": "map", "values" : "Json", "default": {} } ] }
+        ]
+    },
+    {
+        "namespace": "nosql",
+        "type": "record",
+        "name": "Coordinates",
+        "fields": [
+             { "name": "collection", "type": "string" },
+             { "name": "index", "type": "string" },
+             { "name": "id", "type": "string" }
+        ]
+    },
+    {
+        "namespace": "nosql",
+        "type": "record",
+        "name": "Record",
+        "fields": [
+             { "name": "coords", "type": "Coordinates" },
+             { "name": "document", "type": "Json"}
+        ]
+    }
+]

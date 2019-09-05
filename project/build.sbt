@@ -1,1 +1,1 @@
-libraryDependencies += "com.github.aaronp" %% "eie" % "0.0.5"
+libraryDependencies += "com.github.aaronp" %% "eie" % "1.0.0"

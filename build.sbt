@@ -3,14 +3,13 @@ import eie.io._
 import sbt.KeyRanks
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val repo = "pipelines"
+val repo = "expressions"
 name := repo
 
 val username            = "aaronp"
-val scalaTwelve         = "2.12.9"
-val scalaThirteen       = "2.13.0"
-val defaultScalaVersion = scalaTwelve
-val scalaVersions       = Seq(scalaTwelve) //, scalaThirteen)
+val scalaThirteen       = "2.13.4"
+val defaultScalaVersion = scalaThirteen
+val scalaVersions       = Seq(defaultScalaVersion) //, scalaThirteen)
 
 crossScalaVersions := scalaVersions
 organization := s"com.github.${username}"
@@ -29,55 +28,35 @@ scalafmtOnCompile in ThisBuild := true
 scalafmtVersion in ThisBuild := "1.4.0"
 
 // Define a `Configuration` for each project, as per http://www.scala-sbt.org/sbt-site/api-documentation.html
-val Core            = config("pipelinesCoreJVM")
-val PipelinesRest   = config("pipelinesRest")
-val PipelinesDeploy = config("pipelinesDeploy")
-val PipelinesKafka  = config("pipelinesKafka")
-val PipelinesMongo  = config("pipelinesMongo")
-val PipelinesEval   = config("pipelinesEval")
-val Expressions     = config("expressions")
-val ExpressionsAst  = config("expressionsAst")
-val Geometry        = config("geometryJVM")
+val Expressions    = config("expressions")
+val ExpressionsAst = config("expressionsAst")
 
 git.remoteRepo := s"git@github.com:$username/$repo.git"
 ghpagesNoJekyll := true
 
 val typesafeConfig: ModuleID = "com.typesafe"      % "config"  % "1.3.3"
-val args4cModule: ModuleID   = "com.github.aaronp" %% "args4c" % "0.6.6"
+val args4cModule: ModuleID   = "com.github.aaronp" %% "args4c" % "0.7.0"
 
 val logging = List("com.typesafe.scala-logging" %% "scala-logging" % "3.9.2", "ch.qos.logback" % "logback-classic" % "1.2.3")
 
 def testLogging = logging.map(_ % "test")
 
-val monix = List("monix", "monix-execution", "monix-eval", "monix-reactive", "monix-tail")
-
-val monixDependencies = monix.map { art =>
-  "io.monix" %% art % "3.0.0-RC2"
-}
-
-//.map(artifact => "io.circe" %% artifact % "0.11.0")
-
-val circeVersion      = "0.11.0"
-val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-optics", "circe-generic-extras")
+val circeVersion      = "0.13.0"
+val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-generic-extras", "circe-optics")
 
 val testDependencies = List(
   "junit"                  % "junit"      % "4.12"  % "test",
-  "org.scalatest"          %% "scalatest" % "3.0.7" % "test",
-  "org.scala-lang.modules" %% "scala-xml" % "1.1.1" % "test",
+  "org.scalatest"          %% "scalatest" % "3.2.2" % "test",
+  "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
   "org.pegdown"            % "pegdown"    % "1.6.0" % "test"
 )
 
 val simulacrum: ModuleID = "com.github.mpilquist" %% "simulacrum" % "0.13.0"
 
+val Avro = "org.apache.avro" % "avro" % "1.10.1"
+
 lazy val scaladocSiteProjects = List(
-  (pipelinesCoreJVM, Core),
-  (pipelinesRest, PipelinesRest),
-  (pipelinesDeploy, PipelinesDeploy),
-  (pipelinesKafka, PipelinesKafka),
-  (pipelinesMongo, PipelinesMongo),
-  (pipelinesEval, PipelinesEval),
   (expressions, Expressions),
-  (geometryJVM, Geometry),
   (ExpressionsAst, ExpressionsAst)
 )
 
@@ -155,8 +134,7 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   autoAPIMappings := true,
   exportJars := false,
   crossScalaVersions := scalaVersions,
-  libraryDependencies ++= testDependencies,
-  javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
+  javacOptions ++= Seq("-source", "1.10", "-target", "1.10"),
   scalacOptions ++= scalacSettings,
   buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
   buildInfoPackage := s"${repo}.build",
@@ -184,24 +162,12 @@ lazy val root = (project in file("."))
   .enablePlugins(ParadoxPlugin)
   .enablePlugins(ScalaUnidocPlugin)
   .aggregate(
-    pipelinesCoreJS,
-    pipelinesCoreJVM,
-    pipelinesRest,
-    pipelinesClientXhr,
-    pipelinesClientJvm,
-    pipelinesDeploy,
-    pipelinesEval,
-    pipelinesJson,
-    pipelinesKafka,
-    pipelinesMongo,
     expressions,
-    expressionsAst,
-    geometryJVM,
-    geometryJS
+    expressionsAst
   )
   .settings(scaladocSiteSettings)
   .settings(
-    paradoxProperties += ("project.url" -> "https://aaronp.github.io/pipelines/docs/current/"),
+    paradoxProperties += ("project.url" -> "https://aaronp.github.io/expressions/docs/current/"),
     paradoxTheme := Some(builtinParadoxTheme("generic")),
     siteSourceDirectory := target.value / "paradox" / "site" / "main",
     siteSubdirName in ScalaUnidoc := "api/latest",
@@ -209,265 +175,44 @@ lazy val root = (project in file("."))
     publishLocal := {}
   )
 
-lazy val docker = taskKey[Unit]("Packages the app in a docker file").withRank(KeyRanks.APlusTask)
-
-// see https://docs.docker.com/engine/reference/builder
-docker := {
-  val pipelinesAssembly = (assembly in (pipelinesServer, Compile)).value
-
-  // contains the docker resources
-  val deployResourceDir = (resourceDirectory in (pipelinesDeploy, Compile)).value.toPath
-
-  val restResourceDir = (resourceDirectory in (pipelinesRest, Compile)).value.toPath
-
-  // contains the web resources
-  val webResourceDir = (resourceDirectory in (pipelinesClientXhr, Compile)).value.toPath.resolve("web")
-  val jsArtifacts = {
-    val path            = (fullOptJS in (pipelinesClientXhr, Compile)).value.data.asPath
-    val dependencyFiles = path.getParent.find(_.fileName.endsWith("-jsdeps.min.js")).toList
-    path :: dependencyFiles
-  }
-
-  val dockerTargetDir = {
-    val dir = baseDirectory.value / "target" / "docker"
-    dir.toPath.mkDirs()
-  }
-
-  Build.docker( //
-    deployResourceDir = deployResourceDir, //
-    scriptDir = restResourceDir.resolve("scripts"), //
-    jsArtifacts = jsArtifacts, //
-    webResourceDir = webResourceDir, //
-    restAssembly = pipelinesAssembly.asPath, //
-    targetDir = dockerTargetDir, //
-    logger = sLog.value //
-  )
-}
-
-lazy val pipelinesCoreCrossProject = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
-  .enablePlugins(TestNGPlugin)
-  .settings(
-    name := "pipelines-core",
-    libraryDependencies += args4cModule,
-    libraryDependencies ++= monix.map { art =>
-      "io.monix" %%% art % "3.0.0-RC2"
-    },
-    libraryDependencies ++= List(
-      // http://julienrf.github.io/endpoints/quick-start.html
-      "org.julienrf" %%% "endpoints-algebra"             % "0.9.0",
-      "org.julienrf" %%% "endpoints-json-schema-generic" % "0.9.0",
-      "org.julienrf" %%% "endpoints-json-schema-circe"   % "0.9.0",
-      "com.lihaoyi"  %%% "scalatags"                     % "0.7.0"
-    ),
-    //https://dzone.com/articles/5-useful-circe-feature-you-may-have-overlooked
-    libraryDependencies ++= (List(
-      "io.circe" %%% "circe-core",
-      "io.circe" %%% "circe-generic",
-      "io.circe" %%% "circe-parser",
-      "io.circe" %%% "circe-java8",
-      "io.circe" %%% "circe-literal",
-      "io.circe" %%% "circe-shapes"
-    ).map(_ % "0.11.1"))
-  )
-  .in(file("pipelines-core"))
-  .jvmSettings(commonSettings: _*)
-  .jvmSettings(
-    name := "pipelines-core-jvm",
-    coverageMinimum := 85,
-    coverageFailOnMinimum := true,
-    libraryDependencies ++= monixDependencies ++ testLogging ++ List(
-      typesafeConfig,
-      "com.lihaoyi"         %% "sourcecode"          % "0.1.5", // % "test",
-      "org.scala-js"        %% "scalajs-stubs"       % scalaJSVersion % "provided",
-      "com.github.aaronp"   %% "eie"                 % "0.0.5",
-      "org.reactivestreams" % "reactive-streams"     % "1.0.2",
-      "org.reactivestreams" % "reactive-streams-tck" % "1.0.2" % "test",
-      "org.pegdown"         % "pegdown"              % "1.6.0" % "test"
-    ),
-    // put scaladocs under 'api/latest'
-    siteSubdirName in SiteScaladoc := "api/latest"
-  )
-  .jsSettings(name := "pipelines-core-js")
-  .jsSettings(
-    libraryDependencies ++= List(
-      "com.lihaoyi"   %%% "scalatags" % "0.7.0",
-      "com.lihaoyi"   %%% "scalarx"   % "0.4.0",
-      "org.scalatest" %%% "scalatest" % "3.0.7" % "test"
-    ))
-
-lazy val pipelinesCoreJVM = pipelinesCoreCrossProject.jvm
-lazy val pipelinesCoreJS  = pipelinesCoreCrossProject.js
-
 lazy val example = project
   .in(file("example"))
   .dependsOn(expressionsAst % "compile->compile;test->test")
+  .dependsOn(avroRecords % "compile->compile;test->test")
   .settings(name := "example", coverageFailOnMinimum := false)
   .settings(commonSettings: _*)
-  .settings((stringType in AvroConfig) := "String")
-  .settings(libraryDependencies += "org.apache.avro" % "avro" % "1.8.2")
+  .settings(libraryDependencies ++= testDependencies)
+
+lazy val avroRecords = project
+  .in(file("avro-records"))
+  .settings(name := "avro-records", coverageFailOnMinimum := false)
+  .settings(commonSettings: _*)
+//  .settings((stringType in AvroConfig) := "String")
+  .settings(libraryDependencies += Avro)
   .settings(libraryDependencies ++= testDependencies)
 
 lazy val expressions = project
   .in(file("expressions"))
+  .dependsOn(avroRecords % "test->compile")
   .settings(name := "expressions", coverageMinimum := 30, coverageFailOnMinimum := true)
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= testDependencies)
   .settings(libraryDependencies ++= circeDependencies.map(artifact => "io.circe" %% artifact % circeVersion))
-  .settings(libraryDependencies ++= monix.map { art =>
-    "io.monix" %% art % "3.0.0-RC2" % "test"
-  })
-  .settings(
-    libraryDependencies ++= List(
-      "org.apache.avro" % "avro"           % "1.8.2",
-      "org.scala-lang"  % "scala-reflect"  % "2.12.8", // % "provided",
-      "org.scala-lang"  % "scala-compiler" % "2.12.8" // % "provided"
-    ))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
+  .settings(libraryDependencies += "com.github.aaronp" %% "eie" % "1.0.0")
+  .settings(libraryDependencies ++= List(
+    "org.apache.avro" % "avro"           % "1.10.0",
+    "org.scala-lang"  % "scala-reflect"  % "2.13.4",
+    "org.scala-lang"  % "scala-compiler" % "2.13.4",
+    "io.circe"        %% "circe-literal" % circeVersion % "test"
+  ))
 
 lazy val expressionsAst = project
   .in(file("expressions-ast"))
   .settings(name := "expressions-ast", coverageMinimum := 30, coverageFailOnMinimum := true)
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= testDependencies)
-  .settings(libraryDependencies ++= List(
-    "com.lihaoyi" %% "fastparse" % "2.1.0"
-  ))
+  .settings(libraryDependencies ++= List("com.lihaoyi" %% "fastparse" % "2.3.0"))
   .dependsOn(expressions % "compile->compile;test->test")
-//  .dependsOn(example % "test->test")
-
-lazy val geometry = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
-  .enablePlugins(TestNGPlugin)
-  .settings(name := "geometry")
-  .in(file("geometry"))
-  .jvmSettings(commonSettings: _*)
-  .jvmSettings(
-    name := "geometry-jvm",
-    coverageMinimum := 85,
-    coverageFailOnMinimum := true,
-    libraryDependencies ++= testLogging ++ testDependencies,
-    // put scaladocs under 'api/latest'
-    siteSubdirName in SiteScaladoc := "api/latest"
-  )
-  .jsSettings(name := "geometry-js")
-
-lazy val geometryJVM = geometry.jvm
-lazy val geometryJS  = geometry.js
-
-lazy val pipelinesDeploy = project
-  .in(file("pipelines-deploy"))
-  .settings(commonSettings: _*)
-  .settings(name := s"${repo}-deploy")
-  //.settings(libraryDependencies ++= List("cucumber-scala", "cucumber-junit").map { artifact => "io.cucumber" %% artifact % "4.3.0" % "test" })
-  .dependsOn(pipelinesRest % "compile->compile;test->test")
-
-lazy val pipelinesClientXhr: Project = project
-  .in(file("pipelines-client-xhr"))
-  .dependsOn(pipelinesCoreJS % "compile->compile;test->test")
-  .dependsOn(geometryJS % "compile->compile;test->test")
-  .settings(name := s"${repo}-client-xhr")
-  .enablePlugins(ScalaJSPlugin)
-  .settings(
-    libraryDependencies ++= circeDependencies.map(artifact => "io.circe" %%% artifact % circeVersion),
-    libraryDependencies += "org.julienrf"                      %%% "endpoints-xhr-client-circe" % "0.9.0",
-    libraryDependencies += "com.lihaoyi"                       %%% "scalatags"                  % "0.7.0",
-    libraryDependencies += "org.scala-js"                      %%% "scalajs-dom"                % "0.9.7",
-    libraryDependencies += "com.github.japgolly.scalajs-react" %%% "core"                       % "1.4.2"
-  )
-lazy val pipelinesClientJvm = project
-  .in(file("pipelines-client-jvm"))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-  .settings(name := s"${repo}-client-jvm")
-  .settings(libraryDependencies ++= testDependencies)
-  .settings(
-    libraryDependencies += "org.julienrf" %% "endpoints-akka-http-client" % "0.9.0",
-    libraryDependencies += "org.julienrf" %% "endpoints-scalaj-client"    % "0.9.0",
-    libraryDependencies += "org.julienrf" %% "endpoints-sttp-client"      % "0.9.0"
-  )
-
-lazy val pipelinesMongo = project
-  .in(file("pipelines-mongo"))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-  .settings(name := s"${repo}-mongo")
-  .settings(commonSettings: _*)
-  .settings(parallelExecution in Test := false)
-  .settings(libraryDependencies ++= typesafeConfig :: logging)
-  .settings(libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "2.6.0")
-  .settings(libraryDependencies ++= List(
-    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test",
-    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test" classifier ("tests")
-  ))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-
-lazy val pipelinesKafka = project
-  .in(file("pipelines-kafka"))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-  .settings(name := s"${repo}-kafka")
-  .settings(commonSettings: _*)
-  .settings(parallelExecution in Test := false)
-  .settings(libraryDependencies += args4cModule)
-  .settings(libraryDependencies += "org.apache.kafka" % "kafka-clients" % "2.2.0")
-  .settings(libraryDependencies += "org.apache.kafka" % "kafka-streams" % "2.2.0")
-  .settings(libraryDependencies ++= typesafeConfig :: logging)
-  .settings(libraryDependencies ++= List(
-    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test",
-    "com.github.aaronp" %% "dockerenv" % "0.0.4" % "test" classifier ("tests")
-  ))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-
-lazy val pipelinesJson = project
-  .in(file("pipelines-json"))
-  .settings(name := s"${repo}-json")
-  .settings(commonSettings: _*)
-  .settings(libraryDependencies ++= typesafeConfig :: logging)
-  .settings(libraryDependencies ++= List("com.github.aaronp" %% "donovan" % "0.0.5"))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-
-lazy val pipelinesEval = project
-  .in(file("pipelines-eval"))
-  .settings(name := s"${repo}-eval")
-  .settings(commonSettings: _*)
-  .settings(libraryDependencies ++= monixDependencies)
-  .settings(libraryDependencies ++= typesafeConfig :: logging)
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-  .dependsOn(expressionsAst % "compile->compile;test->test")
-//  .dependsOn(example % "test->compile")
-
-lazy val pipelinesRest = project
-  .in(file("pipelines-rest"))
-  .dependsOn(pipelinesCoreJVM % "compile->compile;test->test")
-  .dependsOn(pipelinesClientJvm % "compile->compile;test->test")
-  .settings(name := s"${repo}-rest")
-  .settings(commonSettings: _*)
-  .settings(mainClass in (Compile, run) := Some(Build.MainRestClass))
-  .settings(mainClass in (Compile, packageBin) := Some(Build.MainRestClass))
-  .settings(parallelExecution in Test := false)
-  .settings(libraryDependencies ++= typesafeConfig :: logging)
-  .settings(libraryDependencies ++= List("com.typesafe.akka" %% "akka-http-testkit" % "10.1.8" % "test", "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.19" % "test"))
-  .settings(libraryDependencies += args4cModule)
-  .settings(mappings in (Compile, packageBin) ~= { _.filter(!_._1.getAbsolutePath.contains("scripts")) }) // don't add script files to the jar
-  .settings(libraryDependencies += "de.heikoseeberger" %% "akka-http-circe" % "1.25.2")
-  .settings(libraryDependencies ++= List(
-    "org.julienrf" %% "endpoints-akka-http-server" % "0.9.0",
-    "org.julienrf" %% "endpoints-algebra-circe"    % "0.9.0",
-    "org.julienrf" %% "endpoints-openapi"          % "0.9.0"
-  ))
-
-lazy val pipelinesServer = project
-  .in(file("pipelines-server"))
-  .settings(name := s"${repo}-server")
-  .dependsOn(pipelinesRest % "compile->compile;test->test")
-  .dependsOn(pipelinesEval % "compile->compile;test->test")
-  .dependsOn(pipelinesKafka % "compile->compile;test->test")
-  .dependsOn(pipelinesMongo % "compile->compile;test->test")
-  .dependsOn(pipelinesJson % "compile->compile;test->test")
-  .settings(commonSettings: _*)
-  .settings(mainClass in (Compile, run) := Some(Build.MainServerClass))
-  .settings(mainClass in (Compile, packageBin) := Some(Build.MainServerClass))
-  .settings(parallelExecution in Test := false)
 
 // see https://leonard.io/blog/2017/01/an-in-depth-guide-to-deploying-to-maven-central/
 pomIncludeRepository := (_ => false)

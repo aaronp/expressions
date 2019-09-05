@@ -1,0 +1,30 @@
+[{
+     "namespace": "http",
+     "type": "record",
+     "name": "HttpRequest",
+     "fields": [
+          { "name": "method", "type": {
+                                         "type": "enum",
+                                         "name": "Method",
+                                         "symbols" : ["OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT"]
+                                     }, "doc" : "See https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html"},
+          {"name": "url", "type": "string"},
+          {"name": "headers",  "type": { "type": "map", "values" : "string", "default": {} }
+          },
+          {"name": "body", "type": "bytes"}
+     ]
+ },
+ {
+     "namespace": "http",
+     "type": "record",
+     "name": "HttpResponse",
+     "fields": [
+          {"name": "statusCode", "type": "int"},
+          {"name": "body", "type": "bytes"},
+          {"name": "headers",  "type": {
+            "type": "map", "values" : "string", "default": {}
+          }}
+     ]
+ }
+
+]
