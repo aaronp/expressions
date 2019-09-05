@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Decoder
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import monix.reactive.{Observable, Observer}
 import monix.reactive.subjects.ConcurrentSubject
 import pipelines.reactive._
 import pipelines.users.Claims
@@ -16,25 +16,11 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 /**
-  * Create a DataSink which, upon receiving 'subscribe' and 'unsubscribe' messages will register triggers which
-  * will connect sources with the socket sink.
-  *
-  * So, the workflow looks like this:
-  *
-  * 1) a client logs in and gets a JWT auth token
-  * 2) the client uses that auth token for normal REST calls, one REST call being to create a temporary, single-use
-  *    'socket' token to use as the protocol when creating a wss socket.
-  * 3) the client then hits the GET request to upgrade to a web socket having specified the temp token as the protocol
-  * 4) the server looks up the JWT auth token from that temp connect token and creates a ServerSocket, and registers a
-  *    new SocketSource and SocketSink
-  * 5) The registry of a new socket source (and sink) invoke the matching triggers (See PipelineService.triggers), of
-  *    which this is one .... we'll then get the AddressedMessages which contain subscribe/unsubscribe requests.
-  *
   *
   */
 final class AddressedMessageRouter() extends StrictLogging {
 
-  private def listenerMetadata: Map[String, String] = Map(tags.SinkType -> tags.typeValues.SubscriptionListener)
+  private val listenerMetadata: Map[String, String] = Map(tags.SinkType -> tags.typeValues.AddressedMessageRouter)
 
   type Handler = (Claims, AddressedMessage) => Unit
 
@@ -53,10 +39,9 @@ final class AddressedMessageRouter() extends StrictLogging {
     val to = AddressedMessage.topics.forClass[T]
     addHandler(to)(handler)
   }
-  def addHandlerPipe[T: ClassTag: Decoder, R: ClassTag](handler: (Claims, T) => R)(implicit s: Scheduler): Observable[R] = {
-    val to = AddressedMessage.topics.forClass[T]
 
-    val in, out = ConcurrentSubject.publish[R]
+  def addHandlerPipe[T: ClassTag: Decoder, R: ClassTag](responseChannel : Observer[R])(handler: (Claims, T) => R)(implicit s: Scheduler): UUID = {
+    val to = AddressedMessage.topics.forClass[T]
 
     val handlerId = UUID.randomUUID()
     addHandler(to, handlerId) {
@@ -64,19 +49,17 @@ final class AddressedMessageRouter() extends StrictLogging {
         try {
           val input  = msg.as[T].get
           val result = handler(user, input)
-          in.onNext(result)
+          responseChannel.onNext(result)
         } catch {
           case NonFatal(e) =>
             if (removeHandler(to, handlerId)) {
               logger.error(s"Notifying handler pipe for '$to' of $e")
-              in.onError(e)
+              responseChannel.onError(e)
             } else {
               logger.error(s"Received handler pipe error for '$to', but no handler existed for $handlerId: $e")
             }
-
         }
     }
-    out
   }
 
   def addHandler(to: String, key: UUID = UUID.randomUUID())(handler: Handler): UUID = {

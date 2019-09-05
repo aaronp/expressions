@@ -41,7 +41,7 @@ object tags {
   object typeValues {
     val Push                 = "push"
     val Socket               = "socket"
-    val SubscriptionListener = "AddressedMessageRouterSink"
+    val AddressedMessageRouter = "AddressedMessageRouterSink"
   }
 
 }

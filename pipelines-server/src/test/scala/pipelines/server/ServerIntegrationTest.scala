@@ -4,12 +4,14 @@ import java.util.UUID
 
 import args4c.implicits._
 import cats.instances.try_._
+import io.circe.{Decoder, ObjectEncoder}
+import monix.reactive.subjects.ConcurrentSubject
 import pipelines._
 import pipelines.client.jvm.{ClientSocketStateJVM, PipelinesClient}
 import pipelines.reactive.repo.{CreatedPushSourceResponse, PushSourceResponse}
-import pipelines.reactive.{ContentType, PushEvent}
+import pipelines.reactive.{ContentType, DataSource, PushEvent}
 import pipelines.rest.RunningServer
-import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, SocketConnectionAck}
+import pipelines.rest.socket.{AddressedMessage, SocketConnectionAck}
 import pipelines.server.PipelinesMain.Bootstrap
 import pipelines.users.{LoginRequest, LoginResponse}
 
@@ -22,7 +24,6 @@ class ServerIntegrationTest extends BaseServiceSpec {
   override type ServiceType = Bootstrap
 
   "PipelinesClient.login" should {
-
     "accept valid logins" in {
       val client: PipelinesClient[Try] = newClient()
 
@@ -124,7 +125,33 @@ class ServerIntegrationTest extends BaseServiceSpec {
   }
 
   override def startServer(): RunningServer[ServiceType] = {
-    val Some(started: RunningServer[Bootstrap]) = PipelinesMainDev.run(PipelinesMainDev.devArgs)
+    val Some(started: RunningServer[Bootstrap])     = PipelinesMainDev.run(PipelinesMainDev.devArgs)
+    implicit val sched                              = started.settings.env.computeScheduler
+
+    // let's have a test which listens to the 'doubles' source and pushes DoubleRequest messages over the socket.
+    // that test can also send a SocketSubscribeRequest to ask that the doubles source sends data to its socket sink
+    val doublesSubject: ConcurrentSubject[Int, Int] = ConcurrentSubject.publish[Int]
+    val doublesSource                               = DataSource(doublesSubject).addMetadata(pipelines.reactive.tags.Label, "doubles")
+    started.serverData.pipelineService.getOrCreateSource(doublesSource)
+    started.serverData.commandRouter.addHandlerPipe[ServerIntegrationTest.DoubleRequest, Int](doublesSubject) {
+      case (_, req) => req.n * 2
+    }
+
     started
   }
+}
+
+object ServerIntegrationTest {
+  case class DoubleRequest(n: Int)
+  object DoubleRequest {
+    implicit val encoder: ObjectEncoder[DoubleRequest] = io.circe.generic.semiauto.deriveEncoder[DoubleRequest]
+    implicit val decoder: Decoder[DoubleRequest]       = io.circe.generic.semiauto.deriveDecoder[DoubleRequest]
+  }
+
+  case class AddRequest(x: Int, y: Int)
+  object AddRequest {
+    implicit val encoder: ObjectEncoder[AddRequest] = io.circe.generic.semiauto.deriveEncoder[AddRequest]
+    implicit val decoder: Decoder[AddRequest]       = io.circe.generic.semiauto.deriveDecoder[AddRequest]
+  }
+
 }

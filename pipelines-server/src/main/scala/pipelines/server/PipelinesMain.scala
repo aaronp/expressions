@@ -39,7 +39,7 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     val rootConfig             = CertSetup.ensureCerts(originalConfig)
     val settings: RestSettings = RestSettings(rootConfig)
 
-    val bootstrap = new Bootstrap(settings, defaultTransforms)
+    val bootstrap = new Bootstrap(settings, defaultTransforms, AddressedMessageRouter())
     RunningServer.start(settings, bootstrap.sslConf, bootstrap, bootstrap.routes())
   }
 
@@ -48,7 +48,7 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     *
     * @param settings
     */
-  class Bootstrap(settings: RestSettings, transforms: Map[String, Transform]) {
+  class Bootstrap(settings: RestSettings, transforms: Map[String, Transform], val commandRouter: AddressedMessageRouter) {
     val rootConfig          = settings.rootConfig
     implicit val ioExecCtxt = settings.env.ioScheduler
     val loginHandlerFuture: Future[LoginHandler[Future]] = LoginHandler.handlerClassName(rootConfig) match {
@@ -72,10 +72,11 @@ object PipelinesMain extends ConfigApp with StrictLogging {
     // init the handlers
 
     val pipelineService: PipelineService      = PipelineService(transforms)(settings.env.ioScheduler)
-    val commandRouter: AddressedMessageRouter = AddressedMessageRouter()
-    val handlers: RestMain.DefaultHandlers    = RestMain.DefaultHandlers(commandRouter, pipelineService)
 
-    def routes(socketHandler: SubscriptionHandler = handlers.subscriptionHandler) = PipelineServerRoutes(sslConf, settings, socketHandler, pipelineService, loginHandler)
+    val subscriptionHandler = SubscriptionHandler.register(commandRouter, pipelineService)
+    PipelineService.registerOwnSourcesAndSink(pipelineService)
+
+    def routes(socketHandler: SubscriptionHandler = subscriptionHandler) = PipelineServerRoutes(sslConf, settings, socketHandler, pipelineService, loginHandler)
   }
 
   def defaultTransforms: Map[String, Transform] =

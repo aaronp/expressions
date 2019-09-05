@@ -7,7 +7,7 @@ import monix.reactive.Observable
 import pipelines.client.jvm.PipelinesClient
 import pipelines.mongo.StartMongo
 import pipelines.reactive._
-import pipelines.rest.socket.{AddressedMessage, ClientSocket, SocketConnectionAck}
+import pipelines.rest.socket.{AddressedMessage, AddressedMessageRouter, ClientSocket, SocketConnectionAck}
 import pipelines.rest.{RestSettings, RunningServer}
 import pipelines.server.PipelinesMain.{Bootstrap, defaultTransforms}
 import pipelines.ssl.CertSetup
@@ -25,7 +25,7 @@ class SocketIntegrationTest extends BaseServiceSpec {
     val rootConfig             = CertSetup.ensureCerts(originalConfig)
     val settings: RestSettings = RestSettings(rootConfig)
 
-    val bootstrap = new Bootstrap(settings, defaultTransforms)
+    val bootstrap = new Bootstrap(settings, defaultTransforms, AddressedMessageRouter())
     val routes    = bootstrap.routes()
     RunningServer.start(settings, bootstrap.sslConf, bootstrap, routes)
   }

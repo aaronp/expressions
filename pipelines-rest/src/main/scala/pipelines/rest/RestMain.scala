@@ -37,16 +37,6 @@ object RestMain extends ConfigApp with StrictLogging {
     }
   }
 
-  /**
-    * Register some common socket handlers
-    *
-    * @param commandRouter
-    * @return
-    */
-  case class DefaultHandlers(commandRouter: AddressedMessageRouter, pipelinesService: PipelineService) {
-    val subscriptionHandler = SubscriptionHandler.register(commandRouter, pipelinesService)
-    PipelineService.registerOwnSourcesAndSink(pipelinesService)
-  }
 
   def run(rootConfig: Config): Result = {
     val config                   = CertSetup.ensureCerts(rootConfig)
@@ -64,9 +54,11 @@ object RestMain extends ConfigApp with StrictLogging {
     val loginHandler: LoginHandler[Future] = LoginHandler(settings.rootConfig)
 
     val login    = settings.loginRoutes(loginHandler)(settings.env.ioScheduler).routes
-    val handlers = DefaultHandlers(commandRouter, service)
 
-    val repoRoutes = settings.repoRoutes(handlers.subscriptionHandler, service, commandRouter)
+    val subscriptionHandler = SubscriptionHandler.register(commandRouter, service)
+    PipelineService.registerOwnSourcesAndSink(service)
+
+    val repoRoutes = settings.repoRoutes(subscriptionHandler, service, commandRouter)
 
     val route: Route = {
       import settings.env._

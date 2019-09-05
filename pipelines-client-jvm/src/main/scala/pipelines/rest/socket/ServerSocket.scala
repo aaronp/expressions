@@ -100,11 +100,12 @@ final class ServerSocket private (val toClient: Observer[AddressedMessage],
         logger.warn(s"A socket sink was already found when one should've been created for '$name'")
       }
 
+      val reply: Observer[AddressedMessage] = newSink.toClient
+
       val handshake: SocketConnectionAck = SocketConnectionAck(commonId, newSource.metadata, newSink.metadata, user)
-      val handshakes = commandRouter.addHandlerPipe[SocketConnectionAckRequest, AddressedMessage] {
+      commandRouter.addHandlerPipe[SocketConnectionAckRequest, AddressedMessage](newSink.toClient) {
         case _ => AddressedMessage(handshake)
       }
-      handshakes.dump("Requested SocketConnectionAckRequest").subscribe(newSink.toClient)
 
       (newSource, handshake, newSink)
     }
