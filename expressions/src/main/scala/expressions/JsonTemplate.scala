@@ -1,7 +1,6 @@
 package expressions
 
 import expressions.AvroExpressions.compiler
-import expressions.StringTemplate.StringExpression
 import expressions.template.Context
 
 import scala.reflect.ClassTag
@@ -16,6 +15,8 @@ object JsonTemplate {
   type Expression[A, B] = Context[A] => B
 
   def const[A, B](value: B): Expression[A, B] = _ => value
+
+  def newCache[B]: Cache[Expression[RichDynamicJson, B]] = new Cache[Expression[RichDynamicJson, B]](apply)
 
   /**
     * We bias these expressions for [[RichDynamicJson]] inputs
@@ -63,7 +64,7 @@ object JsonTemplate {
 
   private[expressions] val Moustache = """(.*?)\{\{(.*?)}}(.*)""".r
 
-  private[expressions] def compileAsExpression[A: ClassTag, B](script: String): Try[Expression[A, B]] = {
+  private[expressions] def compileAsExpression[A, B](script: String): Try[Expression[A, B]] = {
     try {
       val tree   = compiler.parse(script)
       val result = compiler.eval(tree)

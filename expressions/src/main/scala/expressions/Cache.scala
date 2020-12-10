@@ -1,11 +1,11 @@
 package expressions
 
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
   * A really dumb, lazy cache of expressions
   */
-class Cache[V](create: String => Try[V], default: V) {
+class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new IllegalArgumentException("no default provided for empty script"))) {
   private object Lock
 
   private var predicateByRule = Map[String, V]()
@@ -26,7 +26,7 @@ class Cache[V](create: String => Try[V], default: V) {
         }
       }
     } else {
-      Success(default)
+      default
     }
   }
 }

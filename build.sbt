@@ -1,7 +1,4 @@
 import java.nio.file.Path
-import eie.io._
-import sbt.KeyRanks
-import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val repo = "expressions"
 name := repo
@@ -33,13 +30,6 @@ val ExpressionsAst = config("expressionsAst")
 
 git.remoteRepo := s"git@github.com:$username/$repo.git"
 ghpagesNoJekyll := true
-
-val typesafeConfig: ModuleID = "com.typesafe"      % "config"  % "1.3.3"
-val args4cModule: ModuleID   = "com.github.aaronp" %% "args4c" % "0.7.0"
-
-val logging = List("com.typesafe.scala-logging" %% "scala-logging" % "3.9.2", "ch.qos.logback" % "logback-classic" % "1.2.3")
-
-def testLogging = logging.map(_ % "test")
 
 val circeVersion      = "0.13.0"
 val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-generic-extras", "circe-optics")
@@ -163,7 +153,10 @@ lazy val root = (project in file("."))
   .enablePlugins(ScalaUnidocPlugin)
   .aggregate(
     expressions,
-    expressionsAst
+    expressionsAst,
+    clientJS,
+    clientJVM,
+    rest
   )
   .settings(scaladocSiteSettings)
   .settings(
@@ -174,6 +167,50 @@ lazy val root = (project in file("."))
     publish := {},
     publishLocal := {}
   )
+
+lazy val client = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .withoutSuffixFor(JVMPlatform)
+  .in(file("client"))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "client",
+    //https://dzone.com/articles/5-useful-circe-feature-you-may-have-overlooked
+    libraryDependencies ++= List(
+      "io.circe" %%% "circe-generic"        % circeVersion,
+      "io.circe" %%% "circe-generic-extras" % circeVersion,
+      "io.circe" %%% "circe-parser"         % circeVersion,
+      "io.circe" %%% "circe-literal"        % circeVersion % Test
+    )
+  )
+  .jvmSettings(commonSettings: _*)
+  .jvmSettings(
+    name := "client-jvm",
+    siteSubdirName in SiteScaladoc := "api/latest"
+  )
+  .jsSettings(scalaJSUseMainModuleInitializer in Global := true)
+  .jsSettings(name := "client-js")
+  .jsSettings(test := {}) // ignore JS tests - they're all done on the JVM
+  .jsSettings(libraryDependencies ++= List(
+    "org.scala-js"  %%% "scalajs-java-time" % "1.0.0",
+    "com.lihaoyi"   %%% "scalatags"         % "0.9.2",
+    "org.scala-js"  %%% "scalajs-dom"       % "1.1.0",
+    "org.scalatest" %%% "scalatest"         % "3.1.2" % "test"
+  ))
+
+lazy val clientJVM = client.jvm
+lazy val clientJS  = client.js
+
+lazy val rest = (project in file("rest"))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "rest",
+    libraryDependencies ++= Build.rest,
+    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+  )
+  .settings(commonSettings: _*)
+  .dependsOn(expressions % "compile->compile;test->test")
+  .dependsOn(clientJVM % "compile->compile;test->test")
 
 lazy val example = project
   .in(file("example"))

@@ -12,7 +12,7 @@ object JsonExpressions {
 
   type Predicate = Json => Boolean
 
-  def newCache: Cache[Predicate] = new Cache[Predicate]((asPredicate _), _ => true)
+  def newCache: Cache[Predicate] = new Cache[Predicate]((asPredicate _), Success(_ => true))
 
   /**
     * The inputExpression is expected to refer to the json value as 'it' (a bit like Kotlin, but less shit).

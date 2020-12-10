@@ -66,6 +66,8 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
                      |        }
                      |}""".stripMargin
 
+      println(script)
+      println(script)
       val Success(mappingCode) = JsonTemplate[Seq[HttpRequest]](script)
 
       val input = Message(new RichDynamicJson(jason)).asContext()
@@ -102,10 +104,7 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
         mappingCode(input)
       }
 
-      println()
-      println("mapper took...")
       println(stats)
-      println()
     }
     "be able to reach into nested" in {
       import expressions.implicits._

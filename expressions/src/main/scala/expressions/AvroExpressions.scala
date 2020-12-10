@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 object AvroExpressions {
   type Predicate = Record => Boolean
 
-  def newCache: Cache[Predicate] = new Cache[Predicate]((asPredicate _), _ => true)
+  def newCache: Cache[Predicate] = new Cache[Predicate]((asPredicate _), Success(_ => true))
 
   def Predicate(expr: String): Predicate = asPredicate(expr).get
 

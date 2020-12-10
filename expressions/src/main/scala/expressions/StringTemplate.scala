@@ -1,9 +1,9 @@
 package expressions
 
 import expressions.JsonTemplate._
-import expressions.template.Context
 
 import scala.reflect.ClassTag
+import scala.util.Try
 
 /**
   * Functions for scripting string interpolation.
@@ -18,6 +18,8 @@ import scala.reflect.ClassTag
 object StringTemplate {
 
   type StringExpression[A] = JsonTemplate.Expression[A, String]
+
+  def newCache[A: ClassTag]: Cache[StringExpression[A]] = new Cache[StringExpression[A]](script => Try(apply[A](script)))
 
   /**
     * Consider the initial remainingExpressionStr:
@@ -35,8 +37,7 @@ object StringTemplate {
     *  string1 + string2 + string3 + string4 + string5
     * }}}
     *
-    * @param remainingExpressionStr
-    * @param expressions
+    * @param expression
     * @tparam A
     * @return a mapping of variable names to their RHS expressions (constants or functions)
     */
