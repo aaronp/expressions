@@ -1,0 +1,30 @@
+version: '2'
+
+services:
+  kafka:
+    image: landoop/fast-data-dev:2.2.0
+    environment:
+      ADV_HOST: kafka
+      KAFKA_LISTENERS: PLAINTEXT://:9092,DOCKER://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,DOCKER://kafka:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      ENABLE_SSL: 0
+      FORWARDLOGS: 0
+      SAMPLEDATA: 0
+      RUNNING_SAMPLEDATA: 0
+      RUNTESTS: 0
+      REST_PORT: 0
+      CONNECT_PORT: 0
+    ports:
+      - 2181:2181
+      - 3030:3030
+      - 8081:8081
+      - 9092:9092
+      - 19092:19092
+    networks:
+      - test
+
+networks:
+  test:
+    name: test

@@ -121,6 +121,7 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   organization := s"com.github.${username}",
   scalaVersion := defaultScalaVersion,
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+  resolvers += "confluent" at "https://packages.confluent.io/maven/",
   autoAPIMappings := true,
   exportJars := false,
   crossScalaVersions := scalaVersions,
@@ -156,7 +157,9 @@ lazy val root = (project in file("."))
     expressionsAst,
     clientJS,
     clientJVM,
-    rest
+    rest,
+    franz,
+    httpClient
   )
   .settings(scaladocSiteSettings)
   .settings(
@@ -167,6 +170,20 @@ lazy val root = (project in file("."))
     publish := {},
     publishLocal := {}
   )
+
+lazy val franz = project
+  .in(file("franz"))
+  .settings(name := "franz")
+  .settings(commonSettings: _*)
+  .settings(mainClass := Some("expressions.franz.Main"))
+  .settings(libraryDependencies ++= Build.franz)
+
+lazy val httpClient = project
+  .in(file("http-client"))
+  .settings(name := "httpClient")
+  .settings(commonSettings: _*)
+  .settings(mainClass := Some("expressions.http.Main"))
+  .settings(libraryDependencies ++= Build.httpClient)
 
 lazy val client = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
