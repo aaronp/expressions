@@ -1,5 +1,6 @@
 package expressions.rest.server
 
+import io.circe.Decoder
 import org.http4s._
 import org.scalatest.GivenWhenThen
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
@@ -50,7 +51,8 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
     def bodyTask: Task[String] = EntityDecoder.decodeText(response)
 
-    def bodyAsString: String = bodyTask.value()
+    def bodyAsString: String  = bodyTask.value()
+    def bodyAs[A: Decoder]: A = io.circe.parser.parse(bodyAsString).toTry.flatMap(_.as[A].toTry).get
   }
 
   implicit class RichRoute(route: HttpRoutes[Task]) {

@@ -1,7 +1,7 @@
 package expressions
 
-import io.circe.{Decoder, Json}
 import io.circe.optics.JsonPath
+import io.circe.{Decoder, Json}
 import monocle.{Optional, Traversal}
 
 /**
@@ -19,7 +19,7 @@ class RichJsonPath(val path: JsonPath) extends AnyVal {
 
   import implicits._
 
-  def get[A: Decoder](implicit json: Json)        = valueOpt.getOrElse(sys.error(s"Couldn't resolve for $json")).as[A].toTry.get
+  def get[A: Decoder](implicit json: Json)        = valueOpt.getOrElse(sys.error(s"Json path didn't resolve for $json")).as[A].toTry.get
   def valueOpt(implicit json: Json): Option[Json] = path.json.getOption(json)
 
   def map[A](thunk: RichDynamicJson => Optional[Json, A])(implicit jsonValue: Json): Seq[A] = {

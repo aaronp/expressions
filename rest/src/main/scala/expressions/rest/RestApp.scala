@@ -35,10 +35,10 @@ case class RestApp(settings: Settings) {
   }
 
   @implicitNotFound("You need ConcurrentEffect, which (if you're calling w/ a ZIO runtime in scope), can be fixed by: import zio.interop.catz._")
-  def serve(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
+  def serve(rootConfig: Config)(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] =
     for {
-      env        <- ZIO.environment[ZEnv]
-      httpRoutes = mkRouter(RestRoutes(env))
+      rawRoutes  <- RestRoutes(rootConfig).orDie
+      httpRoutes = mkRouter(rawRoutes)
       exitCode <- BlazeServerBuilder[Task](ExecutionContext.global)
         .bindHttp(port, host)
         .withHttpApp(httpRoutes)
@@ -47,7 +47,6 @@ case class RestApp(settings: Settings) {
         .drain
         .fold(_ => ExitCode.failure, _ => ExitCode.success)
     } yield exitCode
-  }
 }
 
 object RestApp {

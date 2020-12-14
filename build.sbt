@@ -121,6 +121,7 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   organization := s"com.github.${username}",
   scalaVersion := defaultScalaVersion,
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+  resolvers += "confluent" at "https://packages.confluent.io/maven/",
   autoAPIMappings := true,
   exportJars := false,
   crossScalaVersions := scalaVersions,
@@ -156,7 +157,8 @@ lazy val root = (project in file("."))
     expressionsAst,
     clientJS,
     clientJVM,
-    rest
+    rest,
+    franz
   )
   .settings(scaladocSiteSettings)
   .settings(
@@ -167,6 +169,13 @@ lazy val root = (project in file("."))
     publish := {},
     publishLocal := {}
   )
+
+lazy val franz = project
+  .in(file("franz"))
+  .dependsOn(avroRecords % "test->compile")
+  .settings(name := "franz")
+  .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= Build.franz)
 
 lazy val client = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
@@ -186,7 +195,8 @@ lazy val client = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(commonSettings: _*)
   .jvmSettings(
     name := "client-jvm",
-    siteSubdirName in SiteScaladoc := "api/latest"
+    siteSubdirName in SiteScaladoc := "api/latest",
+    libraryDependencies ++= Build.jvmClient
   )
   .jsSettings(scalaJSUseMainModuleInitializer in Global := true)
   .jsSettings(name := "client-js")
@@ -206,11 +216,14 @@ lazy val rest = (project in file("rest"))
   .settings(
     name := "rest",
     libraryDependencies ++= Build.rest,
+    mainClass := Some("expressions.rest.Main"),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(commonSettings: _*)
   .dependsOn(expressions % "compile->compile;test->test")
   .dependsOn(clientJVM % "compile->compile;test->test")
+  .dependsOn(franz % "compile->compile;test->test")
+  .dependsOn(avroRecords % "test->compile")
 
 lazy val example = project
   .in(file("example"))

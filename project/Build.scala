@@ -36,6 +36,26 @@ object Build {
 
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.2" % "test"
 
+  def franz: List[ModuleID] = {
+    zio ++ logging ++ circe ++
+      Seq(
+        "com.github.aaronp" %% "eie"           % "1.0.0",
+        "com.github.aaronp" %% "args4c"        % "0.7.0",
+        "com.github.aaronp" %% "dockerenv"     % "0.5.4",
+        "dev.zio"           %% "zio-streams"   % "1.0.3",
+        "dev.zio"           %% "zio-kafka"     % "0.13.0",
+        "io.confluent" % "kafka-streams-avro-serde" % "6.0.0",
+        typesafeConfig,
+        scalaTest
+      )
+  }
+
+  def jvmClient = circe ++ Seq(
+    "com.softwaremill.sttp.client" %% "core"                   % "3.0.0-RC3",
+    "com.softwaremill.sttp.client" %% "httpclient-backend-zio" % "2.2.9",
+    scalaTest
+  )
+
   def rest: List[ModuleID] = {
     zio ++
       logging ++

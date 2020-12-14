@@ -2,7 +2,7 @@ package expressions.client
 
 import io.circe.Json
 
-case class TransformRequest(script : String, input : Json)
+case class TransformRequest(script : String, input : Json, key: String = "", timestamp: Long = 0, headers: Map[String, String] = Map.empty)
 
 object TransformRequest {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[TransformRequest]

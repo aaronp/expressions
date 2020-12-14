@@ -8,7 +8,7 @@ class StringTemplateTest extends AnyWordSpec with Matchers {
 
   "StringTemplate.stringAsExpression" should {
     "resolve the empty string" in {
-      val expression         = StringTemplate.apply[Int]("")
+      val expression         = StringTemplate[Int]("")
       val ctxt: Context[Int] = Message(2).withKey("foo").asContext()
       expression(ctxt) shouldBe ""
     }

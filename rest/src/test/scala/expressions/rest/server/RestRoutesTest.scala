@@ -10,10 +10,10 @@ import scala.util.Success
 
 class RestRoutesTest extends BaseRouteTest {
 
-  "POST /rest/check" should {
+  "POST /rest/mapping/check" should {
     "works" in {
 
-      val underTest: HttpRoutes[Task] = RestRoutes(rt.environment)
+      val underTest: HttpRoutes[Task] = RestRoutes().value()
 
       val req = {
         val jason  = json"""{
@@ -34,18 +34,18 @@ class RestRoutesTest extends BaseRouteTest {
                        |
                        |record.value.hello.world.flatMapSeq { json =>
                        |json.nested.mapAs { i =>
-                       |  val m = json.name.get[String] match {
-                       |    case "first" => "GET"
-                       |    case other   => s"other${other}"
-                       |  }
                        |  val url = s"${json.name.string.get}-$i"
-                       |  HttpRequest(method = m, url = url, Map.empty)
+                       |  val m = json.name.get[String] match {
+                       |    case "first" => HttpRequest.get(url, Map.empty)
+                       |    case other   => HttpRequest.post(url, Map.empty)
+                       |  }
+                       |
                        |}
                        |}""".stripMargin
         TransformRequest(script, jason)
       }
 
-      val Some(response)   = underTest(post("/check", req.asJson.noSpaces)).value.value()
+      val Some(response)   = underTest(post("/mapping/check", req.asJson.noSpaces)).value.value()
       val Success(content) = io.circe.parser.decode[TransformResponse](response.bodyAsString).toTry
       content.messages shouldBe None
       withClue(content.result.spaces4) {

@@ -19,7 +19,7 @@ object StringTemplate {
 
   type StringExpression[A] = JsonTemplate.Expression[A, String]
 
-  def newCache[A: ClassTag]: Cache[StringExpression[A]] = new Cache[StringExpression[A]](script => Try(apply[A](script)))
+  def newCache[A: ClassTag](scriptPrefix: String = ""): Cache[StringExpression[A]] = new Cache[StringExpression[A]](script => Try(apply[A](script, scriptPrefix)))
 
   /**
     * Consider the initial remainingExpressionStr:
@@ -41,13 +41,13 @@ object StringTemplate {
     * @tparam A
     * @return a mapping of variable names to their RHS expressions (constants or functions)
     */
-  def apply[A: ClassTag](expression: String): StringExpression[A] = {
+  def apply[A: ClassTag](expression: String, scriptPrefix: String = ""): StringExpression[A] = {
     val parts = resolveExpressionVariables(expression, Nil)
     parts.size match {
       case 0 => const[A]("")
       case 1 => const[A](expression)
       case _ =>
-        val script = stringAsExpression(parts)
+        val script = stringAsExpression(scriptPrefix, parts)
         JsonTemplate.compileAsExpression[A, String](script).get
     }
   }
@@ -65,15 +65,16 @@ object StringTemplate {
     }
   }
 
-  private def stringAsExpression[A: ClassTag](parts: Seq[String]) = {
+  private def stringAsExpression[A: ClassTag](scriptPrefix: String, parts: Seq[String]) = {
     val scriptHeader =
       s"""import expressions._
+         |import expressions.implicits._
          |import AvroExpressions._
          |import expressions.template.{Context, Message}
          |
          |(context : Context[${className[A]}]) => {
          |  import context._
-         |
+         |  ${scriptPrefix}
        """.stripMargin
 
     def asVar(i: Int) = s"_stringPart$i"

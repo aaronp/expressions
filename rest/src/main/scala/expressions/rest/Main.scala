@@ -21,7 +21,7 @@ object Main extends CatsApp {
       _          <- putStrLn(s"PID:${ProcessHandle.current().pid()}")
       _          <- putStrLn("")
       restServer = RestApp(config)
-      exitCode   <- restServer.serve
+      exitCode   <- restServer.serve(config)
     } yield exitCode
   }
 }
