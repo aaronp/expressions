@@ -19,6 +19,7 @@ class RichJsonPath(val path: JsonPath) extends AnyVal {
 
   import implicits._
 
+  def asJsonString(implicit json: Json)           = get[Json].noSpaces
   def get[A: Decoder](implicit json: Json)        = valueOpt.getOrElse(sys.error(s"Json path didn't resolve for $json")).as[A].toTry.get
   def valueOpt(implicit json: Json): Option[Json] = path.json.getOption(json)
 

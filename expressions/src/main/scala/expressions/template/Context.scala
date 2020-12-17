@@ -13,7 +13,7 @@ class FileSystem(val dir: Path) extends AnyVal with Dynamic {
 case class Env(env: Map[String, String] = sys.env) extends Dynamic {
   def selectDynamic(fieldName: String): String = env.get(fieldName).getOrElse("")
 }
-case class Message[A](value: A, key: String = "", timestamp: Long = 0, headers: Map[String, String] = Map.empty) {
+case class Message[A](value: A, key: String = "", timestamp: Long = 0, headers: Map[String, String] = Map.empty, topic: String = "") {
   def withKey(k: String)                            = copy(key = k)
   def asContext(dir: Path = ".".asPath): Context[A] = Context(this, dir)
 }

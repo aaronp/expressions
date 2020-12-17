@@ -1,17 +1,26 @@
 package expressions
 
+import com.typesafe.scalalogging.StrictLogging
+
 import scala.util.{Failure, Success, Try}
 
 /**
   * A really dumb, lazy cache of expressions
   */
-class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new IllegalArgumentException("no default provided for empty script"))) {
+class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new IllegalArgumentException("no default provided for empty script"))) extends StrictLogging {
   private object Lock
 
   private var thunkByCode = Map[String, V]()
 
   private def createUnsafe(expression: String): Try[V] = {
-    create(expression).map { value =>
+    val result = create(expression)
+
+    logger.debug(s"""Compiling:
+        |${expression}
+        |
+        |Yields: ${result.isSuccess}
+        |""".stripMargin)
+    result.map { value =>
       thunkByCode = thunkByCode.updated(expression, value)
       value
     }

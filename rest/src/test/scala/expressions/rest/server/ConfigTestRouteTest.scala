@@ -1,16 +1,19 @@
 package expressions.rest.server
 
 import com.typesafe.config.ConfigFactory
+import expressions.{Cache, RichDynamicJson, StringTemplate}
+import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
 
+  val expressionForString: Cache[StringExpression[RichDynamicJson]] = StringTemplate.newCache[RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
   "POST /mapping/check" should {
     "return a configuration" in {
 
-      val underTest = ConfigTestRoute(_.asContext().withEnv("envi" -> "ronment"))
+      val underTest = ConfigTestRoute(expressionForString, _.asContext().withEnv("envi" -> "ronment"))
       val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
       val script =
         """test {
@@ -34,7 +37,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
 
     "return an error when misconfigured" in {
 
-      val underTest = ConfigTestRoute(_.asContext().withEnv("envi" -> "ronment"))
+      val underTest = ConfigTestRoute(expressionForString, _.asContext().withEnv("envi" -> "ronment"))
       val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
       val script =
         """broken : "{{ record.does not compile }}"

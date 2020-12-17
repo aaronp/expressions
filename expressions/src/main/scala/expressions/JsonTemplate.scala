@@ -14,9 +14,16 @@ object JsonTemplate {
 
   type Expression[A, B] = Context[A] => B
 
+  case class CompiledExpression[A: ClassTag, B](code: String, thunk: Expression[A, B]) extends Expression[A, B] {
+    override def apply(input: Context[A]): B = thunk(input)
+
+    def aType                       = implicitly[ClassTag[A]].runtimeClass.getSimpleName
+    override def toString(): String = s"COMPILED Context[$aType] => B:\n${code}\n"
+  }
+
   def const[A, B](value: B): Expression[A, B] = _ => value
 
-  def newCache[B]: Cache[Expression[RichDynamicJson, B]] = new Cache[Expression[RichDynamicJson, B]](apply)
+  def newCache[B](scriptPrefix: String = ""): Cache[Expression[RichDynamicJson, B]] = new Cache[Expression[RichDynamicJson, B]](script => apply[B](script, scriptPrefix))
 
   /**
     * We bias these expressions for [[RichDynamicJson]] inputs
@@ -24,11 +31,12 @@ object JsonTemplate {
     * @tparam B
     * @return
     */
-  def apply[B](expression: String): Try[Expression[RichDynamicJson, B]] = {
+  def apply[B](expression: String, scriptPrefix: String = ""): Try[Expression[RichDynamicJson, B]] = {
     val scriptWithImplicitJson =
       s"""
          |implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
          |
+         |$scriptPrefix
          |$expression
          |
          |""".stripMargin
@@ -64,12 +72,12 @@ object JsonTemplate {
 
   private[expressions] val Moustache = """(.*?)\{\{(.*?)}}(.*)""".r
 
-  private[expressions] def compileAsExpression[A, B](script: String): Try[Expression[A, B]] = {
+  private[expressions] def compileAsExpression[A: ClassTag, B](script: String): Try[Expression[A, B]] = {
     try {
       val tree   = compiler.parse(script)
       val result = compiler.eval(tree)
       result match {
-        case expr: Expression[A, B] => Success(expr)
+        case expr: Expression[A, B] => Success(CompiledExpression(script, expr))
         case other                  => Failure(new Exception(s"'$script' isn't an Expression[$className] : $other"))
       }
     } catch {

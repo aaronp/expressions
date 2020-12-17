@@ -18,7 +18,7 @@ object ForEachStream extends StrictLogging {
   /** @param config
     * @return a managed resource which will return the running stream
     */
-  def apply(config: FranzConfig = FranzConfig())(saveToDatabase: KafkaRecord => RIO[ZEnv, Unit]) = {
+  def apply(config: FranzConfig = FranzConfig())(saveToDatabase: KafkaRecord => RIO[ZEnv, Unit]): ZStream[zio.ZEnv, Throwable, Any] = {
     import config._
     forEach(subscription, consumerSettings, deserializer, blockOnCommits, concurrency)(saveToDatabase)
   }

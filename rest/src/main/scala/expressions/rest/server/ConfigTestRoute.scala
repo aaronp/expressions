@@ -38,8 +38,7 @@ object ConfigTestRoute extends StrictLogging {
     * @param asContext
     * @return
     */
-  def apply(asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
-    val expressionForString: Cache[StringExpression[RichDynamicJson]] = StringTemplate.newCache[RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
+  def apply(expressionForString: Cache[StringExpression[RichDynamicJson]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
 
     makeRoute { request =>
       mapEntries(request, expressionForString, asContext).either.map {

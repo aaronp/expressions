@@ -1,38 +1,52 @@
 package expressions.rest.server
 
-import cats.implicits._
-import com.typesafe.config.ConfigFactory
-import expressions.franz.FranzConfig
+import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
+import io.circe.syntax._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.Task
 import zio.interop.catz._
+import cats.implicits._
+import io.circe.Json
+import io.circe.parser.parse
 
+/**
+  * Functions which can help the UI determine what a typesafe config contains
+  */
 object ConfigRoute {
 
   import RestRoutes.taskDsl._
 
-  def apply(service: Disk.Service): HttpRoutes[Task] = postRoute(service) <+> getRoute(service)
+  def apply(rootConfig: Config = ConfigFactory.load()): HttpRoutes[Task] = {
+    listMappingsRoute(rootConfig) <+> defaultConfig(rootConfig)
+  }
 
-  def postRoute(service: Disk.Service): HttpRoutes[Task] = {
+  /**
+    *
+    * @return json representing the mapping paths by their topics/regex
+    */
+  def listMappingsRoute(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ POST -> Root / "config" / "topic" =>
+      case req @ POST -> Root / "config" / "mappings" / "list" =>
         for {
           body   <- req.bodyText.compile.string
-          config <- Task(ConfigFactory.parseString(body).withFallback(ConfigFactory.load()).resolve())
+          config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
         } yield {
-          val fc = FranzConfig(config)
-          Response[Task](Status.Ok).withEntity(fc.topic)
+          val mappings: Map[String, List[String]] = MappingConfig(config).mappings.toMap
+          val json                                = mappings.asJson
+          Response[Task](Status.Ok).withEntity(json)
         }
     }
   }
-
-  def getRoute(service: Disk.Service): HttpRoutes[Task] = {
+  def defaultConfig(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case GET -> "store" /: theRest =>
-        service.read(theRest.toList).map {
-          case Some(value) => Response[Task](Status.Ok).withEntity(value)
-          case None        => Response[Task](Status.Gone)
+      case GET -> Root / "config" =>
+        Task {
+          val franzConf   = rootConfig.withOnlyPath("app.franz")
+          val mappingConf = rootConfig.withOnlyPath("app.mapping")
+          val jsonStr     = mappingConf.withFallback(franzConf).root.render(ConfigRenderOptions.concise())
+          val jason: Json = parse(jsonStr).toTry.get
+          Response[Task](Status.Ok).withEntity(jason)
         }
     }
   }

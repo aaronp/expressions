@@ -2,11 +2,13 @@ package expressions.franz
 
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Json
-import io.circe.syntax._
 import org.apache.avro.generic.{GenericData, GenericRecord}
+import org.apache.kafka.common.header.Headers
 import zio.ZIO
 import zio.kafka.consumer.{CommittableRecord, Offset}
 import zio.kafka.serde.Deserializer
+
+import scala.util.Try
 
 /** Our own representation of the deserialized data
   *
@@ -16,29 +18,21 @@ import zio.kafka.serde.Deserializer
   * @param recordBody the deserialized message body
   */
 final case class KafkaRecord(
+    topic: String,
     key: String,
     timestamp: Long,
     offset: Offset,
-    recordBody: GenericRecord
+    recordBody: GenericRecord,
+    headers: Map[String, String]
 ) {
 
   /** The generic record as json, combined with a 'kafka' json element
     *
     * @return the avro record as Json (it may fail, but if it did realistically that'd be a library bug)
     */
-  def recordJson = io.circe.parser.parse(recordJsonString).toTry.map(_.deepMerge(kafkaJson))
+  def recordJson: Json = io.circe.parser.parse(recordJsonString).toTry.get
 
-  def kafkaJson = Json.obj(
-    "kafka" -> Json.obj(
-      "key"       -> key.asJson,
-      "timestamp" -> timestamp.asJson,
-      "offset"    -> offset.offset.asJson,
-      "topic"     -> offset.topicPartition.topic().asJson,
-      "partition" -> offset.topicPartition.partition().asJson
-    )
-  )
-
-  def recordJsonString = GenericData.get.toString(recordBody)
+  def recordJsonString: String = GenericData.get.toString(recordBody)
 }
 
 object KafkaRecord extends StrictLogging {
@@ -47,13 +41,22 @@ object KafkaRecord extends StrictLogging {
 
   def decoder(serde: Deserializer[Any, GenericRecord]): CommittableRecord[String, Array[Byte]] => ZIO[Any, Throwable, KafkaRecord] = {
     (committableRecord: CommittableRecord[String, Array[Byte]]) =>
-      serde.deserialize(committableRecord.record.topic(), committableRecord.record.headers(), committableRecord.value).map { data =>
-        KafkaRecord(
-          committableRecord.key,
-          committableRecord.timestamp,
-          committableRecord.offset,
-          data
-        )
+      {
+        val headers: Headers = committableRecord.record.headers()
+        import scala.jdk.CollectionConverters._
+        val headerAsStrings = headers.asScala.flatMap { h =>
+          Try(new String(h.value())).map(h.key -> _).toOption
+        }
+        serde.deserialize(committableRecord.record.topic(), headers, committableRecord.value).map { data =>
+          KafkaRecord(
+            committableRecord.record.topic(),
+            committableRecord.key,
+            committableRecord.timestamp,
+            committableRecord.offset,
+            data,
+            headerAsStrings.toMap
+          )
+        }
       }
   }
 }

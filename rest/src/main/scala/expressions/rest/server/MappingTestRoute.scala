@@ -25,8 +25,8 @@ object MappingTestRoute extends StrictLogging {
     }
   }
 
-  def apply(asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
-    val cache: Cache[Expression[RichDynamicJson, Json]] = JsonTemplate.newCache[Json]
+  def apply(cache: Cache[Expression[RichDynamicJson, Json]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
+
     transformHandler {
       case TransformRequest(userInputScript, userInput, key, timestamp, headers) =>
         val inputAsMessage = Message(new RichDynamicJson(userInput), key, timestamp, headers)
@@ -48,7 +48,8 @@ object MappingTestRoute extends StrictLogging {
         ZIO.fromTry(cache(script)).either.map {
           case Left(err: Throwable) =>
             logger.error(s"Error parsing\n$script\n$err")
-            Response(status = Status.InternalServerError).withEntity(TransformResponse(s"nope: ${err.getMessage}".asJson, Some(s"nope: ${err.getMessage}")))
+            val errMsg = s"computer says no:\n${err.getMessage}"
+            Response(status = Status.InternalServerError).withEntity(TransformResponse(errMsg.asJson, Some(errMsg)))
           case Right(mapper: Expression[RichDynamicJson, Json]) =>
             try {
               val context = asContext(inputAsMessage)

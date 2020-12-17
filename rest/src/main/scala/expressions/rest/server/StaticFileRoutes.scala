@@ -34,7 +34,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRoo
 
     def error =
       if (jsRootDir.toString.contains("js/target/scala-")) {
-        s"""$baseErr: You have to compile clientCrossJS first (e.g. sbt "project clientCrossJS" fastOptJS)"""
+        s"""$baseErr: You have to compile clientJS first (e.g. sbt "project clientJS" fastOptJS)"""
       } else baseErr
 
     require(jsRootDir.exists(), error)

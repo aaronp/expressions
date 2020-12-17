@@ -79,7 +79,7 @@ case class MappingTestPage(targetDivId: String) {
   }
 
   def makeRequest(request: TransformRequest): Unit = {
-    Client.mappingCheck(request).onComplete {
+    Client.mapping.check(request).onComplete {
       case Success(response) =>
         response.messages.foreach { err =>
           window.alert(err)
