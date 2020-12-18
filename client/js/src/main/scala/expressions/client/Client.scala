@@ -1,6 +1,7 @@
 package expressions.client
 
 import io.circe.Json
+import io.circe.parser.parse
 import io.circe.syntax._
 import org.scalajs.dom.ext.Ajax
 import org.scalajs.dom.{XMLHttpRequest, window}
@@ -51,6 +52,28 @@ object Client {
       val url = path.mkString(s"${remoteHost}/store/", "/", "")
       Ajax.get(url, headers = AppJson).map { response =>
         Option(response.responseText).filter(_ => response.status == 200)
+      }
+    }
+  }
+
+  object cache {
+    def storeAt(path: String, value: String) = save(path.split("/", -1).toList, value)
+
+    /**
+      * @param path
+      * @param value
+      * @return true if created, false if updated (answers the question 'did this update?')
+      */
+    def save(path: List[String], value: Json): Future[Boolean] = {
+      val url = path.mkString(s"${remoteHost}/cache/", "/", "")
+      Ajax.post(url, value.noSpaces, headers = AppJson).map { response =>
+        response.status == 201
+      }
+    }
+    def read(path: List[String]): Future[Option[Json]] = {
+      val url = path.mkString(s"${remoteHost}/cache/", "/", "")
+      Ajax.get(url, headers = AppJson).map { response =>
+        parse(response.responseText).toTry.toOption.filter(_ => response.status == 200)
       }
     }
   }

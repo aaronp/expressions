@@ -2,8 +2,15 @@ package expressions.rest.server
 
 import com.typesafe.config.Config
 import eie.io.AlphaCounter
+import expressions.JsonTemplate.Expression
+import expressions.client.HttpRequest
 import expressions.franz.{ForEachStream, FranzConfig, KafkaRecord}
+import expressions.{Cache, RichDynamicJson}
+import sttp.client.Response
 import zio._
+import zio.clock.Clock
+import zio.console.Console
+import zio.duration.durationInt
 
 /**
   * We have (separate to the kafka config) a list of:
@@ -31,31 +38,76 @@ import zio._
   *
   */
 object BusinessLogic {
+  type SinkIO = ZIO[Console, Throwable, KafkaRecord => Task[Unit]]
+
   trait Service {
-    def start(config: Config): ZIO[ZEnv, Nothing, String]
+    def start(config: Config): Task[String]
     def stop(key: String): Task[Boolean]
+    def running(): UIO[List[String]]
+  }
+
+  def validate(response: Response[Either[String, String]]) = {
+    response.body match {
+      case Left(error) =>
+        sys.error(s"Response threw $error")
+      case Right(_) =>
+        require(response.code.isSuccess, s"Response code was ${response.statusText}")
+    }
+  }
+
+  def saveToDB(config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock) = {
+    for {
+      restSink: KafkaRecordToHttpSink[RichDynamicJson, HttpRequest] <- KafkaRecordToHttpSink(config, templateCache)
+    } yield { (record: KafkaRecord) =>
+      val sink: ZIO[Any, Throwable, Response[Either[String, String]]] = restSink.makeRestRequest(record)
+      val sunk: Task[Unit] = sink
+        .map(validate)
+        .either
+        .repeatUntilM(r => UIO(r.isRight).delay(1.second))
+        .provide(clock)
+        .unit
+
+      sunk
+    }
+  }
+
+  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[zio.ZEnv, Nothing, BusinessLogicImpl] = {
+    for {
+      clock <- ZIO.environment[Clock]
+      svc   <- Service(saveToDB(_, templateCache, clock))
+    } yield svc
   }
 
   object Service {
-    def apply() =
+    def apply(makeSink: Config => SinkIO) =
       for {
+        env  <- ZIO.environment[ZEnv]
         byId <- Ref.make(Map[String, Fiber[_, _]]())
-      } yield byId
+      } yield
+        BusinessLogicImpl(
+          byId,
+          makeSink,
+          env
+        )
   }
 
-  case class BusinessLogicImpl(sink: KafkaRecord => Task[Unit], tasksById: Ref[Map[String, Fiber[_, _]]]) extends Service {
+  case class BusinessLogicImpl(tasksById: Ref[Map[String, Fiber[_, _]]], makeSink: Config => SinkIO, env: ZEnv) extends Service {
 
     private val counter = AlphaCounter.from(0)
 
-    override def start(config: Config): ZIO[ZEnv, Nothing, String] = {
-      val kafkaFeed = ForEachStream(FranzConfig(config))(sink)
-      for {
-        fiber <- kafkaFeed.runCount.fork
+    override def running(): UIO[List[String]] = tasksById.get.map(_.keys.toList.sorted)
+
+    override def start(config: Config): Task[String] = {
+      val startIO = for {
+        sink      <- makeSink(config)
+        kafkaFeed = ForEachStream(FranzConfig(config))(sink)
+        fiber     <- kafkaFeed.runCount.fork
         id <- tasksById.modify { map =>
           val id = counter.next()
           id -> map.updated(id, fiber)
         }
       } yield id
+      startIO.provide(env)
     }
 
     override def stop(key: String): Task[Boolean] =

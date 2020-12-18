@@ -54,7 +54,7 @@ object KafkaRecordToHttpSink {
   def dataDir(rootConfig: Config) = rootConfig.getString("app.data").asPath
 
   def apply(rootConfig: Config = ConfigFactory.load(),
-            templateCache: Cache[Expression[RichDynamicJson, Json]] = JsonTemplate.newCache[Json]()): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, Json]] = {
+            templateCache: Cache[Expression[RichDynamicJson, HttpRequest]] = JsonTemplate.newCache[HttpRequest]()): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, HttpRequest]] = {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     for {
       disk <- Disk(rootConfig)
@@ -64,8 +64,8 @@ object KafkaRecordToHttpSink {
     } yield inst
   }
 
-  def apply(mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[RichDynamicJson, Json]])(
-      asContext: Message[RichDynamicJson] => Context[RichDynamicJson]): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, Json]] = {
+  def apply(mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]])(
+      asContext: Message[RichDynamicJson] => Context[RichDynamicJson]): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, HttpRequest]] = {
     mappingConfig.scriptForTopic(disk).map { lookup =>
       KafkaRecordToHttpSink(mappingConfig, templateCache, lookup, (asMessage _).andThen(asContext))
     }
