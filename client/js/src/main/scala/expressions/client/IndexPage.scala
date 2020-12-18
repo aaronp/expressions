@@ -79,6 +79,12 @@ case class IndexPage(targetDivId: String) {
 
   val resultTextArea = textarea(cols := 100, rows := 8).render
 
+  val startButton = button("Start").render
+  startButton.onclick = e => {
+    e.preventDefault()
+    window.location.href = s"${Client.remoteHost}/running.html"
+  }
+
   val clearButton = button("Clear").render
   clearButton.onclick = e => {
     e.preventDefault()
@@ -195,9 +201,7 @@ case class IndexPage(targetDivId: String) {
   def makeRequest(request: TransformRequest): Unit = {
     Client.mapping.check(request).onComplete {
       case Success(response) =>
-        response.messages.foreach { err =>
-          window.alert(err)
-        }
+        response.messages.foreach(window.alert)
         resultTextArea.value = response.result.spaces4
       case Failure(err: AjaxException) =>
         resultTextArea.value = AsError(err.xhr.responseText)

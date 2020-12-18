@@ -1,6 +1,7 @@
 package expressions.rest.server
 
 import expressions.client.{TransformRequest, TransformResponse}
+import io.circe.Json
 import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 import org.http4s.HttpRoutes
@@ -13,7 +14,7 @@ class RestRoutesTest extends BaseRouteTest {
   "POST /rest/mapping/check" should {
     "works" in {
 
-      val underTest: HttpRoutes[Task] = RestRoutes().value()
+      val underTest: HttpRoutes[Task] = RestRoutes[Json, Json]().value()
 
       val req = {
         val jason  = json"""{
@@ -39,7 +40,7 @@ class RestRoutesTest extends BaseRouteTest {
                        |    case "first" => HttpRequest.get(url, Map.empty)
                        |    case other   => HttpRequest.post(url, Map.empty)
                        |  }
-                       |
+                       |  m
                        |}
                        |}""".stripMargin
         TransformRequest(script, jason)

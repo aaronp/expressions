@@ -6,12 +6,6 @@ import zio.kafka.producer.Producer
 
 object ForeachPublisher {
 
-//  def apply(config: FranzConfig = FranzConfig()) = {
-//    config.producer[String, GenericRecord].use { producer =>
-//      Producer.produce()
-//    }
-//  }
-
   def publish[K, V](config: FranzConfig, first: ProducerRecord[K, V], theRest: ProducerRecord[K, V]*) = {
     val list: Seq[ProducerRecord[K, V]] = first +: theRest
     publishAll[K, V](config, list)

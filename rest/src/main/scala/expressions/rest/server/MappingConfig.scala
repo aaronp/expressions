@@ -48,7 +48,7 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
       case (topic, path) => (topic, path)
     }
     val regexMap = hasRegex.map {
-      case (regex, value) => (Unquote(regex).r, value)
+      case (regex, value) => (Unquote(regex.replace("*", ".*")).r, value)
     }
     fixed -> regexMap
   }
@@ -64,13 +64,12 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
   def scriptForTopic(disk: Disk.Service): ZIO[Console, Throwable, String => Try[String]] = {
     for {
       scriptByPathSeq <- ZIO.foreach(mappings) {
-        case (_, path) =>
+        case (topic, path) =>
           disk.read(path).flatMap {
-            case None         => ZIO.fail(new Exception(s"Couldn't read $path"))
+            case None         => ZIO.fail(new Exception(s"Couldn't read $path as specified by topic '${topic}'"))
             case Some(script) => ZIO.succeed(path -> script)
           }
       }
-      _            <- putStrLn("creating map")
       scriptByPath = scriptByPathSeq.toMap
     } yield { (topic: String) =>
       lookup(topic).flatMap(scriptByPath.get) match {

@@ -1,43 +1,39 @@
 package expressions.rest.server
 
 import cats.implicits._
-import com.typesafe.config.ConfigFactory
-import expressions.franz.FranzConfig
+import com.typesafe.config.{Config, ConfigFactory}
+import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
-import org.http4s.{HttpRoutes, Response, Status}
-import zio.Task
-import io.circe.syntax._
 import zio.interop.catz._
+import org.http4s.{HttpRoutes, Response, Status}
+import zio.{Task, UIO}
+import RestRoutes.taskDsl._
+import expressions.client.kafka.StartedConsumer
 
 object KafkaRoute {
 
-  import RestRoutes.taskDsl._
+  def apply(service: KafkaSink.Service): HttpRoutes[Task] = start(service.start) <+> stop(service.stop) <+> running(service.running())
 
-  def apply(service: Disk.Service): HttpRoutes[Task] = resolveMappingsRoute(service) <+> listMappingsRoute()
-
-  def resolveMappingsRoute(service: Disk.Service): HttpRoutes[Task] = {
+  def start(start: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ POST -> Root / "config" / "mappings" / "resolve" =>
+      case req @ POST -> Root / "kafka" / "start" =>
         for {
           body   <- req.bodyText.compile.string
           config <- Task(ConfigFactory.parseString(body).withFallback(ConfigFactory.load()).resolve())
-        } yield {
-          val json = MappingConfig(config).mappings.asJson
-          Response[Task](Status.Ok).withEntity(json)
-        }
+          id     <- start(config)
+        } yield Response[Task](Status.Ok).withEntity(id)
     }
   }
 
-  def listMappingsRoute(): HttpRoutes[Task] = {
+  def stop(stop: String => Task[Boolean]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ POST -> Root / "config" / "mappings" / "list" =>
-        for {
-          body   <- req.bodyText.compile.string
-          config <- Task(ConfigFactory.parseString(body).withFallback(ConfigFactory.load()).resolve())
-        } yield {
-          val json = MappingConfig(config).mappings.asJson
-          Response[Task](Status.Ok).withEntity(json)
-        }
+      case POST -> Root / "kafka" / "stop" / id => stop(id).map(r => Response[Task](Status.Ok).withEntity(r.asJson))
+    }
+  }
+
+  def running(listRunning: UIO[List[StartedConsumer]]): HttpRoutes[Task] = {
+    HttpRoutes.of[Task] {
+      case GET -> Root / "kafka" / "running" => listRunning.map(r => Response[Task](Status.Ok).withEntity(r.asJson))
     }
   }
 }

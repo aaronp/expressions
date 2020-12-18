@@ -3,7 +3,7 @@ package expressions.rest.server
 class MappingConfigTest extends BaseRouteTest {
   "MappingConfig.pathForTopic" should {
     "resolve paths" in {
-      val cfg = MappingConfig("app.mapping.foo = file.sc", """ app.mapping.bar = "path/to/file.sc" """, """ app.mapping."ba.*" = "ba-default.sc" """)
+      val cfg = MappingConfig("app.mapping.foo = file.sc", """ app.mapping.bar = "path/to/file.sc" """, """ app.mapping."ba*" = "ba-default.sc" """)
       val makeDisk = for {
         d <- Disk.Service()
         _ <- d.write(List("file.sc"), "file.sc")

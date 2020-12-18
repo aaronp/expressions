@@ -1,6 +1,7 @@
 package expressions
 
 import expressions.JsonTemplate._
+import expressions.template.Message
 
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -19,7 +20,9 @@ object StringTemplate {
 
   type StringExpression[A] = JsonTemplate.Expression[A, String]
 
-  def newCache[A: ClassTag](scriptPrefix: String = ""): Cache[StringExpression[A]] = new Cache[StringExpression[A]](script => Try(apply[A](script, scriptPrefix)))
+  def newCache[K: ClassTag, V: ClassTag](scriptPrefix: String = ""): Cache[StringExpression[Message[K, V]]] = {
+    new Cache[StringExpression[Message[K, V]]](script => Try(apply[K, V](script, scriptPrefix)))
+  }
 
   /**
     * Consider the initial remainingExpressionStr:
@@ -41,14 +44,17 @@ object StringTemplate {
     * @tparam A
     * @return a mapping of variable names to their RHS expressions (constants or functions)
     */
-  def apply[A: ClassTag](expression: String, scriptPrefix: String = ""): StringExpression[A] = {
+  def apply[K: ClassTag, V: ClassTag](expression: String, scriptPrefix: String = ""): StringExpression[Message[K, V]] = {
     val parts = resolveExpressionVariables(expression, Nil)
     parts.size match {
-      case 0 => const[A]("")
-      case 1 => const[A](expression)
+      case 0 => const[Message[K, V]]("")
+      case 1 => const[Message[K, V]](expression)
       case _ =>
-        val script = stringAsExpression(scriptPrefix, parts)
-        JsonTemplate.compileAsExpression[A, String](script).get
+        val keyType     = className[K]
+        val valueType   = className[V]
+        val contextType = s"Message[$keyType, $valueType]"
+        val script      = stringAsExpression(contextType, scriptPrefix, parts)
+        JsonTemplate.compileAsExpression[Message[K, V], String](contextType, script).get
     }
   }
 
@@ -65,14 +71,18 @@ object StringTemplate {
     }
   }
 
-  private def stringAsExpression[A: ClassTag](scriptPrefix: String, parts: Seq[String]) = {
+  private def stringAsExpression[A: ClassTag](scriptPrefix: String, parts: Seq[String]): String = {
+    stringAsExpression[A](className[A], scriptPrefix, parts)
+  }
+
+  private def stringAsExpression[A](contextType: String, scriptPrefix: String, parts: Seq[String]): String = {
     val scriptHeader =
       s"""import expressions._
          |import expressions.implicits._
          |import AvroExpressions._
          |import expressions.template.{Context, Message}
          |
-         |(context : Context[${className[A]}]) => {
+         |(context : Context[${contextType}]) => {
          |  import context._
          |  ${scriptPrefix}
        """.stripMargin

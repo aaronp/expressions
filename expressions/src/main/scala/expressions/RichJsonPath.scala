@@ -23,6 +23,8 @@ class RichJsonPath(val path: JsonPath) extends AnyVal {
   def get[A: Decoder](implicit json: Json)        = valueOpt.getOrElse(sys.error(s"Json path didn't resolve for $json")).as[A].toTry.get
   def valueOpt(implicit json: Json): Option[Json] = path.json.getOption(json)
 
+  def toList(implicit json: Json): List[Json] = get[List[Json]]
+
   def map[A](thunk: RichDynamicJson => Optional[Json, A])(implicit jsonValue: Json): Seq[A] = {
     val all: Seq[Json] = path.each.json.getAll(jsonValue)
     all.flatMap { j =>

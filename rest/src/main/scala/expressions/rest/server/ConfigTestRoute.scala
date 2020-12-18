@@ -38,7 +38,7 @@ object ConfigTestRoute extends StrictLogging {
     * @param asContext
     * @return
     */
-  def apply(expressionForString: Cache[StringExpression[RichDynamicJson]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
+  def apply(expressionForString: Cache[StringExpression[JsonMsg]], asContext: JsonMsg => Context[JsonMsg] = _.asContext()): HttpRoutes[Task] = {
 
     makeRoute { request =>
       mapEntries(request, expressionForString, asContext).either.map {
@@ -57,19 +57,20 @@ object ConfigTestRoute extends StrictLogging {
   }
 
   private def mapEntries(request: TransformRequest,
-                         expressionForString: Cache[StringExpression[RichDynamicJson]],
-                         asContext: Message[RichDynamicJson] => Context[RichDynamicJson]): ZIO[Any, Throwable, Seq[(String, String)]] = {
+                         expressionForString: Cache[StringExpression[JsonMsg]],
+                         asContext: JsonMsg => Context[JsonMsg]): ZIO[Any, Throwable, Seq[(String, String)]] = {
 
-    def eval(entry: StringEntry, ctxt: Context[RichDynamicJson]) = {
+    def eval(entry: StringEntry, ctxt: Context[JsonMsg]) = {
       for {
         script        <- Task.fromTry(expressionForString(entry.value))
         scriptedValue <- Task(script(ctxt))
       } yield (entry.key, scriptedValue)
     }
 
-    val TransformRequest(configString, userInputJson, key, timestamp, headers) = request
+    val TransformRequest(configString, userInputJson, userInputKey, timestamp, headers, topic) = request
     import args4c.implicits._
     val userInput = new RichDynamicJson(userInputJson)
+    val key       = new RichDynamicJson(userInputKey)
 
     for {
       // read the input  string as a configuration
@@ -78,7 +79,8 @@ object ConfigTestRoute extends StrictLogging {
       entries <- Task.foreach(config.summaryEntries()) {
         // ... we think it's some kind of script if there's a ' .. {{ .. }} .. '
         case entry if entry.value.contains("{{") && entry.value.contains("}}") =>
-          val ctxt = asContext(Message(userInput, key, timestamp, headers))
+          val msg  = Message(userInput, key, timestamp, headers, topic)
+          val ctxt = asContext(msg)
           eval(entry, ctxt)
         // otherwise just use the key/value as-is
         case entry => Task.succeed(entry.key -> entry.value)
