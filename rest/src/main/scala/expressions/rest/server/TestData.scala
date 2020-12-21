@@ -2,23 +2,15 @@ package expressions.rest.server
 
 import example.{Address, Example, daysOfTheWeek}
 import io.circe.Json
-import org.apache.avro.Schema
-import org.apache.avro.generic.{GenericDatumReader, IndexedRecord}
-import org.apache.avro.io.DecoderFactory
+import org.apache.avro.generic.{GenericRecord, IndexedRecord}
 
-import java.io.{ByteArrayInputStream, DataInputStream}
 import scala.jdk.CollectionConverters._
 
 object TestData {
 
-  def fromJson[A](record: Json, schema: Schema = Example.getClassSchema): A = {
-    val decoder = DecoderFactory.get().jsonDecoder(schema, new DataInputStream(new ByteArrayInputStream(record.noSpaces.getBytes())))
-    val reader  = new GenericDatumReader[Any](schema)
-    reader.read(null, decoder).asInstanceOf[A]
-  }
+  def fromJson(record: Json): GenericRecord = SchemaGen.recordForJson(record)
 
   def asJson(record: IndexedRecord): Json = {
-//    record.getSpecificData
     val jason = record.toString
     io.circe.parser.parse(jason).toTry.get
   }
