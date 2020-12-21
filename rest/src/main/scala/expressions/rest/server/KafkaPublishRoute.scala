@@ -7,16 +7,19 @@ import expressions.franz.FranzConfig
 import expressions.rest.server.RestRoutes.taskDsl._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
+import zio.blocking.Blocking
 import zio.interop.catz._
-import zio.{Task, UIO}
+import zio.{Task, UIO, ZIO}
 
 object KafkaPublishRoute {
 
-  def apply(rootConfig: Config = ConfigFactory.load()) : HttpRoutes[Task] = fromFranzConfig(rootConfig.getConfig("app.franz"))
+  def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Blocking, Nothing, HttpRoutes[Task]] = fromFranzConfig(rootConfig.getConfig("app.franz"))
 
-  def fromFranzConfig(franzConfig: Config): HttpRoutes[Task] = {
-    val publisher = KafkaPublishService(FranzConfig(franzConfig))
-    publish(publisher) <+> getDefault(franzConfig)
+  def fromFranzConfig(franzConfig: Config): ZIO[Blocking, Nothing, HttpRoutes[Task]] = {
+    ZIO.environment[Blocking].map { blocking =>
+      val publisher: PostRecord => UIO[Int] = KafkaPublishService(FranzConfig(franzConfig)).andThen(_.provide(blocking))
+      publish(publisher) <+> getDefault(franzConfig)
+    }
   }
 
   //, defaultConfig: Config = ConfigFactory.load()
@@ -33,7 +36,7 @@ object KafkaPublishRoute {
 
   def getDefault(franzConfig: Config): HttpRoutes[Task] = {
     val configJson = franzConfig.root.render(ConfigRenderOptions.concise())
-    getDefault(PostRecord(configJson, TestData.asJson(TestData.testRecord())))
+    getDefault(PostRecord(TestData.asJson(TestData.testRecord()), config = configJson))
   }
 
   def getDefault(default: PostRecord): HttpRoutes[Task] = {

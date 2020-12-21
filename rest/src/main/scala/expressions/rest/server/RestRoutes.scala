@@ -28,6 +28,7 @@ object RestRoutes extends StrictLogging {
       fsDir         = KafkaRecordToHttpSink.dataDir(defaultConfig)
       templateCache = JsonTemplate.newCache[HttpRequest]("import expressions.client._")
       kafkaRunner   <- KafkaSink(templateCache)
+      kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[RichDynamicJson]] = StringTemplate.newCache[RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
 
@@ -35,7 +36,6 @@ object RestRoutes extends StrictLogging {
       val configTestRotes   = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute       = ConfigRoute(defaultConfig)
       val kafkaRoute        = KafkaRoute(kafkaRunner)
-      val kafkaPublishRoute = KafkaPublishRoute(defaultConfig)
 
       kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk
     }

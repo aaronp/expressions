@@ -9,14 +9,14 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import zio.duration.{Duration, durationInt}
 import zio.interop.catz._
-import zio.{Task, ZIO}
+import zio.{Task, ZEnv, ZIO}
 
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThen with Eventually with ScalaFutures {
 
-  implicit val rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  implicit val rt: zio.Runtime[ZEnv] = zio.Runtime.default
 
   def zenv = rt.environment
 
@@ -24,7 +24,7 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   def shortTimeoutJava = 200.millis
 
-  implicit def asRichZIO[A](zio: => ZIO[_root_.zio.ZEnv, Any, A])(implicit rt: _root_.zio.Runtime[_root_.zio.ZEnv]) = new {
+  implicit def asRichZIO[A](zio: => ZIO[ZEnv, Any, A])(implicit rt: _root_.zio.Runtime[_root_.zio.ZEnv]) = new {
     def value(): A = rt.unsafeRun(zio.timeout(testTimeout)).getOrElse(sys.error("Test timeout"))
   }
 
@@ -81,5 +81,10 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
       Uri.unsafeFromString(encoded).withQueryParams(queryParams.toMap)
     }
     uri
+  }
+
+  def rnd(prefix: String = "") = {
+    val x = UUID.randomUUID().toString.filter(_.isLetterOrDigit).toLowerCase()
+    s"${prefix}$x"
   }
 }

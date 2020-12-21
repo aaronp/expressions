@@ -11,8 +11,8 @@ import io.circe.Json
   * @param key
   * @param data
   */
-case class PostRecord(config: String,
-                      data: Json,
+case class PostRecord(data: Json,
+                      config: String = "",
                       key: Json = Json.fromString("key"),
                       repeat: Int = 0,
                       partition: Option[Int] = None,
@@ -42,12 +42,13 @@ object PostRecord {
       Json.fromJsonNumber,
       str => Json.fromString(str.replace(key, value)),
       array => Json.fromValues(array.map(replaceAll(_, key, value))),
-      obj => Json.fromFields {
-        obj.toMap.map {
-          case (k, v) =>
-            k.replace(Placeholder, value) -> replaceAll(v, key, value)
+      obj =>
+        Json.fromFields {
+          obj.toMap.map {
+            case (k, v) =>
+              k.replace(key, value) -> replaceAll(v, key, value)
+          }
         }
-      }
     )
 
   val Placeholder    = "{{i}}"

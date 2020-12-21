@@ -7,16 +7,15 @@ import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
-import zio.UIO
+import zio.blocking.Blocking
+import zio.{UIO, URIO}
 
 import scala.jdk.CollectionConverters._
 
 object KafkaPublishService {
 
-  def apply(config : FranzConfig) : PostRecord => UIO[Int] = {
+  def apply(config : FranzConfig): PostRecord => URIO[Blocking, Int] = {
     (record: PostRecord) => {
-
-      val kafkaReords = asRecords(record)
       execPost(record, config)
     }
   }
@@ -24,8 +23,7 @@ object KafkaPublishService {
   def execPost(post: PostRecord, config : FranzConfig) = {
     val newConfig: FranzConfig = config.withOverrides(ConfigFactory.parseString(post.config))
     val kafkaRecords = asRecords(post, newConfig)
-    ForeachPublisher.publishAll(newConfig, )
-    ???
+    ForeachPublisher.publishAll(newConfig, kafkaRecords).map(_.size).orDie
   }
 
   def key(postRecord: PostRecord) = postRecord.key.noSpaces

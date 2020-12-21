@@ -6,7 +6,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class PostRecordTest extends AnyWordSpec with Matchers {
   "PostRecord.replaceAll" should {
-    "work" in {
+    "replace all occurrences of text in a json record" in {
       val jason =
         json"""{
                  "root" : {
@@ -20,8 +20,9 @@ class PostRecordTest extends AnyWordSpec with Matchers {
                  "replaceme-top" : "replaceme-top"
                }"""
       val replaced = PostRecord.replaceAll(jason, "replaceme", "ok")
-      println(replaced.spaces4)
-      println(replaced.spaces4)
+      withClue(replaced.spaces4) {
+        replaced.noSpaces shouldBe """{"root":{"array":[{"ok-key":"ok-value"},"ok-string"]},"ok-top":"ok-top"}"""
+      }
     }
   }
 }
