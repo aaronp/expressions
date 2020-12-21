@@ -37,7 +37,7 @@ import zio.duration.durationInt
   * $ we can keep retrying (and eventually blow up) for a given Request
   *
   */
-object BusinessLogic {
+object KafkaSink {
   type SinkIO = ZIO[Console, Throwable, KafkaRecord => Task[Unit]]
 
   trait Service {
@@ -55,7 +55,7 @@ object BusinessLogic {
     }
   }
 
-  def saveToDB(config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock) = {
+  def saveToDB(config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock): ZIO[Console, Throwable, KafkaRecord => Task[Unit]] = {
     for {
       restSink: KafkaRecordToHttpSink[RichDynamicJson, HttpRequest] <- KafkaRecordToHttpSink(config, templateCache)
     } yield { (record: KafkaRecord) =>
@@ -71,7 +71,7 @@ object BusinessLogic {
     }
   }
 
-  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[zio.ZEnv, Nothing, BusinessLogicImpl] = {
+  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[zio.ZEnv, Nothing, Instance] = {
     for {
       clock <- ZIO.environment[Clock]
       svc   <- Service(saveToDB(_, templateCache, clock))
@@ -79,28 +79,34 @@ object BusinessLogic {
   }
 
   object Service {
-    def apply(makeSink: Config => SinkIO) =
+    def apply(makeSink: Config => SinkIO): ZIO[zio.ZEnv, Nothing, Instance] =
       for {
         env  <- ZIO.environment[ZEnv]
         byId <- Ref.make(Map[String, Fiber[_, _]]())
       } yield
-        BusinessLogicImpl(
+        Instance(
           byId,
           makeSink,
           env
         )
   }
 
-  case class BusinessLogicImpl(tasksById: Ref[Map[String, Fiber[_, _]]], makeSink: Config => SinkIO, env: ZEnv) extends Service {
+  /**
+    * An instance which uses 'makeSink' to construct a [[KafkaRecord]] sink which can be started/stopped
+    * @param tasksById
+    * @param makeSink
+    * @param env
+    */
+  case class Instance(tasksById: Ref[Map[String, Fiber[_, _]]], makeSink: Config => SinkIO, env: ZEnv) extends Service {
 
     private val counter = AlphaCounter.from(0)
 
     override def running(): UIO[List[String]] = tasksById.get.map(_.keys.toList.sorted)
 
-    override def start(config: Config): Task[String] = {
+    override def start(rootConfig: Config): Task[String] = {
       val startIO = for {
-        sink      <- makeSink(config)
-        kafkaFeed = ForEachStream(FranzConfig(config))(sink)
+        sink      <- makeSink(rootConfig)
+        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
         id <- tasksById.modify { map =>
           val id = counter.next()

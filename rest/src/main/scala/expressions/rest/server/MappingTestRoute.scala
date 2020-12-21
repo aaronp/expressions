@@ -2,10 +2,9 @@ package expressions.rest.server
 
 import com.typesafe.scalalogging.StrictLogging
 import expressions.JsonTemplate.Expression
-import expressions.client.{TransformRequest, TransformResponse}
+import expressions.client.{HttpRequest, TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
-import expressions.{Cache, JsonTemplate, RichDynamicJson}
-import io.circe.Json
+import expressions.{Cache, RichDynamicJson}
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
@@ -25,7 +24,7 @@ object MappingTestRoute extends StrictLogging {
     }
   }
 
-  def apply(cache: Cache[Expression[RichDynamicJson, Json]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
+  def apply(cache: Cache[Expression[RichDynamicJson, HttpRequest]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
 
     transformHandler {
       case TransformRequest(userInputScript, userInput, key, timestamp, headers) =>
@@ -50,11 +49,11 @@ object MappingTestRoute extends StrictLogging {
             logger.error(s"Error parsing\n$script\n$err")
             val errMsg = s"computer says no:\n${err.getMessage}"
             Response(status = Status.InternalServerError).withEntity(TransformResponse(errMsg.asJson, Some(errMsg)))
-          case Right(mapper: Expression[RichDynamicJson, Json]) =>
+          case Right(mapper: Expression[RichDynamicJson, HttpRequest]) =>
             try {
               val context = asContext(inputAsMessage)
               val mapped  = mapper(context)
-              Response(Status.Ok).withEntity(TransformResponse(mapped, None))
+              Response(Status.Ok).withEntity(TransformResponse(mapped.asJson, None))
             } catch {
               case NonFatal(e) =>
                 logger.error(s"Error executing\n$script\n$e")

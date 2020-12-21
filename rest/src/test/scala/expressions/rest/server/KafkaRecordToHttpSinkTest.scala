@@ -1,5 +1,6 @@
 package expressions.rest.server
 
+import expressions.client.{HttpRequest, HttpResponse}
 import expressions.template.Message
 import expressions.{JsonTemplate, RichDynamicJson}
 import io.circe.Json
@@ -16,7 +17,7 @@ class KafkaRecordToHttpSinkTest extends BaseRouteTest {
         for {
           disk <- Disk(mappingConfig.rootConfig)
           _    <- KafkaRecordToHttpSink.writeScriptForTopic(mappingConfig, disk, "unit-test", value.toString)
-          svc  <- KafkaRecordToHttpSink(mappingConfig, disk, JsonTemplate.newCache[Json]())(_.asContext())
+          svc  <- KafkaRecordToHttpSink(mappingConfig, disk, JsonTemplate.newCache[HttpRequest]())(_.asContext())
         } yield svc
       }.value()
 

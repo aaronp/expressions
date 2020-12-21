@@ -19,8 +19,14 @@ object FranzConfig {
     import args4c.implicits._
     new FranzConfig((conf +: theRest).toArray.asConfig().getConfig("app.franz"))
   }
+  def fromRootConfig(rootConfig: Config = ConfigFactory.load()) = FranzConfig(rootConfig.getConfig("app.franz"))
+
 }
 final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
+
+  def withOverrides(newFranzConfig: Config): FranzConfig = {
+    copy(franzConfig = newFranzConfig.withFallback(franzConfig).resolve())
+  }
 
   val kafkaConfig = franzConfig.getConfig("kafka")
 

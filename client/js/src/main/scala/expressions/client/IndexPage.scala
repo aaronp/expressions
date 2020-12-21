@@ -195,9 +195,7 @@ case class IndexPage(targetDivId: String) {
   def makeRequest(request: TransformRequest): Unit = {
     Client.mapping.check(request).onComplete {
       case Success(response) =>
-        response.messages.foreach { err =>
-          window.alert(err)
-        }
+        response.messages.foreach(window.alert)
         resultTextArea.value = response.result.spaces4
       case Failure(err: AjaxException) =>
         resultTextArea.value = AsError(err.xhr.responseText)

@@ -2,16 +2,16 @@ package expressions.rest.server
 
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory}
+import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
-import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
+import org.http4s.{HttpRoutes, Response, Status}
 import zio.{Task, UIO}
+import RestRoutes.taskDsl._
 
 object KafkaRoute {
 
-  import RestRoutes.taskDsl._
-
-  def apply(service: BusinessLogic.Service): HttpRoutes[Task] = start(service.start) <+> stop(service.stop) <+> running(service.running())
+  def apply(service: KafkaSink.Service): HttpRoutes[Task] = start(service.start) <+> stop(service.stop) <+> running(service.running())
 
   def start(start: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
@@ -26,13 +26,13 @@ object KafkaRoute {
 
   def stop(stop: String => Task[Boolean]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case POST -> Root / "kafka" / "stop" / id => stop(id).map(Response[Task](Status.Ok).withEntity)
+      case POST -> Root / "kafka" / "stop" / id => stop(id).map(r => Response[Task](Status.Ok).withEntity(r.asJson))
     }
   }
 
   def running(listRunning: UIO[List[String]]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case GET -> Root / "kafka" / "running" => listRunning.map(Response[Task](Status.Ok).withEntity)
+      case GET -> Root / "kafka" / "running" => listRunning.map(r => Response[Task](Status.Ok).withEntity(r.asJson))
     }
   }
 }
