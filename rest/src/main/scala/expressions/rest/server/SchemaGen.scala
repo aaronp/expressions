@@ -2,14 +2,41 @@ package expressions.rest.server
 
 import io.circe.{Json, JsonNumber}
 import org.apache.avro.Schema
+import org.apache.avro.Schema.Type
+import org.apache.avro.Schema.Type._
 
 import scala.collection.immutable.Map
+import scala.jdk.CollectionConverters._
 
 object SchemaGen {
 
-  sealed trait Type
-  object Type {
-    def forNumber(json: JsonNumber): Type with NumericType = {
+  def apply(record: Json, namespace: String = "gen"): Schema = TypeInst(record).schema(None, namespace)
+
+  sealed abstract class TypeInst(val `type`: Schema.Type) {
+    def schema(parentElem: Option[String] = None, namespace: String = "gen"): Schema = this match {
+      case ObjType(byName) =>
+        val name   = parentElem.getOrElse("object")
+        val record = Schema.createRecord(name, s"Created for ${byName.keySet.mkString("obj: [", ",", "]")}", namespace, false)
+        val fields = byName.map {
+          case (name, inst) => new Schema.Field(name, inst.schema(Option(s"${name}Type"), namespace))
+        }
+        record.setFields(fields.toList.asJava)
+        record
+      case values @ ArrayType(_) =>
+        val arrayType = values.valueTypes.toList match {
+          case Nil =>
+            Schema.createUnion(Schema.create(Type.STRING), Schema.create(Type.NULL))
+          case List(only) => only.schema(parentElem.map(_ + "Arr"), namespace)
+          case many =>
+            val types = many.map(_.schema(parentElem.map(_ + "Arr"), namespace))
+            Schema.createUnion(types: _*)
+        }
+        Schema.createArray(arrayType)
+      case other => Schema.create(other.`type`)
+    }
+  }
+  object TypeInst {
+    def forNumber(json: JsonNumber): TypeInst with NumericType = {
       import json._
       toInt
         .map(IntType.apply)
@@ -17,42 +44,30 @@ object SchemaGen {
         .getOrElse(DoubleType(toDouble))
     }
 
-    def apply(json: Json): Type = {
+    def apply(json: Json): TypeInst = {
       json.fold(
         NullType,
         BoolType.apply,
         forNumber,
         StringType.apply,
-        values => ArrayType(values.map(Type.apply)),
-        obj => ObjType(obj.toMap)
+        values => ArrayType(values.map(TypeInst.apply)),
+        obj => ObjType.fromMap(obj.toMap)
       )
     }
   }
   sealed trait NumericType
-  case class DoubleType(value: Double) extends Type with NumericType
-  case class IntType(value: Int)       extends Type with NumericType
-  case class LongType(value: Long)     extends Type with NumericType
+  case class DoubleType(value: Double) extends TypeInst(DOUBLE) with NumericType
+  case class IntType(value: Int)       extends TypeInst(INT) with NumericType
+  case class LongType(value: Long)     extends TypeInst(LONG) with NumericType
 
-  case class BoolType(value: Boolean)           extends Type
-  case class StringType(value: String)          extends Type
-  case class ObjType(values: Map[String, Type]) extends Type
+  case class BoolType(value: Boolean)               extends TypeInst(BOOLEAN)
+  case class StringType(value: String)              extends TypeInst(STRING)
+  case class ObjType(values: Map[String, TypeInst]) extends TypeInst(RECORD)
   object ObjType {
-    def apply(obj: Map[String, Json]): ObjType = new ObjType(obj.view.mapValues(Type.apply).toMap)
+    def fromMap(obj: Map[String, Json]): ObjType = new ObjType(obj.view.mapValues(TypeInst.apply).toMap)
   }
-  case class ArrayType(values: Vector[Type]) extends Type
-  case object NullType                       extends Type
-
-
-  sealed trait ResolvedType
-  object ResolvedType {
-    def apply(a : Type, b : Type) = {
-
-    }
+  case class ArrayType(values: Vector[TypeInst]) extends TypeInst(ARRAY) {
+    def valueTypes: Set[TypeInst] = values.groupBy(_.`type`).values.map(_.head).toSet
   }
-  case class Const(resolved : Type)
-  case class Union(resolved : Set[Type])
-
-  def apply(record: Json): Schema = {
-    record.isNumber
-  }
+  case object NullType extends TypeInst(NULL)
 }

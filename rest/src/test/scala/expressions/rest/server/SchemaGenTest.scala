@@ -3,13 +3,14 @@ package expressions.rest.server
 import io.circe.Json
 import io.circe.literal.JsonStringContext
 import org.apache.avro.Schema
+import org.apache.avro.generic.GenericRecord
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class SchemaGenTest extends AnyWordSpec with Matchers{
 
   "SchemaGen" should {
-    "generate an avro schema from some json" in {
+    "generate an avro schema from some json which can also consume that json" in {
 
       val jason =
         json"""{
@@ -22,7 +23,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers{
                 "dec" : 1.23,
                 "truthy" : false
               },
-                "primarray" : [1, true, "hi"]
+                "primarray" : [1, true, "hi"],
                 "mixarray" : [
                 {
                   "foo" : "bar"
@@ -33,10 +34,15 @@ class SchemaGenTest extends AnyWordSpec with Matchers{
                 }
                 ]
             }
-               }"""
+            }"""
 
       val schema = SchemaGen(jason)
-      println(schema)
+      println(schema.toString(true))
+      withClue(schema.toString(true)) {
+        val record = TestData.fromJson[GenericRecord](jason, schema)
+        val backAgain = TestData.asJson(record)
+        println(backAgain.spaces2)
+      }
     }
   }
 }
