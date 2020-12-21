@@ -25,7 +25,7 @@ object RestRoutes extends StrictLogging {
     for {
       cacheRoute    <- CacheRoute()
       disk          <- DiskRoute(defaultConfig)
-      fsDir         = KafkaRecordToHttpSink.dataDir(defaultConfig)
+      fsDir         = KafkaRecordToHttpRequest.dataDir(defaultConfig)
       templateCache = JsonTemplate.newCache[HttpRequest]("import expressions.client._")
       kafkaRunner   <- KafkaSink(templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)

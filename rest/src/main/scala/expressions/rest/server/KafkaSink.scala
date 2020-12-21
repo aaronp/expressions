@@ -38,7 +38,7 @@ import zio.duration.durationInt
   *
   */
 object KafkaSink {
-  type SinkIO = ZIO[Console, Throwable, KafkaRecord => Task[Unit]]
+  type SinkIO = UIO[KafkaRecord => Task[Unit]]
 
   trait Service {
     def start(config: Config): Task[String]
@@ -57,7 +57,7 @@ object KafkaSink {
 
   def saveToDB(config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock): ZIO[Console, Throwable, KafkaRecord => Task[Unit]] = {
     for {
-      restSink: KafkaRecordToHttpSink[RichDynamicJson, HttpRequest] <- KafkaRecordToHttpSink(config, templateCache)
+      restSink: KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest] <- KafkaRecordToHttpRequest(config, templateCache)
     } yield { (record: KafkaRecord) =>
       val sink: ZIO[Any, Throwable, Response[Either[String, String]]] = restSink.makeRestRequest(record)
       val sunk: Task[Unit] = sink
@@ -71,10 +71,21 @@ object KafkaSink {
     }
   }
 
-  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[zio.ZEnv, Nothing, Instance] = {
+  /**
+    * This is one way to make the sink. We could also just drop in some code we might reflectively init
+    * from a config
+    * @param templateCache
+    * @return
+    */
+  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[ZEnv, Nothing, Instance] = {
     for {
-      clock <- ZIO.environment[Clock]
-      svc   <- Service(saveToDB(_, templateCache, clock))
+      clock <- ZIO.environment[ZEnv]
+      writer = (config: Config) => {
+        val sink = saveToDB(config, templateCache, clock)
+        // TODO - this is where we might inject some retry/recovery logic (rather than just 'orDie')
+        sink.provide(clock).orDie
+      }
+      svc <- Service(writer)
     } yield svc
   }
 

@@ -1,23 +1,22 @@
 package expressions.rest.server
 
-import expressions.client.{HttpRequest, HttpResponse}
+import expressions.client.HttpRequest
 import expressions.template.Message
 import expressions.{JsonTemplate, RichDynamicJson}
-import io.circe.Json
 import io.circe.literal.JsonStringContext
 
 import scala.util.Success
 
-class KafkaRecordToHttpSinkTest extends BaseRouteTest {
-  "KafkaRecordToHttpSink" should {
+class KafkaRecordToHttpRequestTest extends BaseRouteTest {
+  "KafkaRecordToHttpRequest" should {
     "work" in {
       val value = System.currentTimeMillis().toInt
       val services = {
         val mappingConfig = MappingConfig()
         for {
           disk <- Disk(mappingConfig.rootConfig)
-          _    <- KafkaRecordToHttpSink.writeScriptForTopic(mappingConfig, disk, "unit-test", value.toString)
-          svc  <- KafkaRecordToHttpSink(mappingConfig, disk, JsonTemplate.newCache[HttpRequest]())(_.asContext())
+          _    <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", value.toString)
+          svc  <- KafkaRecordToHttpRequest(mappingConfig, disk, JsonTemplate.newCache[HttpRequest]())(_.asContext())
         } yield svc
       }.value()
 

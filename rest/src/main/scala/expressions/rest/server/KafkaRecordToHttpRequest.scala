@@ -14,7 +14,7 @@ import zio.{Task, ZIO}
 import scala.util.Try
 
 /**
-  * KafkaRecordToHttpSink - the guts of the logic hole for mapping/writing KafkaRecords to some http sink
+  * KafkaRecordToHttpRequest - a function which can map a [[KafkaRecord]] as [[HttpRequest]](s)
   *
   * @param mappingConfig
   * @param templateCache
@@ -24,10 +24,10 @@ import scala.util.Try
   * @tparam B
   */
 // format: off
-case class KafkaRecordToHttpSink[A, B](mappingConfig: MappingConfig,
-                                       templateCache: Cache[Expression[A, B]],
-                                       scriptForTopic: String => Try[String],
-                                       asContext: KafkaRecord => Context[A]) {
+case class KafkaRecordToHttpRequest[A, B](mappingConfig: MappingConfig,
+                                          templateCache: Cache[Expression[A, B]],
+                                          scriptForTopic: String => Try[String],
+                                          asContext: KafkaRecord => Context[A]) {
 // format: on
 
   /**
@@ -47,14 +47,14 @@ case class KafkaRecordToHttpSink[A, B](mappingConfig: MappingConfig,
     } yield request
   }
 }
-object KafkaRecordToHttpSink {
+object KafkaRecordToHttpRequest {
 
   import eie.io._
 
   def dataDir(rootConfig: Config) = rootConfig.getString("app.data").asPath
 
   def apply(rootConfig: Config = ConfigFactory.load(),
-            templateCache: Cache[Expression[RichDynamicJson, HttpRequest]] = JsonTemplate.newCache[HttpRequest]()): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, HttpRequest]] = {
+            templateCache: Cache[Expression[RichDynamicJson, HttpRequest]] = JsonTemplate.newCache[HttpRequest]()): ZIO[Console, Throwable, KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest]] = {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     for {
       disk <- Disk(rootConfig)
@@ -65,9 +65,9 @@ object KafkaRecordToHttpSink {
   }
 
   def apply(mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]])(
-      asContext: Message[RichDynamicJson] => Context[RichDynamicJson]): ZIO[Console, Throwable, KafkaRecordToHttpSink[RichDynamicJson, HttpRequest]] = {
+      asContext: Message[RichDynamicJson] => Context[RichDynamicJson]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest]] = {
     mappingConfig.scriptForTopic(disk).map { lookup =>
-      KafkaRecordToHttpSink(mappingConfig, templateCache, lookup, (asMessage _).andThen(asContext))
+      KafkaRecordToHttpRequest(mappingConfig, templateCache, lookup, (asMessage _).andThen(asContext))
     }
   }
 

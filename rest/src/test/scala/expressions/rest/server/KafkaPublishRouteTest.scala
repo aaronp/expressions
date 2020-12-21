@@ -5,8 +5,7 @@ import expressions.client.kafka.PostRecord
 import expressions.franz.KafkaRecord
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import zio.Ref
-import zio.console.putStrLn
+import zio.{Ref, Task, UIO}
 
 class KafkaPublishRouteTest extends BaseRouteTest {
   "KafkaPublishRoute" should {
@@ -27,9 +26,10 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         // create a sink which will just keep track of our records
         //
         records <- Ref.make(List[KafkaRecord]())
-        onRecord: KafkaSink.SinkIO = (record: KafkaRecord) => {
+        onRecord = (record: KafkaRecord) => {
           println(s"GOT: $record")
-          records.update(record :: _)
+          val write: Task[Unit] = records.update(record :: _)
+          write
         }
 
         //
@@ -40,7 +40,7 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         // start a listener ... we should eventually read all our records
         //
-        startableSink <- KafkaSink.Service(_ => onRecord)
+        startableSink <- KafkaSink.Service(_ => UIO(onRecord))
         startedKey    <- startableSink.start(testConfig)
         readBack      <- records.get.repeatUntil(_.size == expectedRecords)
         stopped       <- startableSink.stop(startedKey)
