@@ -3,9 +3,10 @@ package expressions.franz
 import args4c.implicits.configAsRichConfig
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
+import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.common.serialization.{Deserializer, Serializer}
+import org.apache.kafka.common.serialization._
 import zio.ZManaged
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.{ConsumerSettings, Subscription}
@@ -15,11 +16,8 @@ import zio.kafka.serde.Serde
 import java.util.UUID
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
-import scala.util.Try
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
-
 import scala.reflect.ClassTag
+import scala.util.Try
 
 object FranzConfig {
 
@@ -30,6 +28,11 @@ object FranzConfig {
   def stringKeyAvroValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
     keyConf[StringDeserializer, StringSerializer]
       .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer])
+      .withFallback(rootFallbackConfig)
+  }
+  def stringKeyStringValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
+    keyConf[StringDeserializer, StringSerializer]
+      .withFallback(valueConf[StringDeserializer, StringSerializer])
       .withFallback(rootFallbackConfig)
   }
   def avroKeyValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
@@ -124,27 +127,17 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
       .withProperties(asJavaMap(kafkaConfig).asScala.toSeq: _*)
   }
 
-  private lazy val genericAvroSerdeFromConfig: Serde[Any, GenericRecord] = {
-    val serde                = new GenericAvroSerde(schemaRegistryClient)
-    val isSerdeForRecordKeys = kafkaConfig.getBoolean("isForRecordKeys")
-    serde.configure(asJavaMap(kafkaConfig), isSerdeForRecordKeys)
-    Serde(serde)
-  }
+  def keyType: SupportedType[_]  = typeOf(kafkaConfig.getConfig("key"))
+  def keySerde[K]: Serde[Any, K] = serdeFor[K](kafkaConfig.getConfig("key"))
 
-  def keySerde[K]   = serdeFor[K](kafkaConfig.getConfig("key"))
-  def valueSerde[V] = serdeFor[V](kafkaConfig.getConfig("value"))
+  def valueType: SupportedType[_] = typeOf(kafkaConfig.getConfig("value"))
+  def valueSerde[V]               = serdeFor[V](kafkaConfig.getConfig("value"))
 
   def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = producer[K, V](keySerde[K], valueSerde[V])
 
   def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
     Producer.make(producerSettings, keySerde, valueSerde)
   }
-
-  /**
-    * Convenience method for creating a producer which writes string keys and avro values to a topic
-    * @return a producer which writes string keys and avro values to a topic
-    */
-  def stringAvroProducer: ZManaged[Any, Throwable, Producer.Service[Any, String, GenericRecord]] = producer(Serde.string, genericAvroSerdeFromConfig)
 
   private lazy val schemaRegistryClient: SchemaRegistryClient = {
     val baseUrls            = kafkaConfig.asList("schema.registry.url").asJava
@@ -164,12 +157,34 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     deserializerName.toLowerCase match {
       case "string" | "strings" => Serde.string.asInstanceOf[Serde[Any, A]]
       case "long" | "longs"     => Serde.long.asInstanceOf[Serde[Any, A]]
-      case "avro"               => genericAvroSerdeFromConfig.asInstanceOf[Serde[Any, A]]
       case _ =>
         val kafkaDeserializer: Deserializer[A] = instantiate[Deserializer[A]](serdeConfig.getString("deserializer"))
         val kafkaSerializer: Serializer[A]     = instantiate[Serializer[A]](serdeConfig.getString("serializer"))
 
         Serde[Any, A](zio.kafka.serde.Deserializer.apply[A](kafkaDeserializer))(zio.kafka.serde.Serializer(kafkaSerializer))
+    }
+  }
+
+  def namespace = franzConfig.getString("namespace") match {
+    case "<random>" => randomValue
+    case name       => name
+  }
+  def typeOf(serdeConfig: Config): SupportedType[_] = {
+    val serializerName = serdeConfig.getString("serializer")
+    serializerName.toLowerCase match {
+      case "string" | "strings" => SupportedType.STRING
+      case "long" | "longs"     => SupportedType.LONG
+      case "avro"               => SupportedType.RECORD(namespace)
+      case _ =>
+        instantiate[Any](serializerName) match {
+          case _: StringSerializer                                   => SupportedType.STRING
+          case _: ByteArraySerializer                                => SupportedType.BYTE_ARRAY
+          case _: ByteBufferSerializer                               => SupportedType.BYTE_ARRAY
+          case _: LongSerializer                                     => SupportedType.LONG
+          case _: ByteArraySerializer                                => SupportedType.BYTE_ARRAY
+          case _: io.confluent.kafka.serializers.KafkaAvroSerializer => SupportedType.RECORD(namespace)
+          case other                                                 => sys.error(s"Couldn't determine supported type from serializer '$other'")
+        }
     }
   }
 

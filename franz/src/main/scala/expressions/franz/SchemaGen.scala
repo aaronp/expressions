@@ -16,21 +16,21 @@ object SchemaGen {
 
   def apply(record: Json, namespace: String = "gen"): Schema = TypeInst(record).schema(None, namespace)
 
-  def recordForJson(record: Json): GenericRecord = asRecord(record, 4)
+  def recordForJson(record: Json, namespace: String = "gen"): GenericRecord = asRecord(record, namespace, 4)
 
-  private def asRecord(record: Json, recursiveCheck: Int): GenericRecord = {
+  private def asRecord(record: Json, namespace: String, recursiveCheck: Int): GenericRecord = {
     val inst = TypeInst(record)
     require(recursiveCheck > 0)
     inst.`type` match {
       case RECORD =>
-        val schema  = inst.schema()
+        val schema  = inst.schema(namespace = namespace)
         val decoder = DecoderFactory.get().jsonDecoder(schema, new DataInputStream(new ByteArrayInputStream(record.noSpaces.getBytes())))
         val reader  = new GenericDatumReader[Any](schema)
         reader.read(null, decoder).asInstanceOf[GenericRecord]
       case ARRAY =>
-        asRecord(Json.obj("array" -> record), recursiveCheck - 1)
+        asRecord(Json.obj("array" -> record), namespace, recursiveCheck - 1)
       case _ =>
-        asRecord(Json.obj("value" -> record), recursiveCheck - 1)
+        asRecord(Json.obj("value" -> record), namespace, recursiveCheck - 1)
     }
   }
 

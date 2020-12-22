@@ -1,6 +1,8 @@
 package expressions.franz
 
 import io.circe.literal.JsonStringContext
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import zio.console.putStrLn
@@ -49,7 +51,24 @@ class ForEachStreamTest extends BaseFranzTest {
       val config = FranzConfig.avroKeyValueConfig()
 
       val chunk = Chunk.fromArray((0 to 10).map { i =>
-        val key: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : $i, "qualifier" : "q" }""")
+        val key: GenericRecord  = SchemaGen.recordForJson(json"""{ "key" : $i, "qualifier" : "q" }""")
+        val key2: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : ${i + 1}, "qualifier" : "q" }""")
+
+        def keyOf(s: Schema) = {
+          val schema1 = new AvroSchema(s)
+          val b1      = schema1.canonicalString
+          val b2      = schema1.schemaType
+          val b3      = schema1.references
+          (b1, b2, b3)
+        }
+        val k1 = keyOf(key.getSchema)
+        val k2 = keyOf(key2.getSchema)
+        println("Check:")
+        println(k1)
+        println("vs")
+        println(k2)
+        println()
+
         record[GenericRecord](config.topic, key)
       }.toArray)
 
