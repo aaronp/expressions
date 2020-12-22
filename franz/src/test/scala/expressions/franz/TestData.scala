@@ -1,4 +1,4 @@
-package expressions.rest.server
+package expressions.franz
 
 import example.{Address, Example, daysOfTheWeek}
 import io.circe.Json

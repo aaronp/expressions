@@ -2,11 +2,9 @@ package expressions.franz
 
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Json
-import org.apache.avro.generic.{GenericData, GenericRecord}
+import org.apache.avro.generic.GenericData
 import org.apache.kafka.common.header.Headers
-import zio.ZIO
 import zio.kafka.consumer.{CommittableRecord, Offset}
-import zio.kafka.serde.Deserializer
 
 import scala.util.Try
 
@@ -17,12 +15,12 @@ import scala.util.Try
   * @param offset     the commit offset
   * @param recordBody the deserialized message body
   */
-final case class KafkaRecord(
+final case class KafkaRecord[K, A](
     topic: String,
-    key: String,
+    key: K,
     timestamp: Long,
     offset: Offset,
-    recordBody: GenericRecord,
+    recordBody: A,
     headers: Map[String, String]
 ) {
 
@@ -37,26 +35,34 @@ final case class KafkaRecord(
 
 object KafkaRecord extends StrictLogging {
 
-  type KafkaToRecord = CommittableRecord[String, Array[Byte]] => KafkaRecord
+//  type KafkaToRecord = CommittableRecord[String, Array[Byte]] => KafkaRecord[GenericData]
 
-  def decoder(serde: Deserializer[Any, GenericRecord]): CommittableRecord[String, Array[Byte]] => ZIO[Any, Throwable, KafkaRecord] = {
-    (committableRecord: CommittableRecord[String, Array[Byte]]) =>
-      {
-        val headers: Headers = committableRecord.record.headers()
-        import scala.jdk.CollectionConverters._
-        val headerAsStrings = headers.asScala.flatMap { h =>
-          Try(new String(h.value())).map(h.key -> _).toOption
-        }
-        serde.deserialize(committableRecord.record.topic(), headers, committableRecord.value).map { data =>
-          KafkaRecord(
-            committableRecord.record.topic(),
-            committableRecord.key,
-            committableRecord.timestamp,
-            committableRecord.offset,
-            data,
-            headerAsStrings.toMap
-          )
-        }
-      }
+  def headerAsStrings(committableRecord: CommittableRecord[_, _]): Iterable[(String, String)] = {
+    import scala.jdk.CollectionConverters._
+    val headers: Headers = committableRecord.record.headers()
+    headers.asScala.flatMap { h =>
+      Try(new String(h.value())).map(h.key -> _).toOption
+    }
   }
+
+//  def decoder[K, V] : CommittableRecord[K, V] => ZIO[Any, Throwable, KafkaRecord[K,V]] = {
+//    (committableRecord: CommittableRecord[K, V]) =>
+//      {
+//        val headers: Headers = committableRecord.record.headers()
+//        import scala.jdk.CollectionConverters._
+//        val headerAsStrings = headers.asScala.flatMap { h =>
+//          Try(new String(h.value())).map(h.key -> _).toOption
+//        }
+////        serde.deserialize(committableRecord.record.topic(), headers, ).map { data =>
+////        }
+//          KafkaRecord[K,V](
+//            committableRecord.record.topic(),
+//            committableRecord.key,
+//            committableRecord.timestamp,
+//            committableRecord.offset,
+//            committableRecord.value,
+//            headerAsStrings.toMap
+//          )
+//      }
+//  }
 }

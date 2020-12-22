@@ -1,4 +1,4 @@
-package expressions.rest.server
+package expressions.franz
 
 import io.circe.{Json, JsonNumber}
 import org.apache.avro.Schema

@@ -1,4 +1,4 @@
-package expressions.rest.server
+package expressions.franz
 
 import io.circe.Json
 import io.circe.literal.JsonStringContext
