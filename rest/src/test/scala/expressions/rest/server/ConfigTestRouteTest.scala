@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigFactory
 import expressions.{Cache, RichDynamicJson, StringTemplate}
 import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
+import io.circe.Json
 import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 
@@ -23,14 +24,16 @@ class ConfigTestRouteTest extends BaseRouteTest {
            |x : "{{ record.value.foo.string.get }}"
           |""".stripMargin
 
-      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, "schlussel".asJson).asJson.noSpaces)).value.value()
+      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, Json.fromString("schlussel")).asJson.noSpaces)).value.value()
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {
         val cfg = ConfigFactory.parseString(transformResponse.result.spaces2)
         response.status.isSuccess shouldBe true
 
-        cfg.getString("\"test.arr\"") shouldBe "0;1;2-schlussel-ronment"
+        val actual = cfg.getString("\"test.arr\"")
+
+        actual shouldBe "0;1;2-\"schlussel\"-ronment"
         cfg.getString("x") shouldBe "bar"
       }
     }

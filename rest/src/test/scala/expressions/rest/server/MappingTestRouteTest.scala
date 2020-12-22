@@ -1,7 +1,7 @@
 package expressions.rest.server
 
 import expressions.JsonTemplate
-import expressions.client.{HttpRequest, TransformRequest, TransformResponse}
+import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.Json
 import io.circe.literal.JsonStringContext
 import io.circe.syntax._
@@ -10,8 +10,7 @@ class MappingTestRouteTest extends BaseRouteTest {
 
   "POST /mapping/check" should {
     "return a configuration" in {
-
-      val script = """record.value.foo.get[String]""".stripMargin
+      val script = """record.value.foo.get[io.circe.Json]""".stripMargin
 
       val request = {
         val jason = json"""{ "foo" : "bar" }"""

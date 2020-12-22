@@ -18,8 +18,6 @@ class ScratchPad extends AnyWordSpec with Matchers {
             """
 
   "this script" should {
-    "work" in {
-
-    }
+    "work" in {}
   }
 }

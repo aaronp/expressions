@@ -81,8 +81,8 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   val kafkaConfig = franzConfig.getConfig("kafka")
 
-  lazy val randomTopic = UUID.randomUUID().toString.filter(_.isLetter)
-  lazy val randomGroup = UUID.randomUUID().toString.filter(_.isLetter)
+  lazy val randomTopic = s"topic${rand()}"
+  lazy val randomGroup = s"group${rand()}"
   val topic = franzConfig.getString("kafka.topic") match {
     case "<random>" => randomTopic
     case topic      => topic
@@ -209,7 +209,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     jMap
   }
 
-  private def rand()   = UUID.randomUUID().toString.filter(_.isLetter)
+  private def rand()   = UUID.randomUUID().toString.filter(_.isLetterOrDigit)
   private val UnquoteR = """ *"(.*)" *""".r
 
   private lazy val randomValue = rand().toLowerCase()

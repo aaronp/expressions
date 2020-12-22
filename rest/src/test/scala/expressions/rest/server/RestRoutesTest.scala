@@ -40,7 +40,7 @@ class RestRoutesTest extends BaseRouteTest {
                        |    case "first" => HttpRequest.get(url, Map.empty)
                        |    case other   => HttpRequest.post(url, Map.empty)
                        |  }
-                       |
+                       |  m
                        |}
                        |}""".stripMargin
         TransformRequest(script, jason)
