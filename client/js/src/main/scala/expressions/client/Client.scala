@@ -57,7 +57,7 @@ object Client {
   }
 
   object cache {
-    def storeAt(path: String, value: String) = save(path.split("/", -1).toList, value)
+    def storeAt(path: String, value: String) = save(path.split("/", -1).toList, Json.fromString(value))
 
     /**
       * @param path

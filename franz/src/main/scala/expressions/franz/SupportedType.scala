@@ -15,7 +15,7 @@ object SupportedType {
   }
   case class RECORD(namespace: String) extends SupportedType[GenericRecord] {
     override def of(input: Json): GenericRecord = {
-    val record = SchemaGen.recordForJson(input, namespace)
+      val record = SchemaGen.recordForJson(input, namespace)
 
       record
     }

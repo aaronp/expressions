@@ -5,9 +5,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
-import expressions.template.Message
-import expressions.{Cache, JsonTemplate, RichDynamicJson, StringTemplate}
-import io.circe.Encoder
+import expressions.{Cache, JsonTemplate, StringTemplate}
+import io.circe.syntax.EncoderOps
+import io.circe.{Encoder, Json}
 import org.http4s
 import org.http4s.dsl.Http4sDsl
 import zio.Task
@@ -28,16 +28,17 @@ object RestRoutes extends StrictLogging {
       cacheRoute        <- CacheRoute()
       disk              <- DiskRoute(defaultConfig)
       fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
-      templateCache     = JsonTemplate.newCache[JsonMsg, HttpRequest]("import expressions.client._")
+      templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
       kafkaRunner       <- KafkaSink[K, V](templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[JsonMsg]("implicit val _implicitJsonValue = record.value.jsonValue")
 
-      val mappingRoutes   = MappingTestRoute(templateCache, _.asContext(fsDir))
-      val configTestRotes = ConfigTestRoute(expressionForString, _.asContext(fsDir))
-      val configRoute     = ConfigRoute(defaultConfig)
-      val kafkaRoute      = KafkaRoute(kafkaRunner)
+      val jsonCache: Cache[JsonTemplate.Expression[JsonMsg, Json]] = templateCache.map(_.andThen(_.asJson))
+      val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
+      val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
+      val configRoute                                              = ConfigRoute(defaultConfig)
+      val kafkaRoute                                               = KafkaRoute(kafkaRunner)
 
       kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk
     }

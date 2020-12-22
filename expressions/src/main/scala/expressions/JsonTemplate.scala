@@ -14,11 +14,9 @@ object JsonTemplate {
 
   type Expression[A, B] = Context[A] => B
 
-  case class CompiledExpression[A: ClassTag, B](code: String, thunk: Expression[A, B]) extends Expression[A, B] {
+  case class CompiledExpression[A, B](contextType: String, code: String, thunk: Expression[A, B]) extends Expression[A, B] {
     override def apply(input: Context[A]): B = thunk(input)
-
-    def aType                       = implicitly[ClassTag[A]].runtimeClass.getSimpleName
-    override def toString(): String = s"COMPILED Context[$aType] => B:\n${code}\n"
+    override def toString(): String          = s"COMPILED Context[$contextType] => B:\n${code}\n"
   }
 
   def const[A, B](value: B): Expression[A, B] = _ => value
@@ -40,7 +38,7 @@ object JsonTemplate {
          |$expression
          |
          |""".stripMargin
-    forAnyInput[A, B](scriptWithImplicitJson)
+    forAnyInput[A, B]("Message[RichDynamicJson, RichDynamicJson]", scriptWithImplicitJson)
   }
 
   /**
@@ -55,29 +53,31 @@ object JsonTemplate {
     * @tparam B
     * @return
     */
-  def forAnyInput[A: ClassTag, B](expression: String): Try[Expression[A, B]] = {
+  def forAnyInput[A: ClassTag, B](expression: String): Try[Expression[A, B]] = forAnyInput(className[A], expression)
+
+  def forAnyInput[A, B](contextType: String, expression: String): Try[Expression[A, B]] = {
     val script =
       s"""import expressions._
          |import expressions.implicits._
          |import AvroExpressions._
          |import expressions.template.{Context, Message}
          |
-         |(context : Context[${className[A]}]) => {
+         |(context : Context[${contextType}]) => {
          |  import context._
          |  $expression
          |}
        """.stripMargin
-    compileAsExpression[A, B](script)
+    compileAsExpression[A, B](contextType, script)
   }
 
   private[expressions] val Moustache = """(.*?)\{\{(.*?)}}(.*)""".r
 
-  private[expressions] def compileAsExpression[A: ClassTag, B](script: String): Try[Expression[A, B]] = {
+  private[expressions] def compileAsExpression[A, B](contextType: String, script: String): Try[Expression[A, B]] = {
     try {
       val tree   = compiler.parse(script)
       val result = compiler.eval(tree)
       result match {
-        case expr: Expression[A, B] => Success(CompiledExpression(script, expr))
+        case expr: Expression[A, B] => Success(CompiledExpression(contextType, script, expr))
         case other                  => Failure(new Exception(s"'$script' isn't an Expression[$className] : $other"))
       }
     } catch {

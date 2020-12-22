@@ -20,8 +20,8 @@ object KafkaPublishService {
   def execPost(post: PostRecord, config: FranzConfig): URIO[Any with Blocking, Int] = {
     val newConfig: FranzConfig = config.withOverrides(ConfigFactory.parseString(post.config))
 
-    val kt = config.keyType
-    val vt = config.valueType
+    val kt           = config.keyType
+    val vt           = config.valueType
     val kafkaRecords = asRecords(kt, vt, post, config)
     ForeachPublisher.publishAll(newConfig, kafkaRecords).map(_.size).orDie
   }

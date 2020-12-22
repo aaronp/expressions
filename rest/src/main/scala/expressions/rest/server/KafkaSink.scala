@@ -2,10 +2,10 @@ package expressions.rest.server
 
 import com.typesafe.config.Config
 import eie.io.AlphaCounter
+import expressions.Cache
 import expressions.JsonTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.franz.{ForEachStream, FranzConfig}
-import expressions.{Cache, RichDynamicJson}
 import io.circe.Encoder
 import sttp.client.Response
 import zio._
@@ -48,22 +48,25 @@ object KafkaSink {
     def running(): UIO[List[String]]
   }
 
-  def validate(response: Response[Either[String, String]]) = {
-    response.body match {
-      case Left(error) =>
-        sys.error(s"Response threw $error")
-      case Right(_) =>
-        require(response.code.isSuccess, s"Response code was ${response.statusText}")
+  def validate(responses: List[(HttpRequest, Response[Either[String, String]])]) = {
+    responses.map {
+      case (in, resp) =>
+        resp.body match {
+          case Left(error) =>
+            sys.error(s"Response threw $error")
+          case Right(_) =>
+            require(resp.code.isSuccess, s"Response code was ${resp.statusText}")
+        }
     }
   }
 
   def saveToDB[K: Encoder, V: Encoder](config: Config,
-                                       templateCache: Cache[Expression[JsonMsg, HttpRequest]],
+                                       templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]],
                                        clock: Clock): ZIO[Console, Throwable, CommittableRecord[K, V] => Task[Unit]] = {
     for {
       restSink <- KafkaRecordToHttpRequest.forRootConfig[K, V](config, templateCache)
     } yield { (record: CommittableRecord[K, V]) =>
-      val sink: ZIO[Any, Throwable, Response[Either[String, String]]] = restSink.makeRestRequest(record)
+      val sink: ZIO[Any, Throwable, List[(HttpRequest, Response[Either[String, String]])]] = restSink.makeRestRequest(record)
       val sunk: Task[Unit] = sink
         .map(validate)
         .either
@@ -81,7 +84,7 @@ object KafkaSink {
     * @param templateCache
     * @return
     */
-  def apply[K: Encoder, V: Encoder](templateCache: Cache[Expression[JsonMsg, HttpRequest]]): ZIO[ZEnv, Nothing, Instance[K, V]] = {
+  def apply[K: Encoder, V: Encoder](templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[ZEnv, Nothing, Instance[K, V]] = {
     for {
       clock <- ZIO.environment[ZEnv]
       writer = (config: Config) => {

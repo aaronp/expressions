@@ -39,11 +39,17 @@ case class KafkaRecordToHttpRequest[K, V, B](mappingConfig: MappingConfig,
     */
   def mappingForTopic(topic: String) = scriptForTopic(topic).flatMap(templateCache.apply)
 
-  def makeRestRequest(record: CommittableRecord[K, V])(implicit outputAsRequest: B =:= HttpRequest): ZIO[Any, Throwable, Response[Either[String, String]]] = {
-    asRestRequest(record).map(RestClient.send)
+  def makeRestRequest(record: CommittableRecord[K, V])(
+      implicit outputAsRequest: B =:= List[HttpRequest]): ZIO[Any, Throwable, List[(HttpRequest, Response[Either[String, String]])]] = {
+    for {
+      requests <- asRestRequests(record)
+      results <- ZIO.foreach(requests) { r =>
+        Task(RestClient.send(r)).map(r -> _)
+      }
+    } yield results
   }
 
-  def asRestRequest(record: CommittableRecord[K, V])(implicit outputAsRequest: B =:= HttpRequest): Task[HttpRequest] = {
+  def asRestRequests(record: CommittableRecord[K, V])(implicit outputAsRequest: B =:= List[HttpRequest]): Task[List[HttpRequest]] = {
     for {
       asRequest <- Task.fromTry(mappingForTopic(record.record.topic))
       request   = outputAsRequest(asRequest(asContext(record)))
@@ -56,9 +62,9 @@ object KafkaRecordToHttpRequest {
 
   def dataDir(rootConfig: Config): Path = rootConfig.getString("app.data").asPath
 
-  def forRootConfig[K: Encoder, V: Encoder](rootConfig: Config = ConfigFactory.load(),
-                                            templateCache: Cache[Expression[JsonMsg, HttpRequest]] = JsonTemplate.newCache[JsonMsg, HttpRequest]())
-    : ZIO[Console, Throwable, KafkaRecordToHttpRequest[K, V, HttpRequest]] = {
+  def forRootConfig[K: Encoder, V: Encoder](
+      rootConfig: Config = ConfigFactory.load(),
+      templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[K, V, List[HttpRequest]]] = {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     for {
       disk <- Disk(rootConfig)
@@ -68,12 +74,11 @@ object KafkaRecordToHttpRequest {
     } yield inst
   }
 
-  def apply[K: Encoder, V: Encoder](mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[JsonMsg, HttpRequest]])(
-      asContext: JsonMsg => Context[JsonMsg]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[K, V, HttpRequest]] = {
+  def apply[K: Encoder, V: Encoder](mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]])(
+      asContext: JsonMsg => Context[JsonMsg]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[K, V, List[HttpRequest]]] = {
     mappingConfig.scriptForTopic(disk).map { lookup =>
       val transform: CommittableRecord[K, V] => Context[JsonMsg] = (asMessage[K, V] _).andThen(asContext)
-      val foo                                                    = new KafkaRecordToHttpRequest[K, V, HttpRequest](mappingConfig, templateCache, lookup, transform)
-      foo
+      new KafkaRecordToHttpRequest[K, V, List[HttpRequest]](mappingConfig, templateCache, lookup, transform)
     }
   }
 

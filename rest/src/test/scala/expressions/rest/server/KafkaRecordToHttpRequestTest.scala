@@ -17,7 +17,7 @@ class KafkaRecordToHttpRequestTest extends BaseRouteTest {
         for {
           disk <- Disk(mappingConfig.rootConfig)
           _    <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", value.toString)
-          svc  <- KafkaRecordToHttpRequest[Json, Json](mappingConfig, disk, JsonTemplate.newCache[JsonMsg, HttpRequest]())(_.asContext())
+          svc  <- KafkaRecordToHttpRequest[Json, Json](mappingConfig, disk, JsonTemplate.newCache[JsonMsg, List[HttpRequest]]())(_.asContext())
         } yield svc
       }.value()
 

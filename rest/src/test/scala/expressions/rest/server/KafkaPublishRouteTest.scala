@@ -29,24 +29,12 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         records <- Ref.make(List[CommittableRecord[String, GenericRecord]]())
         onRecord = (record: CommittableRecord[String, GenericRecord]) => {
-          println(
-            s"""
-               |
-               |!!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!!
-               |GOT: $record
-               |!!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!!
-               |
-               |
-               |""".stripMargin)
           records.update(record :: _)
         }
-
         //
         // call our method under test - publish some records to the topic
         //
-        Some(postResult) <- routeUnderTest(post("kafka/publish", testRecord.asJson.noSpaces)).value
-
-        _ <- putStrLn(s"Posted $topic w/ ${postResult} result ")
+        Some(_) <- routeUnderTest(post("kafka/publish", testRecord.asJson.noSpaces)).value
 
         //
         // start a listener ... we should eventually read all our records

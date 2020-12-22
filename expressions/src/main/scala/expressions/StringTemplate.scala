@@ -47,8 +47,9 @@ object StringTemplate {
       case 0 => const[A]("")
       case 1 => const[A](expression)
       case _ =>
+        val contextType = className[A]
         val script = stringAsExpression(scriptPrefix, parts)
-        JsonTemplate.compileAsExpression[A, String](script).get
+        JsonTemplate.compileAsExpression[A, String](contextType, script).get
     }
   }
 

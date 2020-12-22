@@ -1,7 +1,6 @@
 package expressions.rest.server
 
-import expressions.JsonTemplate.Expression
-import expressions.{Cache, JsonTemplate, RichDynamicJson}
+import expressions.JsonTemplate
 import expressions.client.{HttpRequest, TransformRequest, TransformResponse}
 import io.circe.Json
 import io.circe.literal.JsonStringContext
@@ -18,7 +17,7 @@ class MappingTestRouteTest extends BaseRouteTest {
         val jason = json"""{ "foo" : "bar" }"""
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
-      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, HttpRequest]())
+      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]())
 
       val Some(response) = underTest(request).value.value()
 
@@ -36,7 +35,7 @@ class MappingTestRouteTest extends BaseRouteTest {
         val jason = json"""{ "foo" : "bar" }"""
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
-      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, HttpRequest]())
+      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]())
 
       val Some(response) = underTest(request).value.value()
 
@@ -48,5 +47,4 @@ class MappingTestRouteTest extends BaseRouteTest {
       }
     }
   }
-
 }

@@ -5,8 +5,6 @@ import org.scalajs.dom.html.Div
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scalatags.JsDom.all._
-
-
 @JSExportTopLevel("KafkaPostPage")
 case class KafkaPostPage(targetDivId: String) {
 
@@ -15,8 +13,6 @@ case class KafkaPostPage(targetDivId: String) {
   val configTextArea    = textarea(cols := 140, rows := 20).render
   val recordTextArea    = textarea(cols := 140, rows := 20).render
   val configNameTextBox = input(`type` := "text", id := "config-text", size := 120, value := "application.conf").render
-
-
 
   val postForm = div(
     div(

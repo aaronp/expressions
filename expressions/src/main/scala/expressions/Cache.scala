@@ -12,6 +12,8 @@ class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new Illega
 
   private var thunkByCode = Map[String, V]()
 
+  def map[A](thunk : V => A): Cache[A] = new Cache[A](create.andThen(_.map(thunk)))
+
   private def createUnsafe(expression: String): Try[V] = {
     val result = create(expression)
 

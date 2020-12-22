@@ -5,6 +5,7 @@ import expressions.JsonTemplate.Expression
 import expressions.client.{HttpRequest, TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
 import expressions.{Cache, RichDynamicJson}
+import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
@@ -24,7 +25,7 @@ object MappingTestRoute extends StrictLogging {
     }
   }
 
-  def apply(cache: Cache[Expression[JsonMsg, HttpRequest]], asContext: JsonMsg => Context[JsonMsg] = _.asContext()): HttpRoutes[Task] = {
+  def apply(cache: Cache[Expression[JsonMsg, Json]], asContext: JsonMsg => Context[JsonMsg] = _.asContext()): HttpRoutes[Task] = {
 
     transformHandler {
       case TransformRequest(userInputScript, userInput, key, timestamp, headers, topic) =>
@@ -36,11 +37,7 @@ object MappingTestRoute extends StrictLogging {
           s"""
              |import io.circe.syntax._
              |
-             |val __userEndResult = {
-             |   ${userInputScript}
-             |}
-             |
-             |__userEndResult.asJson
+             |${userInputScript}
              |""".stripMargin
 
         logger.info(s"Checking\n$script")
@@ -49,11 +46,11 @@ object MappingTestRoute extends StrictLogging {
             logger.error(s"Error parsing\n$script\n$err")
             val errMsg = s"computer says no:\n${err.getMessage}"
             Response(status = Status.InternalServerError).withEntity(TransformResponse(errMsg.asJson, Some(errMsg)))
-          case Right(mapper: Expression[JsonMsg, HttpRequest]) =>
+          case Right(mapper: Expression[JsonMsg, Json]) =>
             try {
               val context = asContext(inputAsMessage)
-              val mapped  = mapper(context)
-              Response(Status.Ok).withEntity(TransformResponse(mapped.asJson, None))
+              val mapped = mapper(context)
+              Response(Status.Ok).withEntity(TransformResponse(mapped, None))
             } catch {
               case NonFatal(e) =>
                 logger.error(s"Error executing\n$script\n$e")
