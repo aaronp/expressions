@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Provides a script-able means to produce some type A for any type A
+  * Provides a script-able means to produce some type B for any type A
   */
 object JsonTemplate {
 
@@ -23,7 +23,7 @@ object JsonTemplate {
 
   def const[A, B](value: B): Expression[A, B] = _ => value
 
-  def newCache[B](scriptPrefix: String = ""): Cache[Expression[RichDynamicJson, B]] = new Cache[Expression[RichDynamicJson, B]](script => apply[B](script, scriptPrefix))
+  def newCache[A: ClassTag, B](scriptPrefix: String = ""): Cache[Expression[A, B]] = new Cache[Expression[A, B]](script => apply[A, B](script, scriptPrefix))
 
   /**
     * We bias these expressions for [[RichDynamicJson]] inputs
@@ -31,7 +31,7 @@ object JsonTemplate {
     * @tparam B
     * @return
     */
-  def apply[B](expression: String, scriptPrefix: String = ""): Try[Expression[RichDynamicJson, B]] = {
+  def apply[A: ClassTag, B](expression: String, scriptPrefix: String = ""): Try[Expression[A, B]] = {
     val scriptWithImplicitJson =
       s"""
          |implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
@@ -40,7 +40,7 @@ object JsonTemplate {
          |$expression
          |
          |""".stripMargin
-    forAnyInput[RichDynamicJson, B](scriptWithImplicitJson)
+    forAnyInput[A, B](scriptWithImplicitJson)
   }
 
   /**

@@ -9,7 +9,7 @@ import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
 
-  val expressionForString: Cache[StringExpression[RichDynamicJson]] = StringTemplate.newCache[RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
+  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[JsonMsg]("implicit val _implicitJsonValue = record.value.jsonValue")
   "POST /mapping/check" should {
     "return a configuration" in {
 
@@ -23,7 +23,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
            |x : "{{ record.value.foo.string.get }}"
           |""".stripMargin
 
-      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, "schlussel").asJson.noSpaces)).value.value()
+      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, "schlussel".asJson).asJson.noSpaces)).value.value()
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {
@@ -43,7 +43,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
         """broken : "{{ record.does not compile }}"
           |""".stripMargin
 
-      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, "schlussel").asJson.noSpaces)).value.value()
+      val Some(response) = underTest(post("config/check", TransformRequest(script, jason, "schlussel".asJson).asJson.noSpaces)).value.value()
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {

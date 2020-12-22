@@ -2,7 +2,7 @@ package expressions.rest.server
 
 import com.typesafe.config.ConfigFactory
 import expressions.client.kafka.PostRecord
-import expressions.franz.{ForeachPublisher, FranzConfig}
+import expressions.franz.{ForeachPublisher, FranzConfig, SchemaGen}
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -32,7 +32,7 @@ object KafkaPublishService {
     if (postRecord.isTombstone) {
       null
     } else {
-      TestData.fromJson(postRecord.data)
+      SchemaGen.recordForJson(postRecord.data)
     }
 
   def asRecord(post: PostRecord, newConfig: FranzConfig): ProducerRecord[String, GenericRecord] = {

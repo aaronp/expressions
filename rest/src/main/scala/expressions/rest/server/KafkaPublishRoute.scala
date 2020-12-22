@@ -3,8 +3,10 @@ package expressions.rest.server
 import cats.implicits.toSemigroupKOps
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.client.kafka.PostRecord
-import expressions.franz.FranzConfig
+import expressions.franz.{FranzConfig, SchemaGen}
 import expressions.rest.server.RestRoutes.taskDsl._
+import io.circe.Json
+import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
@@ -36,7 +38,14 @@ object KafkaPublishRoute {
 
   def getDefault(franzConfig: Config): HttpRoutes[Task] = {
     val configJson = franzConfig.root.render(ConfigRenderOptions.concise())
-    getDefault(PostRecord(TestData.asJson(TestData.testRecord()), config = configJson))
+    //SchemaGen.recordForJson
+    val example = (
+      Json.obj(
+        "example" -> Json.obj("nested" -> Json.obj("array" -> List(1, 2, 3).asJson)),
+        "boolean" -> true.asJson,
+        "number"  -> 123.asJson
+      ))
+    getDefault(PostRecord(example, config = configJson))
   }
 
   def getDefault(default: PostRecord): HttpRoutes[Task] = {

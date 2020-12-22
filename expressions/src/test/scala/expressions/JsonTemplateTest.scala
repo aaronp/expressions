@@ -1,6 +1,6 @@
 package expressions
 
-import expressions.template.Message
+import expressions.template.{Context, Message}
 import io.circe.literal._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -68,9 +68,9 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
 
       println(script)
       println(script)
-      val Success(mappingCode) = JsonTemplate[Seq[HttpRequest]](script)
+      val Success(mappingCode) = JsonTemplate[Message[String, RichDynamicJson], Seq[HttpRequest]](script)
 
-      val input = Message(new RichDynamicJson(jason)).asContext()
+      val input: Context[Message[String, RichDynamicJson]] = Message.of(new RichDynamicJson(jason)).asContext()
       mappingCode(input) shouldBe List(
         HttpRequest("GET", "first-1", Map()),
         HttpRequest("GET", "first-2", Map()),
@@ -97,9 +97,9 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
                      |        }
                      |}""".stripMargin
 
-      val Success(mappingCode) = JsonTemplate[Seq[HttpRequest]](script)
+      val Success(mappingCode) = JsonTemplate[Message[String, RichDynamicJson], Seq[HttpRequest]](script)
 
-      val input = Message(new RichDynamicJson(jason)).asContext()
+      val input = Message.of(new RichDynamicJson(jason)).asContext()
       val stats = Stats(3) {
         mappingCode(input)
       }

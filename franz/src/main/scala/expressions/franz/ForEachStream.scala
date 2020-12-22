@@ -26,7 +26,8 @@ object ForEachStream extends StrictLogging {
     *
     * @param topics           the kafka topic
     * @param consumerSettings the kafka consumer settings
-    * @param deserializer     the deserialization mechanism from Kafka to GenericRecords
+    * @param keyDeserializer     the deserialization mechanism from Kafka to K
+    * @param valueDeserializer     the deserialization mechanism from Kafka to V
     * @return a managed resource which will open/close the kafka stream when run
     */
   def forEach[K, V](

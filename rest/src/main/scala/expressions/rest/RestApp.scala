@@ -4,6 +4,7 @@ import cats.effect.ConcurrentEffect
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.rest.RestApp.Settings
 import expressions.rest.server.{RestRoutes, StaticFileRoutes}
+import io.circe.Encoder
 import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -35,9 +36,9 @@ case class RestApp(settings: Settings) {
   }
 
   @implicitNotFound("You need ConcurrentEffect, which (if you're calling w/ a ZIO runtime in scope), can be fixed by: import zio.interop.catz._")
-  def serve(rootConfig: Config)(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] =
+  def serve[K: Encoder, V: Encoder](rootConfig: Config)(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] =
     for {
-      rawRoutes  <- RestRoutes(rootConfig).orDie
+      rawRoutes  <- RestRoutes[K, V](rootConfig).orDie
       httpRoutes = mkRouter(rawRoutes)
       exitCode <- BlazeServerBuilder[Task](ExecutionContext.global)
         .bindHttp(port, host)

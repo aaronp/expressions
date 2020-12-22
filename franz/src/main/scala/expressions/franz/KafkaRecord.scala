@@ -37,12 +37,13 @@ object KafkaRecord extends StrictLogging {
 
 //  type KafkaToRecord = CommittableRecord[String, Array[Byte]] => KafkaRecord[GenericData]
 
-  def headerAsStrings(committableRecord: CommittableRecord[_, _]): Iterable[(String, String)] = {
+  def headerAsStrings(committableRecord: CommittableRecord[_, _]): Map[String, String] = {
     import scala.jdk.CollectionConverters._
     val headers: Headers = committableRecord.record.headers()
-    headers.asScala.flatMap { h =>
+    val iterable = headers.asScala.flatMap { h =>
       Try(new String(h.value())).map(h.key -> _).toOption
     }
+    iterable.toMap
   }
 
 //  def decoder[K, V] : CommittableRecord[K, V] => ZIO[Any, Throwable, KafkaRecord[K,V]] = {

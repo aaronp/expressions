@@ -2,10 +2,10 @@ package expressions.rest.server
 
 import args4c.implicits._
 import expressions.client.kafka.PostRecord
-import expressions.franz.KafkaRecord
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.apache.avro.generic.GenericRecord
+import zio.console.putStrLn
 import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, Task, UIO}
 
@@ -29,15 +29,24 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         records <- Ref.make(List[CommittableRecord[String, GenericRecord]]())
         onRecord = (record: CommittableRecord[String, GenericRecord]) => {
-          println(s"GOT: $record")
-          val write: Task[Unit] = records.update(record :: _)
-          write
+          println(
+            s"""
+               |
+               |!!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!!
+               |GOT: $record
+               |!!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!! !!!!!
+               |
+               |
+               |""".stripMargin)
+          records.update(record :: _)
         }
 
         //
         // call our method under test - publish some records to the topic
         //
-        postResult <- routeUnderTest(post("kafka/publish", testRecord.asJson.noSpaces)).value
+        Some(postResult) <- routeUnderTest(post("kafka/publish", testRecord.asJson.noSpaces)).value
+
+        _ <- putStrLn(s"Posted $topic w/ ${postResult} result ")
 
         //
         // start a listener ... we should eventually read all our records

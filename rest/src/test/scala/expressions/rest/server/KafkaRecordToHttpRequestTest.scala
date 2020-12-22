@@ -3,6 +3,7 @@ package expressions.rest.server
 import expressions.client.HttpRequest
 import expressions.template.Message
 import expressions.{JsonTemplate, RichDynamicJson}
+import io.circe.Json
 import io.circe.literal.JsonStringContext
 
 import scala.util.Success
@@ -16,13 +17,13 @@ class KafkaRecordToHttpRequestTest extends BaseRouteTest {
         for {
           disk <- Disk(mappingConfig.rootConfig)
           _    <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", value.toString)
-          svc  <- KafkaRecordToHttpRequest(mappingConfig, disk, JsonTemplate.newCache[HttpRequest]())(_.asContext())
+          svc  <- KafkaRecordToHttpRequest[Json, Json](mappingConfig, disk, JsonTemplate.newCache[JsonMsg, HttpRequest]())(_.asContext())
         } yield svc
       }.value()
 
       val Success(thunk1) = services.mappingForTopic("unit-test")
 
-      val ctxt = Message(new RichDynamicJson(json"""123""")).asContext()
+      val ctxt = Message(new RichDynamicJson(json"""123"""), new RichDynamicJson(json"""{ "key" : "k" }""")).asContext()
       thunk1(ctxt) shouldBe value
     }
   }

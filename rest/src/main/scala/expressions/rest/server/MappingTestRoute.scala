@@ -24,11 +24,11 @@ object MappingTestRoute extends StrictLogging {
     }
   }
 
-  def apply(cache: Cache[Expression[RichDynamicJson, HttpRequest]], asContext: Message[RichDynamicJson] => Context[RichDynamicJson] = _.asContext()): HttpRoutes[Task] = {
+  def apply(cache: Cache[Expression[JsonMsg, HttpRequest]], asContext: JsonMsg => Context[JsonMsg] = _.asContext()): HttpRoutes[Task] = {
 
     transformHandler {
-      case TransformRequest(userInputScript, userInput, key, timestamp, headers) =>
-        val inputAsMessage = Message(new RichDynamicJson(userInput), key, timestamp, headers)
+      case TransformRequest(userInputScript, userInput, key, timestamp, headers, topic) =>
+        val inputAsMessage = Message(new RichDynamicJson(userInput), new RichDynamicJson(key), timestamp, headers, topic)
 
         // we don't want the case-class result but rather its json representation for the check so the 'check' route
         // can displayificate it
@@ -49,7 +49,7 @@ object MappingTestRoute extends StrictLogging {
             logger.error(s"Error parsing\n$script\n$err")
             val errMsg = s"computer says no:\n${err.getMessage}"
             Response(status = Status.InternalServerError).withEntity(TransformResponse(errMsg.asJson, Some(errMsg)))
-          case Right(mapper: Expression[RichDynamicJson, HttpRequest]) =>
+          case Right(mapper: Expression[JsonMsg, HttpRequest]) =>
             try {
               val context = asContext(inputAsMessage)
               val mapped  = mapper(context)

@@ -222,7 +222,7 @@ lazy val rest = (project in file("rest"))
   .settings(commonSettings: _*)
   .dependsOn(expressions % "compile->compile;test->test")
   .dependsOn(clientJVM % "compile->compile;test->test")
-  .dependsOn(franz % "compile->compile;test->compile")
+  .dependsOn(franz % "compile->compile;test->test")
   .dependsOn(avroRecords % "test->compile")
 
 lazy val example = project
