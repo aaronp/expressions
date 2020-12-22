@@ -11,8 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits._
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.util.{Failure, Success, Try}
 
-@JSExportTopLevel("KafkaPostPage")
-case class KafkaPostPage(targetDivId: String) {
+@JSExportTopLevel("KafkaReadPage")
+case class KafkaReadPage(targetDivId: String) {
 
   val targetDiv = document.getElementById(targetDivId).asInstanceOf[Div]
 
@@ -46,15 +46,7 @@ case class KafkaPostPage(targetDivId: String) {
     refreshConfig()
   }
 
-  def refreshConfig() = {
-    Client.config.get().foreach(updateConfig)
-    if (recordTextArea.value.trim.isEmpty) {
-      Client.kafka.getDefault().foreach { json =>
-        recordTextArea.value = json.spaces4
-      }
-    }
-  }
-
+  def refreshConfig() = Client.config.get().foreach(updateConfig)
   def updateConfig(cfg: String) = {
     configTextArea.value = cfg
   }

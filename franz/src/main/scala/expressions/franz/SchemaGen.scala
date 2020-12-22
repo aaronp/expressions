@@ -44,9 +44,9 @@ object SchemaGen {
 
   def guessType = Schema.createUnion(Schema.create(Type.RECORD), Schema.create(Type.STRING), Schema.create(Type.NULL))
 
-  def asFieldName(name : String): String = name.map {
+  def asFieldName(name: String): String = name.map {
     case c if c.isLetterOrDigit => c
-    case _ => '_'
+    case _                      => '_'
   }
   sealed abstract class TypeInst(val `type`: Schema.Type) {
     def schema(parentElem: Option[String] = None, namespace: String = "gen"): Schema = this match {

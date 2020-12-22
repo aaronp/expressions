@@ -9,7 +9,7 @@ import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
 
-  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[JsonMsg]("implicit val _implicitJsonValue = record.value.jsonValue")
+  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[RichDynamicJson, RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
   "POST /mapping/check" should {
     "return a configuration" in {
 

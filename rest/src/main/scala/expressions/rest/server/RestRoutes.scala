@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
-import expressions.{Cache, JsonTemplate, StringTemplate}
+import expressions.{Cache, JsonTemplate, RichDynamicJson, StringTemplate}
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, Json}
 import org.http4s
@@ -32,7 +32,8 @@ object RestRoutes extends StrictLogging {
       kafkaRunner       <- KafkaSink[K, V](templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
-      val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[JsonMsg]("implicit val _implicitJsonValue = record.value.jsonValue")
+      val expressionForString: Cache[StringExpression[JsonMsg]] =
+        StringTemplate.newCache[RichDynamicJson, RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
 
       val jsonCache: Cache[JsonTemplate.Expression[JsonMsg, Json]] = templateCache.map(_.andThen(_.asJson))
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))

@@ -43,7 +43,6 @@ object KafkaPublishRoute {
 
   def getDefault(franzConfig: Config): HttpRoutes[Task] = {
     val configJson = franzConfig.root.render(ConfigRenderOptions.concise())
-    //SchemaGen.recordForJson
     val example = (Json.obj(
       "example" -> Json.obj("nested" -> Json.obj("array" -> List(1, 2, 3).asJson)),
       "boolean" -> true.asJson,

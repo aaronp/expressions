@@ -87,5 +87,10 @@ object Client {
         } else -1
       }
     }
+    def getDefault(): Future[Json] = {
+      Ajax.get(s"${remoteHost}/kafka/publish", headers = AppJson).map { response =>
+        parse(response.responseText).toTry.get
+      }
+    }
   }
 }

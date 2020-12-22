@@ -49,7 +49,7 @@ object MappingTestRoute extends StrictLogging {
           case Right(mapper: Expression[JsonMsg, Json]) =>
             try {
               val context = asContext(inputAsMessage)
-              val mapped = mapper(context)
+              val mapped  = mapper(context)
               Response(Status.Ok).withEntity(TransformResponse(mapped, None))
             } catch {
               case NonFatal(e) =>
