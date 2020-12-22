@@ -28,10 +28,15 @@ object KafkaPublishRoute {
   def publish(handle: PostRecord => UIO[Int]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ (POST -> Root / "kafka" / "publish") => {
-        for {
+        val resultTask = for {
           postRequest <- req.as[PostRecord]
           result      <- handle(postRequest)
         } yield Response[Task](Status.Ok).withEntity(result)
+
+        resultTask.catchAll {
+          case err =>
+            ZIO.succeed(Response[Task](Status.InternalServerError).withEntity(s"Error: $err"))
+        }
       }
     }
   }

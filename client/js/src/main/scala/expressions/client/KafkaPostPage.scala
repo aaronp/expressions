@@ -16,8 +16,15 @@ case class KafkaPostPage(targetDivId: String) {
 
   val targetDiv = document.getElementById(targetDivId).asInstanceOf[Div]
 
-  val keyTextArea       = textarea(cols := 140, rows := 4).render
-  val recordTextArea    = textarea(cols := 140, rows := 20).render
+  val keyTextArea = textarea(cols := 140, rows := 4).render
+  keyTextArea.value = """key{{i}}""".stripMargin
+
+  val recordTextArea = textarea(cols := 140, rows := 20).render
+  recordTextArea.value = """{
+                           |  "data{{i}}" : "value-{{i}}",
+                           |  "flag" :  true
+                           |}""".stripMargin
+
   val configTextArea    = textarea(cols := 140, rows := 20).render
   val repeatText        = input(`type` := "text", value := "1").render
   val topicOverrideText = input(`type` := "text", value := "").render
@@ -83,12 +90,12 @@ case class KafkaPostPage(targetDivId: String) {
         div(keyTextArea),
         label(`for` := recordTextArea.id)("Value:"),
         div(recordTextArea),
-        label(`for` := repeatText.id)("Repeat:"),
-        span(repeatText),
-        label(`for` := topicOverrideText.id)("Topic:"),
-        span(topicOverrideText),
-        label(`for` := partitionText.id)("Partition:"),
-        span(partitionText),
+        div(label(`for` := repeatText.id)("Repeat:"), span(repeatText)),
+        div(label(`for` := topicOverrideText.id)("Topic:"), span(topicOverrideText)),
+        div(
+          label(`for` := partitionText.id)("Partition:"),
+          span(partitionText)
+        ),
         label(`for` := configTextArea.id)("Config:"),
         div(configTextArea),
         div(postButton, refreshButton)

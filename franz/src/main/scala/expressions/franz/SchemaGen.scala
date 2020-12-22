@@ -44,13 +44,17 @@ object SchemaGen {
 
   def guessType = Schema.createUnion(Schema.create(Type.RECORD), Schema.create(Type.STRING), Schema.create(Type.NULL))
 
+  def asFieldName(name : String): String = name.map {
+    case c if c.isLetterOrDigit => c
+    case _ => '_'
+  }
   sealed abstract class TypeInst(val `type`: Schema.Type) {
     def schema(parentElem: Option[String] = None, namespace: String = "gen"): Schema = this match {
       case ObjType(byName) =>
         val objName = parentElem.getOrElse("object")
         val record  = Schema.createRecord(objName, s"Created for ${byName.keySet.mkString("obj: [", ",", "]")}", namespace, false)
         val fields = byName.map {
-          case (name, inst) => new Schema.Field(name, inst.schema(Option(s"${name}Type"), namespace))
+          case (name, inst) => new Schema.Field(asFieldName(name), inst.schema(Option(s"${name}Type"), namespace))
         }
         record.setFields(fields.toList.asJava)
         record
@@ -137,10 +141,10 @@ object SchemaGen {
         val bFields = fieldMap(b)
         val fields: Set[Field] = (aFields.keySet ++ bFields.keySet).map { fieldName =>
           (aFields.get(fieldName), bFields.get(fieldName)) match {
-            case (Some(f1), Some(f2)) if f1.schema().getType == f2.schema().getType => new Field(f1.name(), f1.schema(), f1.doc())
-            case (Some(f1), Some(f2))                                               => new Field(f1.name(), Schema.createUnion(f1.schema(), f2.schema()), s"Union of $f1 and $f2")
-            case (Some(f), _)                                                       => new Field(f.name(), f.schema(), f.doc())
-            case (None, Some(f))                                                    => new Field(f.name(), f.schema(), f.doc())
+            case (Some(f1), Some(f2)) if f1.schema().getType == f2.schema().getType => new Field(asFieldName(f1.name()), f1.schema(), f1.doc())
+            case (Some(f1), Some(f2))                                               => new Field(asFieldName(f1.name()), Schema.createUnion(f1.schema(), f2.schema()), s"Union of $f1 and $f2")
+            case (Some(f), _)                                                       => new Field(asFieldName(f.name()), f.schema(), f.doc())
+            case (None, Some(f))                                                    => new Field(asFieldName(f.name()), f.schema(), f.doc())
           }
         }
         val name      = mergeStrings(a.getName, b.getName)
