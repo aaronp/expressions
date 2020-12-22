@@ -4,13 +4,14 @@ import com.typesafe.config.Config
 import eie.io.AlphaCounter
 import expressions.JsonTemplate.Expression
 import expressions.client.HttpRequest
-import expressions.franz.{ForEachStream, FranzConfig, KafkaRecord}
+import expressions.franz.{ForEachStream, FranzConfig}
 import expressions.{Cache, RichDynamicJson}
 import sttp.client.Response
 import zio._
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.durationInt
+import zio.kafka.consumer.CommittableRecord
 
 /**
   * We have (separate to the kafka config) a list of:
@@ -38,7 +39,7 @@ import zio.duration.durationInt
   *
   */
 object KafkaSink {
-  type SinkIO = UIO[KafkaRecord => Task[Unit]]
+  type SinkIO[K,V] = UIO[CommittableRecord[K,V] => Task[Unit]]
 
   trait Service {
     def start(config: Config): Task[String]
@@ -55,10 +56,10 @@ object KafkaSink {
     }
   }
 
-  def saveToDB(config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock): ZIO[Console, Throwable, KafkaRecord => Task[Unit]] = {
+  def saveToDB[K,V](config: Config, templateCache: Cache[Expression[RichDynamicJson, HttpRequest]], clock: Clock): ZIO[Console, Throwable, CommittableRecord[K,V] => Task[Unit]] = {
     for {
       restSink: KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest] <- KafkaRecordToHttpRequest(config, templateCache)
-    } yield { (record: KafkaRecord) =>
+    } yield { (record: CommittableRecord[K,V]) =>
       val sink: ZIO[Any, Throwable, Response[Either[String, String]]] = restSink.makeRestRequest(record)
       val sunk: Task[Unit] = sink
         .map(validate)
@@ -77,7 +78,7 @@ object KafkaSink {
     * @param templateCache
     * @return
     */
-  def apply(templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[ZEnv, Nothing, Instance] = {
+  def apply[K,V](templateCache: Cache[Expression[RichDynamicJson, HttpRequest]]): ZIO[ZEnv, Nothing, Instance[K,V]] = {
     for {
       clock <- ZIO.environment[ZEnv]
       writer = (config: Config) => {
@@ -85,12 +86,12 @@ object KafkaSink {
         // TODO - this is where we might inject some retry/recovery logic (rather than just 'orDie')
         sink.provide(clock).orDie
       }
-      svc <- Service(writer)
+      svc <- Service[K,V](writer)
     } yield svc
   }
 
   object Service {
-    def apply(makeSink: Config => SinkIO): ZIO[zio.ZEnv, Nothing, Instance] =
+    def apply[K,V](makeSink: Config => SinkIO[K,V]): ZIO[zio.ZEnv, Nothing, Instance[K,V]] =
       for {
         env  <- ZIO.environment[ZEnv]
         byId <- Ref.make(Map[String, Fiber[_, _]]())
@@ -103,12 +104,12 @@ object KafkaSink {
   }
 
   /**
-    * An instance which uses 'makeSink' to construct a [[KafkaRecord]] sink which can be started/stopped
+    * An instance which uses 'makeSink' to construct a [[CommittableRecord[K,V]]] sink which can be started/stopped
     * @param tasksById
     * @param makeSink
     * @param env
     */
-  case class Instance(tasksById: Ref[Map[String, Fiber[_, _]]], makeSink: Config => SinkIO, env: ZEnv) extends Service {
+  case class Instance[K,V](tasksById: Ref[Map[String, Fiber[_, _]]], makeSink: Config => SinkIO[K,V], env: ZEnv) extends Service {
 
     private val counter = AlphaCounter.from(0)
 
@@ -117,7 +118,7 @@ object KafkaSink {
     override def start(rootConfig: Config): Task[String] = {
       val startIO = for {
         sink      <- makeSink(rootConfig)
-        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
+        kafkaFeed = ForEachStream[K,V](FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
         id <- tasksById.modify { map =>
           val id = counter.next()

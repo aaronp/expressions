@@ -23,7 +23,7 @@ object SchemaGen {
     require(recursiveCheck > 0)
     inst.`type` match {
       case RECORD =>
-        val schema = inst.schema()
+        val schema  = inst.schema()
         val decoder = DecoderFactory.get().jsonDecoder(schema, new DataInputStream(new ByteArrayInputStream(record.noSpaces.getBytes())))
         val reader  = new GenericDatumReader[Any](schema)
         reader.read(null, decoder).asInstanceOf[GenericRecord]

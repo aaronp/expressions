@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 
 object FranzConfig {
 
-  def apply(conf: String, theRest: String*): FranzConfig = new FranzConfig(asConfig(conf, theRest:_*))
+  def apply(conf: String, theRest: String*): FranzConfig = new FranzConfig(asConfig(conf, theRest: _*))
 
   def fromRootConfig(rootConfig: Config = ConfigFactory.load()) = FranzConfig(rootConfig.getConfig("app.franz"))
 
@@ -50,7 +50,7 @@ object FranzConfig {
     )
   }
 
-  def asConfig(conf: String, theRest: String*)  = {
+  def asConfig(conf: String, theRest: String*) = {
     import args4c.implicits._
     (conf +: theRest).toArray.asConfig().getConfig("app.franz")
   }
@@ -58,7 +58,16 @@ object FranzConfig {
 }
 final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
 
-  def withOverrides(conf: String, theRest: String*): FranzConfig = withOverrides(FranzConfig.asConfig(conf, theRest:_*))
+  override def toString: String = {
+    import args4c.implicits._
+    franzConfig
+      .summaryEntries()
+      .map { e =>
+        s"app.franz.${e}"
+      }
+      .mkString("\n")
+  }
+  def withOverrides(conf: String, theRest: String*): FranzConfig = withOverrides(FranzConfig.asConfig(conf, theRest: _*))
 
   def withOverrides(newFranzConfig: Config): FranzConfig = {
     copy(franzConfig = newFranzConfig.withFallback(franzConfig).resolve())
@@ -122,8 +131,8 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     Serde(serde)
   }
 
-  def keySerde[K]   = serdeFor[K](franzConfig.getConfig("key"))
-  def valueSerde[V] = serdeFor[V](franzConfig.getConfig("value"))
+  def keySerde[K]   = serdeFor[K](kafkaConfig.getConfig("key"))
+  def valueSerde[V] = serdeFor[V](kafkaConfig.getConfig("value"))
 
   def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = producer[K, V](keySerde[K], valueSerde[V])
 

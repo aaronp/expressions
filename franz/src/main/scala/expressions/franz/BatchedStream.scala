@@ -20,7 +20,7 @@ object BatchedStream extends StrictLogging {
   /** @param config our parsed typesafe config
     * @return a managed resource which will return the running stream
     */
-  def apply[K,V](config: FranzConfig = FranzConfig())(persist: Array[CommittableRecord[K, V]] => RIO[ZEnv, Unit]) = {
+  def apply[K, V](config: FranzConfig = FranzConfig())(persist: Array[CommittableRecord[K, V]] => RIO[ZEnv, Unit]) = {
     import config._
     batched(subscription, consumerSettings, batchSize, batchWindow, keySerde[K], valueSerde[V], blockOnCommits)(persist)
   }
@@ -31,7 +31,7 @@ object BatchedStream extends StrictLogging {
     * @param deserializer     the deserialization mechanism from Kafka to GenericRecords
     * @return a managed resource which will open/close the kafka stream when run
     */
-  def batched[K,V](
+  def batched[K, V](
       topic: Subscription,
       consumerSettings: ConsumerSettings,
       batchSize: Int,
@@ -69,7 +69,9 @@ object BatchedStream extends StrictLogging {
       }
   }
 
-  private def kafkaStream[K,V](topic: Subscription, keyDeserializer: Deserializer[Any, K], valueDeserializer: Deserializer[Any, V]): ZStream[Clock with Blocking with Consumer, Throwable, CommittableRecord[K, V]] = {
+  private def kafkaStream[K, V](topic: Subscription,
+                                keyDeserializer: Deserializer[Any, K],
+                                valueDeserializer: Deserializer[Any, V]): ZStream[Clock with Blocking with Consumer, Throwable, CommittableRecord[K, V]] = {
     Consumer
       .subscribeAnd(topic)
       .plainStream(keyDeserializer, valueDeserializer)

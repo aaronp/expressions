@@ -5,6 +5,8 @@ import expressions.client.kafka.PostRecord
 import expressions.franz.KafkaRecord
 import io.circe.Json
 import io.circe.syntax.EncoderOps
+import org.apache.avro.generic.GenericRecord
+import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, Task, UIO}
 
 class KafkaPublishRouteTest extends BaseRouteTest {
@@ -25,8 +27,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         // create a sink which will just keep track of our records
         //
-        records <- Ref.make(List[KafkaRecord]())
-        onRecord = (record: KafkaRecord) => {
+        records <- Ref.make(List[CommittableRecord[String, GenericRecord]]())
+        onRecord = (record: CommittableRecord[String, GenericRecord]) => {
           println(s"GOT: $record")
           val write: Task[Unit] = records.update(record :: _)
           write

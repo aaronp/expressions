@@ -28,7 +28,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
 
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
-        val record    = SchemaGen.recordForJson(jason)
+        val record = SchemaGen.recordForJson(jason)
         TestData.asJson(record) shouldBe jason
       }
     }
@@ -72,7 +72,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
 
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
-        val record    = SchemaGen.recordForJson(jason)
+        val record = SchemaGen.recordForJson(jason)
         TestData.asJson(record) shouldBe jason
       }
     }

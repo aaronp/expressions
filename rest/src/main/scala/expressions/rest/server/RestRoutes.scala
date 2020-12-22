@@ -23,19 +23,19 @@ object RestRoutes extends StrictLogging {
   def apply(defaultConfig: Config = ConfigFactory.load()) = {
 
     for {
-      cacheRoute    <- CacheRoute()
-      disk          <- DiskRoute(defaultConfig)
-      fsDir         = KafkaRecordToHttpRequest.dataDir(defaultConfig)
-      templateCache = JsonTemplate.newCache[HttpRequest]("import expressions.client._")
-      kafkaRunner   <- KafkaSink(templateCache)
+      cacheRoute        <- CacheRoute()
+      disk              <- DiskRoute(defaultConfig)
+      fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
+      templateCache     = JsonTemplate.newCache[HttpRequest]("import expressions.client._")
+      kafkaRunner       <- KafkaSink(templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[RichDynamicJson]] = StringTemplate.newCache[RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
 
-      val mappingRoutes     = MappingTestRoute(templateCache, _.asContext(fsDir))
-      val configTestRotes   = ConfigTestRoute(expressionForString, _.asContext(fsDir))
-      val configRoute       = ConfigRoute(defaultConfig)
-      val kafkaRoute        = KafkaRoute(kafkaRunner)
+      val mappingRoutes   = MappingTestRoute(templateCache, _.asContext(fsDir))
+      val configTestRotes = ConfigTestRoute(expressionForString, _.asContext(fsDir))
+      val configRoute     = ConfigRoute(defaultConfig)
+      val kafkaRoute      = KafkaRoute(kafkaRunner)
 
       kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk
     }

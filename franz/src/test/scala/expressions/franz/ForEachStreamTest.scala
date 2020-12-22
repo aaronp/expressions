@@ -33,9 +33,7 @@ class ForEachStreamTest extends BaseFranzTest {
 
       val testCase = for {
         counter <- Ref.make(List.empty[CommittableRecord[String, GenericRecord]])
-        _       <- putStrLn("CREATING PRODUCER....")
         _       <- config.producer[String, GenericRecord].use(_.produceChunk(chunk))
-        _       <- putStrLn("Closed PRODUCER....")
         stream: ZStream[zio.ZEnv, Throwable, Any] = ForEachStream[String, GenericRecord](config) { d8a =>
           counter.update(d8a +: _)
         }
@@ -51,7 +49,7 @@ class ForEachStreamTest extends BaseFranzTest {
       val config = FranzConfig.avroKeyValueConfig()
 
       val chunk = Chunk.fromArray((0 to 10).map { i =>
-        val key: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : 1, "qualifier" : "q" }""")
+        val key: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : $i, "qualifier" : "q" }""")
         record[GenericRecord](config.topic, key)
       }.toArray)
 

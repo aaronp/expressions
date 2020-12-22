@@ -9,6 +9,7 @@ import expressions.{Cache, JsonTemplate, RichDynamicJson}
 import io.circe.Json
 import sttp.client.Response
 import zio.console.Console
+import zio.kafka.consumer.CommittableRecord
 import zio.{Task, ZIO}
 
 import scala.util.Try
@@ -20,7 +21,7 @@ import scala.util.Try
   * @param templateCache
   * @param scriptForTopic
   * @param asContext
-  * @tparam A
+  * @tparam A the input context type (e.g.
   * @tparam B
   */
 // format: off
@@ -36,11 +37,11 @@ case class KafkaRecordToHttpRequest[A, B](mappingConfig: MappingConfig,
     */
   def mappingForTopic(topic: String) = scriptForTopic(topic).flatMap(templateCache.apply)
 
-  def makeRestRequest(record: KafkaRecord)(implicit outputAsRequest: B =:= HttpRequest): ZIO[Any, Throwable, Response[Either[String, String]]] = {
+  def makeRestRequest(record: CommittableRecord[K,V])(implicit outputAsRequest: B =:= HttpRequest): ZIO[Any, Throwable, Response[Either[String, String]]] = {
     asRestRequest(record).map(RestClient.send)
   }
 
-  def asRestRequest(record: KafkaRecord)(implicit outputAsRequest: B =:= HttpRequest): Task[HttpRequest] = {
+  def asRestRequest(record: CommittableRecord[K,V])(implicit outputAsRequest: B =:= HttpRequest): Task[HttpRequest] = {
     for {
       asRequest <- Task.fromTry(mappingForTopic(record.topic))
       request   = outputAsRequest(asRequest(asContext(record)))
@@ -53,8 +54,8 @@ object KafkaRecordToHttpRequest {
 
   def dataDir(rootConfig: Config) = rootConfig.getString("app.data").asPath
 
-  def apply(rootConfig: Config = ConfigFactory.load(),
-            templateCache: Cache[Expression[RichDynamicJson, HttpRequest]] = JsonTemplate.newCache[HttpRequest]()): ZIO[Console, Throwable, KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest]] = {
+  def apply(rootConfig: Config = ConfigFactory.load(), templateCache: Cache[Expression[RichDynamicJson, HttpRequest]] = JsonTemplate.newCache[HttpRequest]())
+    : ZIO[Console, Throwable, KafkaRecordToHttpRequest[RichDynamicJson, HttpRequest]] = {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     for {
       disk <- Disk(rootConfig)
