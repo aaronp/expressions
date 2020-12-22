@@ -31,7 +31,7 @@ object KafkaPublishService {
       case n if n > 1 =>
         (0 until n).map(post.replacePlaceholder).map(asRecord(keyType, valueType, _, newConfig))
       case _ =>
-        asRecord(keyType, valueType, post, newConfig) :: Nil
+        asRecord(keyType, valueType, post.replacePlaceholder(0), newConfig) :: Nil
     }
   }
 

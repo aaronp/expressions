@@ -1,5 +1,6 @@
 package expressions.client
 
+import expressions.client.kafka.PostRecord
 import io.circe.Json
 import io.circe.parser.parse
 import io.circe.syntax._
@@ -33,8 +34,8 @@ object Client {
       }
     }
   }
-  object disk {
 
+  object disk {
     def storeAt(path: String, value: String) = store(path.split("/", -1).toList, value)
 
     /**
@@ -74,6 +75,16 @@ object Client {
       val url = path.mkString(s"${remoteHost}/cache/", "/", "")
       Ajax.get(url, headers = AppJson).map { response =>
         parse(response.responseText).toTry.toOption.filter(_ => response.status == 200)
+      }
+    }
+  }
+
+  object kafka {
+    def publish(value: PostRecord): Future[Int] = {
+      Ajax.post(s"${remoteHost}/kafka/publish", value.asJson.noSpaces, headers = AppJson).map { response =>
+        if (response.status == 200) {
+          response.responseText.toInt
+        } else -1
       }
     }
   }
