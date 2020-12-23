@@ -8,11 +8,13 @@ import zio.interop.catz._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.{Task, UIO}
 import RestRoutes.taskDsl._
-import expressions.client.kafka.StartedConsumer
+import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 
 object KafkaRoute {
 
-  def apply(service: KafkaSink.Service): HttpRoutes[Task] = start(service.start) <+> stop(service.stop) <+> running(service.running())
+  def apply(service: KafkaSink.Service): HttpRoutes[Task] = {
+    start(service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats)
+  }
 
   def start(start: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
@@ -27,13 +29,22 @@ object KafkaRoute {
 
   def stop(stop: String => Task[Boolean]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case POST -> Root / "kafka" / "stop" / id => stop(id).map(r => Response[Task](Status.Ok).withEntity(r.asJson))
+      case POST -> Root / "kafka" / "stop" / id => stop(id).map(r => Response[Task](Status.Ok).withEntity(r))
     }
   }
 
   def running(listRunning: UIO[List[StartedConsumer]]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case GET -> Root / "kafka" / "running" => listRunning.map(r => Response[Task](Status.Ok).withEntity(r.asJson))
+    }
+  }
+
+  def stats(getStats: String => Task[Option[ConsumerStats]]): HttpRoutes[Task] = {
+    HttpRoutes.of[Task] {
+      case GET -> Root / "kafka" / "stats" / id =>
+        getStats(id).map { found =>
+          Response[Task](Status.Ok).withEntity(found)
+        }
     }
   }
 }

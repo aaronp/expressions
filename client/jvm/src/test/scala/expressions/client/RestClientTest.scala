@@ -1,13 +1,20 @@
 package expressions.client
 
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.jdk.CollectionConverters._
 
-class RestClientTest extends AnyWordSpec with Matchers {
+class RestClientTest extends AnyWordSpec with Matchers with ScalaFutures {
+
+  def testTimeout: FiniteDuration      = 30.seconds
+  implicit override def patienceConfig = PatienceConfig(timeout = scaled(Span(testTimeout.toSeconds, Seconds)), interval = scaled(Span(150, Millis)))
+
   "RestClient" should {
     "be able to send requests" in {
       val localServer = SimpleHttpServer.start(0, Map("/echo" -> RestClientTest.echoHandler))
@@ -20,7 +27,7 @@ class RestClientTest extends AnyWordSpec with Matchers {
           .withBody("abc123")
 
         // call the method under test
-        RestClient.send(request).body shouldBe Right("headers:{Hello=[world]} body=abc123")
+        RestClient.send(request).futureValue.body shouldBe "headers:{Hello=[world]} body=abc123"
       } finally {
         // the 'stop' can hang, so we kill it in another fiber
         Future {

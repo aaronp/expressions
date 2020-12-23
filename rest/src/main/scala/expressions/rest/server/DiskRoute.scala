@@ -17,7 +17,7 @@ object DiskRoute {
     Disk(rootConfig).map(svc => apply(svc))
   }
 
-  def apply(service: Disk.Service): HttpRoutes[Task] = postRoute(service) <+> getRoute(service)
+  def apply(service: Disk.Service): HttpRoutes[Task] = getRoute(service) <+> postRoute(service)
 
   def postRoute(service: Disk.Service): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {

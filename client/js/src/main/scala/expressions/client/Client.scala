@@ -1,6 +1,6 @@
 package expressions.client
 
-import expressions.client.kafka.{PostRecord, StartedConsumer}
+import expressions.client.kafka.{ConsumerStats, PostRecord, StartedConsumer}
 import io.circe.Json
 import io.circe.parser.parse
 import io.circe.syntax._
@@ -11,6 +11,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
+/**
+  * A JS client to our REST API
+  */
 object Client {
   val remoteHost         = s"${window.document.location.protocol}//${window.document.location.host}"
   val restServerLocation = s"$remoteHost/rest"
@@ -139,6 +142,27 @@ object Client {
       Ajax.get(s"${restServerLocation}/kafka/running", headers = AppJson).map { response =>
         asJson(response).flatMap(_.as[List[StartedConsumer]].toTry).get
       }
+    }
+
+    def stats(id: String): Future[Option[ConsumerStats]] = {
+      Ajax.get(s"${restServerLocation}/kafka/stats/$id", headers = AppJson).map { response =>
+        asJson(response).flatMap(_.as[Option[ConsumerStats]].toTry).get
+      }
+    }
+  }
+
+  object proxy {
+    def makeRequest(input: HttpRequest): Future[HttpResponse] = {
+//      Ajax(r.method.name, r.url, data = ByteBuffer.wrap(r.body), 0, headers = r.headers, false, "").map { resp =>
+//        HttpResponse(resp.status, resp.responseText)
+//      }
+      val promise = Promise[HttpResponse]()
+      Ajax.post(s"${restServerLocation}/proxy", input.asJson.noSpaces, headers = AppJson).onComplete {
+        case Success(response: XMLHttpRequest) =>
+          promise.tryComplete(asJson(response).flatMap(_.as[HttpResponse].toTry))
+        case Failure(err) => promise.tryComplete(Failure(err))
+      }
+      promise.future
     }
   }
 

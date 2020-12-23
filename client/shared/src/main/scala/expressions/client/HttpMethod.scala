@@ -14,6 +14,7 @@ object HttpMethod {
       case impl: Base => name == impl.name
       case _          => false
     }
+    override def hashCode(): Int = name.hashCode
   }
   case object GET     extends Base("GET") with HttpMethod
   case object POST    extends Base("POST") with HttpMethod

@@ -36,6 +36,7 @@ object MappingTestRoute extends StrictLogging {
         val script =
           s"""
              |import io.circe.syntax._
+             |import io.circe.Json
              |
              |${userInputScript}
              |""".stripMargin

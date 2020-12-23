@@ -1,5 +1,7 @@
 package expressions.client
 
+import io.circe.Json
+import io.circe.parser.parse
 import org.scalajs.dom.ext.AjaxException
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.{document, window}
@@ -7,6 +9,7 @@ import scalatags.JsDom.all._
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.Future
+import scala.scalajs.js.Date
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.util.{Failure, Success}
 
@@ -61,6 +64,9 @@ case class IndexPage(targetDivId: String) {
   val scriptTextArea = textarea(cols := 100, rows := 12).render
   scriptTextArea.value = ""
 
+  val topicInputText = input(`type` := "text", id := "topic", size := 20, value := "some-topic").render
+  val keyInputText   = input(`type` := "text", id := "key", size := 20, value := "some-key").render
+
   val jsonInputTextArea = textarea(cols := 100, rows := 12).render
   jsonInputTextArea.value = """{
                               |  "hello" : {
@@ -77,7 +83,7 @@ case class IndexPage(targetDivId: String) {
                               |  }
                               |}""".stripMargin
 
-  val resultTextArea = textarea(cols := 100, rows := 8).render
+  val mappingResultTextArea = textarea(cols := 100, rows := 8).render
 
   val startButton = button("Start").render
   startButton.onclick = e => {
@@ -88,12 +94,22 @@ case class IndexPage(targetDivId: String) {
   val clearButton = button("Clear").render
   clearButton.onclick = e => {
     e.preventDefault()
-    resultTextArea.value = ""
+    mappingResultTextArea.value = ""
+    execResponseDiv.innerHTML = ""
   }
-  val testButton = button("Test").render
-  testButton.onclick = e => {
+
+  val execResponseDiv   = div().render
+  val execRequestButton = button("Execute").render
+
+  execRequestButton.onclick = e => {
     e.preventDefault()
-    makeRequest()
+    executeRequests()
+  }
+
+  val testMappingButton = button("Test Mapping").render
+  testMappingButton.onclick = e => {
+    e.preventDefault()
+    checkTransform()
   }
 
   object chooseTopic {
@@ -108,8 +124,11 @@ case class IndexPage(targetDivId: String) {
     }
   }
 
+  /**
+    * The topic -> mapping functions
+    * @param topics
+    */
   case class chooseTopic(topics: Map[String, List[String]]) {
-
     val options = topics.toSeq.sortBy(_._1).map {
       case (topic, path) =>
         option(value := path.mkString("/"))(topic)
@@ -178,35 +197,80 @@ case class IndexPage(targetDivId: String) {
         mappingDiv,
         scriptTextArea
       ),
-      div(testButton),
+      div(testMappingButton),
       h2("Test Input:"),
+      div(
+        label(`for` := topicInputText.id)("Topic:"),
+        div(topicInputText)
+      ),
+      div(
+        label(`for` := keyInputText.id)("Key:"),
+        keyInputText
+      ),
       div(jsonInputTextArea),
       h2("Result:"),
-      resultTextArea,
-      div(clearButton)
+      mappingResultTextArea,
+      div(clearButton, execRequestButton),
+      execResponseDiv
     )
   ).render
   targetDiv.innerHTML = ""
   targetDiv.appendChild(testForm)
 
-  def makeRequest(): Unit = {
-    io.circe.parser.parse(jsonInputTextArea.value).toTry match {
-      case Success(inputJson) =>
-        makeRequest(TransformRequest(scriptTextArea.value, inputJson))
-      case Failure(err) =>
-        resultTextArea.value = s"It looks like you need to fix your json input:\n$err"
+  def executeRequests(requests: List[HttpRequest]): Unit = {
+    val orderedList = ol().render
+    execResponseDiv.appendChild(h3(s"Making ${requests.size} Requests:").render)
+    execResponseDiv.appendChild(orderedList)
+    requests.foreach { in =>
+      Client.proxy.makeRequest(in).map { resp =>
+        val result = li(
+          ul(
+            li(span(s"${in.method} ${in.url} =>"), a(href := s"${in.url}")(s"${in.method} ${in.url} =>")),
+            li(s"${resp.statusCode} : ${resp.body}")
+          )
+        )
+        orderedList.appendChild(result.render)
+      }
     }
   }
 
-  def makeRequest(request: TransformRequest): Unit = {
+  def executeRequests(): Unit = {
+    execResponseDiv.innerHTML = ""
+    parse(mappingResultTextArea.value).toTry match {
+      case Success(json) =>
+        json.as[List[HttpRequest]].toTry match {
+          case Success(requests) =>
+            executeRequests(requests)
+          case Failure(err) =>
+            execResponseDiv.innerHTML = ""
+            execResponseDiv.appendChild(pre(s"It looks like you need to fix your http request:\n$err").render)
+        }
+      case Failure(err) =>
+        execResponseDiv.innerHTML = ""
+        execResponseDiv.appendChild(pre(s"The mapping requests aren't valid json:\n$err").render)
+    }
+  }
+
+  def transformRequest(inputJson: Json): TransformRequest =
+    TransformRequest(scriptTextArea.value, inputJson, key = Json.fromString(keyInputText.value), topic = topicInputText.value, timestamp = (new Date().getTime()).toLong)
+
+  def checkTransform(): Unit = {
+    parse(jsonInputTextArea.value).toTry match {
+      case Success(inputJson) => checkTransform(transformRequest(inputJson))
+      case Failure(err) =>
+        mappingResultTextArea.innerHTML = s"It looks like you need to fix your json input:\n$err"
+    }
+  }
+
+  def checkTransform(request: TransformRequest): Unit = {
     Client.mapping.check(request).onComplete {
       case Success(response) =>
         response.messages.foreach(window.alert)
-        resultTextArea.value = response.result.spaces4
+        mappingResultTextArea.value = response.result.spaces4
       case Failure(err: AjaxException) =>
-        resultTextArea.value = AsError(err.xhr.responseText)
+        mappingResultTextArea.value = AsError(err.xhr.responseText)
       case Failure(err) =>
-        resultTextArea.value = s"Error: ${err.getMessage}\n${err}"
+        mappingResultTextArea.value = s"Error: ${err.getMessage}\n${err}"
     }
   }
 }

@@ -10,19 +10,20 @@ object Build {
   val zioVersion = "1.0.1"
   val zio = List(
     "dev.zio" %% "zio-interop-cats" % "2.2.0.0",
-    "dev.zio" %% "zio" % zioVersion,
-    "dev.zio" %% "zio-streams" % zioVersion,
-    "dev.zio" %% "zio-test" % zioVersion % "test",
-    "dev.zio" %% "zio-test-sbt" % zioVersion % "test")
+    "dev.zio" %% "zio"              % zioVersion,
+    "dev.zio" %% "zio-streams"      % zioVersion,
+    "dev.zio" %% "zio-test"         % zioVersion % "test",
+    "dev.zio" %% "zio-test-sbt"     % zioVersion % "test"
+  )
 
-  val circeVersion = "0.13.0"
+  val circeVersion          = "0.13.0"
   val circeGenExtrasVersion = "0.13.0"
   val circe = {
     List(
-      "io.circe" %% "circe-generic" % circeVersion,
+      "io.circe" %% "circe-generic"        % circeVersion,
       "io.circe" %% "circe-generic-extras" % circeGenExtrasVersion,
-      "io.circe" %% "circe-parser" % circeVersion,
-      "io.circe" %% "circe-literal" % circeVersion % Test
+      "io.circe" %% "circe-parser"         % circeVersion,
+      "io.circe" %% "circe-literal"        % circeVersion % Test
     )
   }
 
@@ -31,28 +32,27 @@ object Build {
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.0"
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
-  val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val logging = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.30")
+  val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
+  val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.30")
 
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.2" % "test"
 
   def franz: List[ModuleID] = {
     zio ++ logging ++ circe ++
       Seq(
-        "com.github.aaronp" %% "eie"           % "1.0.0",
-        "com.github.aaronp" %% "args4c"        % "0.7.0",
-        "com.github.aaronp" %% "dockerenv"     % "0.5.4",
-        "dev.zio"           %% "zio-streams"   % "1.0.3",
-        "dev.zio"           %% "zio-kafka"     % "0.13.0",
-        "io.confluent" % "kafka-streams-avro-serde" % "6.0.0",
+        "com.github.aaronp" %% "eie"                     % "1.0.0",
+        "com.github.aaronp" %% "args4c"                  % "0.7.0",
+        "com.github.aaronp" %% "dockerenv"               % "0.5.4",
+        "dev.zio"           %% "zio-streams"             % "1.0.3",
+        "dev.zio"           %% "zio-kafka"               % "0.13.0",
+        "io.confluent"      % "kafka-streams-avro-serde" % "6.0.0",
         typesafeConfig,
         scalaTest
       )
   }
 
   def jvmClient = circe ++ Seq(
-    "com.softwaremill.sttp.client" %% "core"                   % "3.0.0-RC3",
-    "com.softwaremill.sttp.client" %% "httpclient-backend-zio" % "2.2.9",
+    "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
     scalaTest
   )
 
@@ -61,13 +61,13 @@ object Build {
       logging ++
       circe ++
       Seq(
-        "com.github.aaronp" %% "eie" % "1.0.0",
+        "com.github.aaronp" %% "eie"    % "1.0.0",
         "com.github.aaronp" %% "args4c" % "0.7.0",
         typesafeConfig,
         "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
         "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
-        "org.http4s" %% "http4s-circe" % Http4sVersion,
-        "org.http4s" %% "http4s-dsl" % Http4sVersion,
+        "org.http4s" %% "http4s-circe"        % Http4sVersion,
+        "org.http4s" %% "http4s-dsl"          % Http4sVersion,
         scalaTest
       )
   }

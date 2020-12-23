@@ -8,6 +8,19 @@ import io.circe.{Codec, DecodingFailure, HCursor, Json}
 
 import java.util.Base64
 case class HttpRequest(method: HttpMethod, url: String, headers: Map[String, String], body: Array[Byte]) {
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case other: HttpRequest =>
+        other.method == method &&
+          other.url == url &&
+          other.headers == headers &&
+          other.body.size == body.size &&
+          other.bodyAsBase64 == bodyAsBase64
+      case _ => false
+    }
+  }
+
   override def toString() = {
     s"""HttpRequest.${method}{
       |  url : $url,
@@ -52,7 +65,7 @@ object HttpRequest {
       for {
         method  <- c.downField("method").as[HttpMethod]
         url     <- c.downField("url").as[String]
-        headers <- c.downField("method").as[Map[String, String]]
+        headers <- c.downField("headers").as[Map[String, String]]
         body    <- bodyBytes
       } yield HttpRequest(method, url, headers, body)
     }

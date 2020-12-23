@@ -1,7 +1,7 @@
 package expressions.rest.server
 
 import args4c.implicits._
-import expressions.client.kafka.PostRecord
+import expressions.client.kafka.{ConsumerStats, PostRecord}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.apache.avro.generic.GenericRecord
@@ -39,7 +39,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         // start a listener ... we should eventually read all our records
         //
-        startableSink <- KafkaSink.Service(_ => UIO(onRecord))
+        statsMap      <- Ref.make(Map[String, ConsumerStats]())
+        startableSink <- KafkaSink.Service(statsMap, _ => UIO(onRecord))
         startedKey    <- startableSink.start(testConfig)
         readBack      <- records.get.repeatUntil(_.size == expectedRecords)
         stopped       <- startableSink.stop(startedKey)

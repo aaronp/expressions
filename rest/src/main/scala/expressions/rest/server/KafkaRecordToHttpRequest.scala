@@ -2,13 +2,12 @@ package expressions.rest.server
 
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.JsonTemplate.Expression
-import expressions.client.{HttpRequest, RestClient}
+import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.KafkaRecord
 import expressions.template.{Context, Message}
 import expressions.{Cache, JsonTemplate, RichDynamicJson}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
-import sttp.client.Response
 import zio.console.Console
 import zio.kafka.consumer.CommittableRecord
 import zio.{Task, ZIO}
@@ -39,12 +38,11 @@ case class KafkaRecordToHttpRequest[K, V, B](mappingConfig: MappingConfig,
     */
   def mappingForTopic(topic: String) = scriptForTopic(topic).flatMap(templateCache.apply)
 
-  def makeRestRequest(record: CommittableRecord[K, V])(
-      implicit outputAsRequest: B =:= List[HttpRequest]): ZIO[Any, Throwable, List[(HttpRequest, Response[Either[String, String]])]] = {
+  def makeRestRequest(record: CommittableRecord[K, V])(implicit outputAsRequest: B =:= List[HttpRequest]): ZIO[Any, Throwable, List[(HttpRequest, HttpResponse)]] = {
     for {
       requests <- asRestRequests(record)
       results <- ZIO.foreach(requests) { r =>
-        Task(RestClient.send(r)).map(r -> _)
+        Task.fromFuture(_ => RestClient.send(r)).map(r -> _)
       }
     } yield results
   }

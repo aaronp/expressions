@@ -40,8 +40,9 @@ object RestRoutes extends StrictLogging {
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(defaultConfig)
       val kafkaRoute                                               = KafkaRoute(kafkaRunner)
+      val proxyRoute                                               = ProxyRoute()
 
-      kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk
+      kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk <+> proxyRoute
     }
   }
 }
