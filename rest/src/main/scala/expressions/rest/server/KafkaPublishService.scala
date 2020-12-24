@@ -3,15 +3,19 @@ package expressions.rest.server
 import com.typesafe.config.ConfigFactory
 import expressions.client.kafka.PostRecord
 import expressions.franz.{ForeachPublisher, FranzConfig, SupportedType}
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
 import zio.URIO
 import zio.blocking.Blocking
 
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 object KafkaPublishService {
+
 
   def apply(config: FranzConfig): PostRecord => URIO[Blocking, Int] = { record =>
     execPost(record, config)

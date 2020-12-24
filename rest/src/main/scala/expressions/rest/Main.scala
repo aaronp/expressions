@@ -15,7 +15,6 @@ object Main extends CatsApp {
     val config = args.toArray.asConfig()
 
     import args4c.implicits._
-    import expressions.rest.server.JsonSupport._
 
     for {
       _          <- putStrLn("⭐⭐ Starting Service ⭐⭐")
@@ -26,7 +25,7 @@ object Main extends CatsApp {
       //
       // TODO - tie in these key/value types w/ the config by checking the configured serde type
       //
-      exitCode <- restServer.serve[String, GenericRecord](config)
+      exitCode <- restServer.serve(config)
     } yield exitCode
   }
 }

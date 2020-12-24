@@ -98,7 +98,7 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
       val Success(mappingCode) = JsonTemplate[Message[String, RichDynamicJson], Seq[HttpRequest]](script)
 
       val input = Message.of(new RichDynamicJson(jason)).asContext()
-      val stats = Stats(3) {
+      val stats = TestThroughput(3) {
         mappingCode(input)
       }
 

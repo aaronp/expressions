@@ -61,7 +61,7 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
     }
   }
 
-  def scriptForTopic(disk: Disk.Service): ZIO[Console, Throwable, String => Try[String]] = {
+  def scriptForTopic(disk: Disk.Service): ZIO[Console, Throwable, Topic => Try[String]] = {
     for {
       scriptByPathSeq <- ZIO.foreach(mappings) {
         case (topic, path) =>

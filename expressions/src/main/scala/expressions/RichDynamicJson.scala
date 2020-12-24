@@ -26,7 +26,7 @@ import scala.language.dynamics
 
 final class RichDynamicJson(val jsonValue: Json) extends Dynamic {
 
-  override def toString: String = jsonValue.noSpaces
+  override def toString: String = Unquote(jsonValue.noSpaces)
 
   private def json: Optional[Json, Json] = Optional[Json, Json](_ => Option(jsonValue)) { _ => _ =>
     jsonValue

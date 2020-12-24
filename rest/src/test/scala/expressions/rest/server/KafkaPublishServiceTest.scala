@@ -2,6 +2,7 @@ package expressions.rest.server
 
 import expressions.client.kafka.PostRecord
 import expressions.franz.{ForEachStream, FranzConfig}
+import io.circe.Json
 import io.circe.literal.JsonStringContext
 import org.apache.avro.generic.GenericRecord
 import zio.Ref
@@ -19,20 +20,32 @@ class KafkaPublishServiceTest extends BaseRouteTest {
       key.getClass shouldBe classOf[String]
       value.getClass shouldBe classOf[String]
     }
-    "publish avro records" ignore {
-      val config   = FranzConfig.avroKeyValueConfig()
+    "publish avro key/value records" in {
+      val config = FranzConfig.avroKeyValueConfig()
+
       val readBack = publishRecords(config)
       val key      = readBack.head.key
       val value    = readBack.head.value
 
-      key.getClass shouldBe classOf[GenericRecord]
-      value.getClass shouldBe classOf[GenericRecord]
+      classOf[GenericRecord].isAssignableFrom(value.getClass) shouldBe true
+      classOf[GenericRecord].isAssignableFrom(key.getClass) shouldBe true
+    }
+
+    "publish string key avro value records" in {
+      val config = FranzConfig.stringKeyAvroValueConfig()
+
+      val readBack = publishRecords(config)
+      val key      = readBack.head.key
+      val value    = readBack.head.value
+
+      key.getClass shouldBe classOf[String]
+      classOf[GenericRecord].isAssignableFrom(value.getClass) shouldBe true
     }
   }
 
   private def publishRecords(config: FranzConfig) = {
     val recordData = json"""{ "doesnt" : "matter"  }"""
-    val testRecord = PostRecord(recordData, repeat = 10)
+    val testRecord = PostRecord(recordData, key = json"""{ "testkey" : "theKey" }""", repeat = 10)
 
     val testCase = for {
       posted      <- KafkaPublishService(config)(testRecord)

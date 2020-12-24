@@ -33,7 +33,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
 
         val actual = cfg.getString("\"test.arr\"")
 
-        actual shouldBe "0;1;2-\"schlussel\"-ronment"
+        actual shouldBe "0;1;2-schlussel-ronment"
         cfg.getString("x") shouldBe "bar"
       }
     }

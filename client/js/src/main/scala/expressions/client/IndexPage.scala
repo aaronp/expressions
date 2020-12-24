@@ -52,6 +52,14 @@ case class IndexPage(targetDivId: String) {
     }
   }
 
+  def defaultScript2 = """        record.value.hello.world.mapAs { json =>
+                         |          val body =   json.nested.as[Json].get.noSpaces
+                         |          val name =   json.name.string.get
+                         |          val key = record.key.getClass
+                         |
+                         |          HttpRequest.post(s"http://localhost:8080/rest/store/${record.topic}/${key}/$name", Map("name" -> name)).withBody(body)
+                         |        }""".stripMargin
+
   def defaultScript = """record.value.hello.world.flatMapSeq { json =>
                         |  json.nested.mapAs { i =>
                         |    json.name.get[String] match {
@@ -88,7 +96,10 @@ case class IndexPage(targetDivId: String) {
   val startButton = button("Start").render
   startButton.onclick = e => {
     e.preventDefault()
-    window.location.href = s"${Client.remoteHost}/running.html"
+
+    Client.kafka.start(configTextArea.value).foreach { id =>
+      window.location.href = s"${Client.remoteHost}/running.html?id=$id"
+    }
   }
 
   val clearButton = button("Clear").render
@@ -197,7 +208,7 @@ case class IndexPage(targetDivId: String) {
         mappingDiv,
         scriptTextArea
       ),
-      div(testMappingButton),
+      div(testMappingButton, startButton),
       h2("Test Input:"),
       div(
         label(`for` := topicInputText.id)("Topic:"),

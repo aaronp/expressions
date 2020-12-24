@@ -12,9 +12,7 @@ object ForeachPublisher {
   }
 
   def publishAll[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    config.producer[K, V].use { producer: Producer.Service[Any, K, V] =>
-      producer.produceChunk(Chunk.fromIterable(records))
-    }
+    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
   }
   def apply[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
     config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
