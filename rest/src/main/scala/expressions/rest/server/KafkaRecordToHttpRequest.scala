@@ -5,7 +5,7 @@ import expressions.JsonTemplate.Expression
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.KafkaRecord
 import expressions.template.{Context, Message}
-import expressions.{Cache, JsonTemplate, RichDynamicJson}
+import expressions.{Cache, RichDynamicJson}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import zio.console.Console
@@ -81,7 +81,15 @@ object KafkaRecordToHttpRequest {
   }
 
   def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = {
-    Message(new RichDynamicJson(record.value.asJson), new RichDynamicJson(record.key.asJson), record.timestamp, KafkaRecord.headerAsStrings(record))
+    Message(
+      new RichDynamicJson(record.value.asJson),
+      new RichDynamicJson(record.key.asJson),
+      record.timestamp,
+      KafkaRecord.headerAsStrings(record),
+      record.record.topic(),
+      record.offset.offset,
+      record.partition
+    )
   }
 
   def writeScriptForTopic(mappingConfig: MappingConfig, disk: Disk.Service, topic: String, script: String): ZIO[Any, Serializable, Unit] = {

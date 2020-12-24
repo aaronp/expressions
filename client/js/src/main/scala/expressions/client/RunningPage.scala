@@ -1,16 +1,14 @@
 package expressions.client
 
-import expressions.client.kafka.{PostRecord, StartedConsumer}
-import io.circe.Json
-import io.circe.parser.parse
+import expressions.client.kafka.{ConsumerStats, StartedConsumer}
+import io.circe.syntax.EncoderOps
+import org.scalajs.dom.document
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.{document, window}
 import scalatags.JsDom.all._
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.scalajs.js.Date
 import scala.scalajs.js.annotation.JSExportTopLevel
-import scala.util.{Failure, Success, Try}
 
 @JSExportTopLevel("RunningPage")
 case class RunningPage(targetDivId: String) {
@@ -26,12 +24,9 @@ case class RunningPage(targetDivId: String) {
                            |  "flag" :  true
                            |}""".stripMargin
 
-  val configTextArea    = textarea(cols := 140, rows := 10).render
-  val repeatText        = input(`type` := "text", value := "1").render
-  val topicOverrideText = input(`type` := "text", value := "").render
-  val partitionText     = input(`type` := "text", value := "").render
-  val tableDiv          = div().render
-  val configDiv         = div().render
+  val tableDiv  = div().render
+  val configDiv = div().render
+  val aboutDiv  = div().render
 
   val refreshButton = button("Refresh").render
   refreshButton.onclick = e => {
@@ -60,14 +55,27 @@ case class RunningPage(targetDivId: String) {
         val idButton = a(href := "#")(id).render
         idButton.onclick = e => {
           e.preventDefault()
+          Client.kafka.stats(id).foreach {
+            case None =>
+              aboutDiv.innerHTML = "WTF?"
+
+            case Some(stats: ConsumerStats) =>
+              aboutDiv.innerHTML = stats.asJson.spaces2
+
+          }
+        }
+        val confButton = a(href := "#")("Config").render
+        confButton.onclick = e => {
+          e.preventDefault()
           configDiv.innerHTML = cfg
         }
-        tr(td(stopButton), td(idButton), td(s"${new Date(started.toDouble)}"))
+        tr(td(stopButton), td(idButton), td(s"${new Date(started.toDouble)}"), td(confButton))
     }
     val header = tr(
       th(""),
       th("ID"),
-      th("Started")
+      th("Started"),
+      th("Config")
     )
     val render = table((header +: rows): _*).render
   }
@@ -78,7 +86,8 @@ case class RunningPage(targetDivId: String) {
         h2("Consumers:"),
         tableDiv,
         div(refreshButton),
-        configDiv
+        configDiv,
+        aboutDiv
       )
     )
   ).render

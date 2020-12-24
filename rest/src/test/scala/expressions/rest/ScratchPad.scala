@@ -19,26 +19,31 @@ class ScratchPad extends AnyWordSpec with Matchers {
 
   "this script" should {
     "work" in {
+      import expressions._
+      import expressions.implicits._
+      import AvroExpressions._
+      import expressions.template.{Context, Message}
 
-//      import expressions._
-//      import expressions.implicits._
-//      import AvroExpressions._
-//      import expressions.template.{Context, Message}
-//
-//      (context : Context[Message[RichDynamicJson, RichDynamicJson]]) => {
-//        import context._
-//
-//        implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
-//
-//        import expressions.client._
-//
-//        import io.circe.syntax._
-//
-////        val firstName = record.value.hello.world.string .name.get[String]
-////        HttpRequest.get(s"http://localhost/${firstName}/:8080") :: Nil
-//
-//
-//      }
+      (context : Context[Message[RichDynamicJson, RichDynamicJson]]) => {
+        import context._
+
+        implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
+
+        import expressions.client._
+
+        import io.circe.syntax._
+        import io.circe.Json
+
+        val key = record.key.getClass
+        val r = HttpRequest.post(s"http://localhost:8080/rest/store/${record.topic}/${key}/${record.partition}").withBody(record.value.jsonValue.noSpaces)
+        List(r)
+
+
+
+
+      }
+
+
     }
   }
 }

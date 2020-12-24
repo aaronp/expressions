@@ -4,20 +4,15 @@ import com.typesafe.config.{Config, ConfigRenderOptions}
 import eie.io.AlphaCounter
 import expressions.Cache
 import expressions.JsonTemplate.Expression
+import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 import expressions.client.{HttpRequest, HttpResponse}
-import expressions.client.kafka.{ConsumerStats, RecordCoords, RecordSummary, StartedConsumer}
-import expressions.franz.{ForEachStream, FranzConfig, SchemaGen}
-import io.circe.syntax.EncoderOps
-import io.circe.{Encoder, Json}
-import org.apache.avro.generic.IndexedRecord
+import expressions.franz.{ForEachStream, FranzConfig}
+import io.circe.Encoder
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.durationInt
 import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, _}
-
-import scala.annotation.tailrec
-import scala.util.{Failure, Success, Try}
 
 /**
   * We have (separate to the kafka config) a list of:
@@ -90,8 +85,8 @@ object KafkaSink {
           clock.get.instant.map(_.toEpochMilli).flatMap { nowEpoch =>
             val update = statsMap.update { byId =>
               val newStats = byId.get(id) match {
-                case None         => stats.createStats(id, record, either.toTry, nowEpoch)
-                case Some(before) => stats.updateStats(before, record, either.toTry, nowEpoch)
+                case None         => Stats.createStats(id, record, either.toTry, nowEpoch)
+                case Some(before) => Stats.updateStats(before, record, either.toTry, nowEpoch)
               }
               byId.updated(id, newStats)
             }
@@ -166,8 +161,18 @@ object KafkaSink {
         kafkaFeed = ForEachStream[K, V](FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
-          val coords = StartedConsumer(id, rootConfig.root().render(ConfigRenderOptions.concise()), System.currentTimeMillis())
-          val entry  = (coords, fiber)
+          val coords = {
+            val configStr = {
+              val franz    = rootConfig.withOnlyPath("app.franz")
+              val mappings = rootConfig.withOnlyPath("app.mappings")
+              franz
+                .withFallback(mappings)
+                .root()
+                .render(ConfigRenderOptions.concise())
+            }
+            StartedConsumer(id, configStr, System.currentTimeMillis())
+          }
+          val entry = (coords, fiber)
           map.updated(id, entry)
         }
       } yield id
@@ -187,93 +192,4 @@ object KafkaSink {
     override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = statsMap.get.map(_.get(taskId))
   }
 
-  /**
-    * Functions for maintaining our ConsumerStats
-    */
-  object stats {
-
-    def updateStats(consumerStats: ConsumerStats, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long) = {
-      val summary = RecordSummary(
-        recordCoords(record),
-        asMessage(result),
-        asJson(result),
-        now
-      )
-      val errors = result match {
-        case Failure(_) => summary +: consumerStats.errors
-        case _          => consumerStats.errors
-      }
-      val newRecords: List[RecordSummary] = summary :: consumerStats.recentRecords.take(10)
-      consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors)
-    }
-
-    def createStats(id: RunningSinkId, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long) = {
-      val summary = RecordSummary(
-        recordCoords(record),
-        asMessage(result),
-        asJson(result),
-        now
-      )
-      val errors = result match {
-        case Failure(_) => List(summary)
-        case _          => Nil
-      }
-      ConsumerStats(id, 1, List(summary), errors)
-    }
-
-    private def recordCoords(record: CommittableRecord[_, _]): RecordCoords = RecordCoords(record.record.topic(), record.offset.offset, record.partition, asString(record.key))
-
-    private def asMessage(request: HttpRequest, response: HttpResponse) = {
-      s"${request.url} yields ${response.statusCode}"
-    }
-
-    private def asMessage(results: Try[List[(HttpRequest, HttpResponse)]]): String = {
-      results match {
-        case Failure(err)                        => s"Error: $err"
-        case Success((request, response) :: Nil) => asMessage(request, response)
-        case Success(list) =>
-          list
-            .map {
-              case (request, response) => asMessage(request, response)
-            }
-            .mkString(s"${list.size} requests: [\n", "\n", "\n]")
-      }
-    }
-
-    private def asJson(results: Try[List[(HttpRequest, HttpResponse)]]): Json = {
-      results match {
-        case Failure(err)                        => Json.obj("error" -> s"${err}".asJson)
-        case Success((request, response) :: Nil) => asJson(request, response)
-        case Success(list) =>
-          val jsons = list.map {
-            case (request, response) => asJson(request, response)
-          }
-          jsons.asJson
-      }
-    }
-
-    private def asJson(request: HttpRequest, response: HttpResponse): Json = {
-      Map(
-        "request"  -> request.asJson,
-        "response" -> asJson(response)
-      ).asJson
-    }
-
-    private def asJson(response: HttpResponse): Json = {
-      Map(
-        "code" -> response.statusCode.asJson,
-        "body" -> response.body.asJson
-      ).asJson
-    }
-
-    @tailrec
-    private def asString(value: Any): String = {
-      value match {
-        case null                  => "NULL"
-        case jason: Json           => jason.asString.getOrElse(jason.noSpaces)
-        case record: IndexedRecord => asString(SchemaGen.asJson(record))
-        case other                 => other.toString
-      }
-    }
-  }
 }
