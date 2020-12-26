@@ -12,4 +12,8 @@ object JsonSupport {
       parse(jason).toTry.get
     }
   }
+
+  def asString(json : Json): String = {
+    json.asString.getOrElse(json.noSpaces)
+  }
 }
