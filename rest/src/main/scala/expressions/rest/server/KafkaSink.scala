@@ -59,45 +59,6 @@ object KafkaSink {
     }
   }
 
-  /**
-    *
-    * @param config
-    * @param templateCache
-    * @param statsMap
-    * @param clock
-    * @tparam K
-    * @tparam V
-    * @return
-    */
-  def saveToDB[K: Encoder, V: Encoder](input: SinkInput,
-                                       templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]],
-                                       statsMap: Ref[Map[String, ConsumerStats]],
-                                       clock: Clock): ZIO[Console, Throwable, CommittableRecord[K, V] => Task[Unit]] = {
-    val (id, config) = input
-    for {
-      restSink <- KafkaRecordToHttpRequest.forRootConfig[K, V](config, templateCache)
-    } yield { (record: CommittableRecord[K, V]) =>
-      restSink
-        .makeRestRequest(record)
-        .map(validate)
-        .either
-        .flatMap { either =>
-          clock.get.instant.map(_.toEpochMilli).flatMap { nowEpoch =>
-            val update = statsMap.update { byId =>
-              val newStats = byId.get(id) match {
-                case None         => Stats.createStats(id, record, either.toTry, nowEpoch)
-                case Some(before) => Stats.updateStats(before, record, either.toTry, nowEpoch)
-              }
-              byId.updated(id, newStats)
-            }
-            update.as(either)
-          }
-        }
-        .repeatUntilM(r => UIO(r.isRight).delay(1.second))
-        .provide(clock)
-        .unit
-    }
-  }
 
   /**
     * This is one way to make the sink. We could also just drop in some code we might reflectively initialized
@@ -107,23 +68,24 @@ object KafkaSink {
     * @param templateCache
     * @return
     */
-  def apply[K: Encoder, V: Encoder](templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[ZEnv, Nothing, Instance[K, V]] = {
+  def apply(templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[ZEnv, Nothing, Instance[_,_]] = {
     for {
       clock    <- ZIO.environment[ZEnv]
       statsMap <- Ref.make(Map[String, ConsumerStats]())
       writer = (input: SinkInput) => {
         // TODO - this is where we might infer the K/V types, rather than in this method signature
-        val sink: ZIO[Console, Throwable, CommittableRecord[K, V] => Task[Unit]] = saveToDB[K, V](input, templateCache, statsMap, clock)
+        val sink: ZIO[Console, Throwable, CommittableRecord[_, _] => Task[Unit]] = KafkaRecordToHttpRequest.saveToDB(input, templateCache, statsMap, clock)
         // TODO - this is where we might inject some retry/recovery logic (rather than just 'orDie')
 
         sink.provide(clock).orDie
       }
-      svc <- Service[K, V](statsMap, writer)
+
+      svc <- Service(statsMap, writer)
     } yield svc
   }
 
   object Service {
-    def apply[K, V](statsMap: Ref[Map[String, ConsumerStats]], makeSink: SinkInput => SinkIO[K, V]): ZIO[zio.ZEnv, Nothing, Instance[K, V]] =
+    def apply(statsMap: Ref[Map[String, ConsumerStats]], makeSink: SinkInput => SinkIO[_,_]): ZIO[zio.ZEnv, Nothing, Instance[_,_]] =
       for {
         env  <- ZIO.environment[ZEnv]
         byId <- Ref.make(Map[String, (StartedConsumer, Fiber[_, _])]())
@@ -142,10 +104,10 @@ object KafkaSink {
     * @param makeSink
     * @param env
     */
-  case class Instance[K, V](tasksById: Ref[Map[RunningSinkId, (StartedConsumer, Fiber[_, _])]],
-                            statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
-                            makeSink: SinkInput => SinkIO[K, V],
-                            env: ZEnv)
+  case class Instance[K: Encoder, V: Encoder](tasksById: Ref[Map[RunningSinkId, (StartedConsumer, Fiber[_, _])]],
+                      statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
+                      makeSink: SinkInput => SinkIO[K,V],
+                      env: ZEnv)
       extends Service {
 
     private val counter = AlphaCounter.from(0)

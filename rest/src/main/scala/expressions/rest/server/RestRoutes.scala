@@ -22,14 +22,14 @@ object RestRoutes extends StrictLogging {
 
   val taskDsl: Http4sDsl[Task] = Http4sDsl[Task]
 
-  def apply[K: Encoder, V: Encoder](defaultConfig: Config = ConfigFactory.load()) = {
+  def apply(defaultConfig: Config = ConfigFactory.load()) = {
 
     for {
       cacheRoute        <- CacheRoute()
       disk              <- DiskRoute(defaultConfig)
       fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
       templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
-      kafkaSink         <- KafkaSink[K, V](templateCache)
+      kafkaSink         <- KafkaSink(templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =

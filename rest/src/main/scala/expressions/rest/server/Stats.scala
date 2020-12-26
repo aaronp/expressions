@@ -14,7 +14,22 @@ import scala.util.{Failure, Success, Try}
 
 object Stats {
 
-  def updateStats(consumerStats: ConsumerStats, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long) = {
+//  trait Service {
+//    def
+//  }
+
+  sealed trait RecordBody
+
+  case class Base64Body(base64Data : String) extends RecordBody
+  case class JasonBody(json : Json) extends RecordBody
+
+  object RecordBody {
+    def apply(record: CommittableRecord[_, _]) = {
+
+    }
+  }
+
+  def updateStats(consumerStats: ConsumerStats, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long): ConsumerStats = {
     val summary = RecordSummary(
       recordCoords(record),
       asMessage(result),

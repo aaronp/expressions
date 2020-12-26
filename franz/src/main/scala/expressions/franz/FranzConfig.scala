@@ -98,8 +98,6 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     case n           => n
   }
 
-  //lazy val deserializer: Serde[Any, GenericRecord] = genericAvroSerdeFromConfig
-
   val batchSize   = franzConfig.getInt("batchWindow.maxCount")
   val batchWindow = franzConfig.asFiniteDuration("batchWindow.maxTime")
 

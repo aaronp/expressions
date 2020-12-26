@@ -3,11 +3,11 @@ package expressions.rest.server
 import cats.implicits.toSemigroupKOps
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.client.kafka.PostRecord
-import expressions.franz.{FranzConfig, SchemaGen}
+import expressions.franz.FranzConfig
 import expressions.rest.server.RestRoutes.taskDsl._
+import org.http4s.circe.CirceEntityCodec._
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
 import zio.interop.catz._

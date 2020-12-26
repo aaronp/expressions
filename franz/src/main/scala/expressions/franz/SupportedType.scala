@@ -3,6 +3,12 @@ package expressions.franz
 import io.circe.Json
 import org.apache.avro.generic.GenericRecord
 
+/**
+  * This is used to be able to create a particular type from a json input.
+  *
+  * It's used by the [[KafkaPublishService]] in order to shove in ProducerRecord's from user REST input
+  * @tparam A
+  */
 sealed trait SupportedType[A] {
   def of(input: Json): A
 }

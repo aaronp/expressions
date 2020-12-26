@@ -2,15 +2,19 @@ package expressions.rest.server
 
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.JsonTemplate.Expression
+import expressions.client.kafka.ConsumerStats
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.KafkaRecord
+import expressions.rest.server.KafkaSink.{SinkInput, validate}
 import expressions.template.{Context, Message}
 import expressions.{Cache, RichDynamicJson}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
+import zio.clock.Clock
 import zio.console.Console
+import zio.duration.durationInt
 import zio.kafka.consumer.CommittableRecord
-import zio.{Task, ZIO}
+import zio.{Ref, Task, UIO, ZIO}
 
 import java.nio.file.Path
 import scala.util.Try
@@ -58,6 +62,46 @@ object KafkaRecordToHttpRequest {
 
   import eie.io._
 
+  /**
+    *
+    * @param config
+    * @param templateCache
+    * @param statsMap
+    * @param clock
+    * @tparam K
+    * @tparam V
+    * @return
+    */
+  def saveToDB[K: Encoder, V: Encoder](input: SinkInput,
+                                       templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]],
+                                       statsMap: Ref[Map[String, ConsumerStats]],
+                                       clock: Clock): ZIO[Console, Throwable, CommittableRecord[K, V] => Task[Unit]] = {
+    val (id, config) = input
+    for {
+      restSink <- KafkaRecordToHttpRequest.forRootConfig[K, V](config, templateCache)
+    } yield { (record: CommittableRecord[K, V]) =>
+      restSink
+        .makeRestRequest(record)
+        .map(validate)
+        .either
+        .flatMap { either =>
+          clock.get.instant.map(_.toEpochMilli).flatMap { nowEpoch =>
+            val update = statsMap.update { byId =>
+              val newStats = byId.get(id) match {
+                case None         => Stats.createStats(id, record, either.toTry, nowEpoch)
+                case Some(before) => Stats.updateStats(before, record, either.toTry, nowEpoch)
+              }
+              byId.updated(id, newStats)
+            }
+            update.as(either)
+          }
+        }
+        .repeatUntilM(r => UIO(r.isRight).delay(1.second))
+        .provide(clock)
+        .unit
+    }
+  }
+
   def dataDir(rootConfig: Config): Path = rootConfig.getString("app.data").asPath
 
   def forRootConfig[K: Encoder, V: Encoder](
@@ -72,6 +116,16 @@ object KafkaRecordToHttpRequest {
     } yield inst
   }
 
+  /**
+    * Create an ZIO which, when run, will
+    * @param mappingConfig
+    * @param disk
+    * @param templateCache
+    * @param asContext
+    * @tparam K
+    * @tparam V
+    * @return
+    */
   def apply[K: Encoder, V: Encoder](mappingConfig: MappingConfig, disk: Disk.Service, templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]])(
       asContext: JsonMsg => Context[JsonMsg]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[K, V, List[HttpRequest]]] = {
     mappingConfig.scriptForTopic(disk).map { lookup =>

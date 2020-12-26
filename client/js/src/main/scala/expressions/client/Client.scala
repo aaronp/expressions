@@ -55,7 +55,7 @@ object Client {
       }
     }
     def read(path: List[String]): Future[Option[String]] = {
-      val url     = path.mkString(s"${restServerLocation}/store/", "/", "")
+      val url     = path.mkString(s"${restServerLocation}/store/get", "/", "")
       val promise = Promise[Option[String]]()
       Ajax.get(url, headers = AppJson).onComplete {
         case Success(response) =>
@@ -66,6 +66,15 @@ object Client {
           promise.tryComplete(Try(None))
       }
       promise.future
+    }
+    def list(path: List[String]): Future[List[String]] = {
+      val url = path.mkString(s"${restServerLocation}/store/list", "/", "")
+      Ajax.get(url, headers = AppJson).map { response =>
+        val asList = asJson(response).flatMap { json: Json =>
+          json.as[List[String]].toTry
+        }
+        asList.get
+      }
     }
   }
 
