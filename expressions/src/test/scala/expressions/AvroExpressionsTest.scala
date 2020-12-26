@@ -17,7 +17,7 @@ class AvroExpressionsTest extends AnyWordSpec with Matchers {
     val matching = asAvroPredicate("""value.someInt > 80 && value.someInt < 100 || (value.someInt > value.someLong)""")
     val d8a      = newData.setSomeInt(90).build
     var calls    = 0
-    val results = Stats(2) {
+    val results = TestThroughput(2) {
       calls = calls + 1
       matching(d8a)
     }

@@ -29,7 +29,7 @@ object RestRoutes extends StrictLogging {
       disk              <- DiskRoute(defaultConfig)
       fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
       templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
-      kafkaRunner       <- KafkaSink[K, V](templateCache)
+      kafkaSink         <- KafkaSink[K, V](templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
@@ -39,7 +39,7 @@ object RestRoutes extends StrictLogging {
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(defaultConfig)
-      val kafkaRoute                                               = KafkaRoute(kafkaRunner)
+      val kafkaRoute                                               = KafkaRoute(kafkaSink)
       val proxyRoute                                               = ProxyRoute()
 
       kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk <+> proxyRoute

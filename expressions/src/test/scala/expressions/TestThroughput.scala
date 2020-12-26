@@ -2,16 +2,16 @@ package expressions
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-case class Stats(throughputsPerSecond: Seq[Long]) {
+case class TestThroughput(throughputsPerSecond: Seq[Long]) {
   val min  = throughputsPerSecond.min
   val max  = throughputsPerSecond.max
   val mean = throughputsPerSecond.sum / throughputsPerSecond.size.toDouble
 
   override def toString: String = s"min:$min/s, max:$max/s, ave:$mean/s, +/-${max - min}/s"
 }
-object Stats {
+object TestThroughput {
 
-  def apply(times: Int, testLen: FiniteDuration = 5.seconds)(code: => Unit): Stats = {
+  def apply(times: Int, testLen: FiniteDuration = 5.seconds)(code: => Unit): TestThroughput = {
     val throughput = (0 to times).map { _ =>
       val dealLine = testLen.fromNow
       var i        = 0
@@ -22,6 +22,6 @@ object Stats {
       i / testLen.toSeconds
     }
 
-    Stats(throughput)
+    TestThroughput(throughput)
   }
 }
