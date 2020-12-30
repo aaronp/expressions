@@ -2,10 +2,9 @@ package expressions.franz
 
 import args4c.implicits.configAsRichConfig
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
+import eie.io.AlphaCounter
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
 import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
-import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.common.serialization._
 import zio.ZManaged
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
@@ -13,7 +12,6 @@ import zio.kafka.consumer.{ConsumerSettings, Subscription}
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.Serde
 
-import java.util.UUID
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
@@ -58,6 +56,8 @@ object FranzConfig {
     (conf +: theRest).toArray.asConfig().getConfig("app.franz")
   }
 
+  private val counter    = AlphaCounter.from(System.currentTimeMillis())
+  private def nextRand() = counter.next()
 }
 final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
 
@@ -137,7 +137,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     Producer.make(producerSettings, keySerde, valueSerde)
   }
 
-  private lazy val schemaRegistryClient: SchemaRegistryClient = {
+  lazy val schemaRegistryClient: SchemaRegistryClient = {
     val baseUrls            = kafkaConfig.asList("schema.registry.url").asJava
     val identityMapCapacity = kafkaConfig.getInt("identityMapCapacity")
     new CachedSchemaRegistryClient(baseUrls, identityMapCapacity)
@@ -207,7 +207,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     jMap
   }
 
-  private def rand()   = UUID.randomUUID().toString.filter(_.isLetterOrDigit)
+  private def rand()   = FranzConfig.nextRand()
   private val UnquoteR = """ *"(.*)" *""".r
 
   private lazy val randomValue = rand().toLowerCase()

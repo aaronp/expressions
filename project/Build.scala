@@ -1,9 +1,7 @@
-import java.nio.file.Path
-
 import eie.io._
 import sbt._
 
-import scala.sys.process._
+import java.nio.file.Path
 
 object Build {
 
@@ -64,10 +62,10 @@ object Build {
         "com.github.aaronp" %% "eie"    % "1.0.0",
         "com.github.aaronp" %% "args4c" % "0.7.0",
         typesafeConfig,
-        "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
-        "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
-        "org.http4s" %% "http4s-circe"        % Http4sVersion,
-        "org.http4s" %% "http4s-dsl"          % Http4sVersion,
+        "org.http4s"   %% "http4s-blaze-server"         % Http4sVersion,
+        "org.http4s"   %% "http4s-blaze-client"         % Http4sVersion,
+        "org.http4s"   %% "http4s-circe"                % Http4sVersion,
+        "org.http4s"   %% "http4s-dsl"                  % Http4sVersion,
         scalaTest
       )
   }
