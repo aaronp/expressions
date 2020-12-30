@@ -72,11 +72,12 @@ object KafkaRecordToHttpRequest {
     * @tparam V
     * @return
     */
-  def saveToDB[K: Encoder, V: Encoder](input: SinkInput,
+  def saveToDB(input: SinkInput,
                                        templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]],
                                        statsMap: Ref[Map[String, ConsumerStats]],
-                                       clock: Clock): ZIO[Console, Throwable, CommittableRecord[K, V] => Task[Unit]] = {
+                                       clock: Clock): ZIO[Console, Throwable, CommittableRecord[_,_] => Task[Unit]] = {
     val (id, config) = input
+
     for {
       restSink <- KafkaRecordToHttpRequest.forRootConfig[K, V](config, templateCache)
     } yield { (record: CommittableRecord[K, V]) =>
@@ -110,7 +111,7 @@ object KafkaRecordToHttpRequest {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     for {
       disk <- Disk(rootConfig)
-      inst <- apply[K, V](mappingConfig, disk, templateCache) { record =>
+      inst <- apply[K, V](mappingConfig, disk, templateCache) { record: JsonMsg =>
         record.asContext(dataDir(rootConfig))
       }
     } yield inst
@@ -133,6 +134,8 @@ object KafkaRecordToHttpRequest {
       new KafkaRecordToHttpRequest[K, V, List[HttpRequest]](mappingConfig, templateCache, lookup, transform)
     }
   }
+  
+
 
   def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = {
     Message(

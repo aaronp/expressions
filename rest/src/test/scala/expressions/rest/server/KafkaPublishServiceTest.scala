@@ -19,7 +19,7 @@ class KafkaPublishServiceTest extends BaseRouteTest {
       key.getClass shouldBe classOf[String]
       value.getClass shouldBe classOf[String]
     }
-    "publish avro records" ignore {
+    "publish avro records" in {
       val config   = FranzConfig.avroKeyValueConfig()
       val readBack = publishRecords(config)
       val key      = readBack.head.key

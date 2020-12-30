@@ -25,4 +25,9 @@ class SupportedTypeTest extends AnyWordSpec with Matchers {
       k1 shouldBe k2
     }
   }
+  "SupportedType.forRecord" should {
+    "return a function which will transform ConsumerRecords into json" in {
+      ???
+    }
+  }
 }
