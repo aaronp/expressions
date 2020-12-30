@@ -40,6 +40,15 @@ object SupportedType {
     }
   }
 
+  def withKeyValue[K, V](record: CommittableRecord[_, _], key: K, value: V): CommittableRecord[K, V] = {
+    val consumerRecord = withKeyValue(record.record, key, value)
+    CommittableRecord(consumerRecord, record.offset)
+  }
+
+  /**
+    * copy the consumer record, but use the given key/value
+    * @return a mapped consumer record
+    */
   def withKeyValue[K, V](record: ConsumerRecord[_, _], key: K, value: V): ConsumerRecord[K, V] = {
     new ConsumerRecord[K, V](
       record.topic(),
@@ -57,21 +66,33 @@ object SupportedType {
     )
   }
 
+  /**
+    * Exposes a means to represent committable records as json values
+    */
   object AsJson {
-
     /**
       * @param config the root configuration (which specifies the Serde types)
       * @return a function which can map/cast any incoming records as json records
       */
     def apply(config: FranzConfig): CommittableRecord[_, _] => CommittableRecord[Json, Json] = {
+      val extractor = extractJson(config)
+      (record: CommittableRecord[_, _]) => {
+        val (key, value) = extractor(record)
+        withKeyValue(record, key, value)
+      }
+    }
+
+    /**
+      * @param config the configuration which contains the serde mapping
+      * @return a function which extracts the json from the given record
+      */
+    def extractJson(config: FranzConfig) = {
       val jsonKey   = keyToJson(config.keyType)
       val jsonValue = valueToJson(config.valueType)
-
       (record: CommittableRecord[_, _]) => {
-        val key            = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
-        val value          = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
-        val consumerRecord = withKeyValue(record.record, key, value)
-        CommittableRecord(consumerRecord, record.offset)
+        val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
+        val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
+        (key, value)
       }
     }
 

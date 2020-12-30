@@ -1,7 +1,6 @@
 package expressions.client
 
 import cats.effect.{ConcurrentEffect, ExitCode, IO, IOApp}
-import fs2.Stream
 import org.http4s.client.Client
 import org.http4s.{Header, Headers, Uri}
 
@@ -38,7 +37,7 @@ object RestClient {
         // SERIOUSLY!
         // no wonder people hate fucking scala.
         //
-        // "How do I get the repsonse back" ... "oh, we hide all that shit from you, unless you want o compile/fold a stream..."
+        // "How do I get the response back" ... "oh, we hide all that shit from you, unless you want o compile/fold a stream..."
         //
 
 //        val dec = implicitly[EntityDecoder[IO, String]]
@@ -50,9 +49,16 @@ object RestClient {
 
 //  def sendJson(request: HttpRequest): Try[Json] = ??? //asTry(send(request))
 
+  /**
+    * Seriously -- I added a 'proxy' route to test out executing Http requests, and was setting that sttp was seeing POST requests
+    * as GET requests. It looked to be within that library, 'cause switching to http4s client then worked as expected
+    * @param request
+    * @return
+    */
   def send(request: HttpRequest) = {
-    val io = Inst(request).map { body =>
-      HttpResponse(200, body)
+    val io = Inst(request).attempt.map {
+      case Left(err)   => HttpResponse(500, err.toString)
+      case Right(body) => HttpResponse(200, body)
     }
     io.unsafeToFuture()
   }

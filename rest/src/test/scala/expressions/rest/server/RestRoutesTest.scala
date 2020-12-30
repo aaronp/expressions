@@ -14,7 +14,7 @@ class RestRoutesTest extends BaseRouteTest {
   "POST /rest/mapping/check" should {
     "works" in {
 
-      val underTest: HttpRoutes[Task] = RestRoutes[Json, Json]().value()
+      val underTest: HttpRoutes[Task] = RestRoutes().value()
 
       val req = {
         val jason  = json"""{

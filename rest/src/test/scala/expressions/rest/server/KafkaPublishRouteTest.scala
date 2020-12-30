@@ -27,8 +27,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         // create a sink which will just keep track of our records
         //
-        records <- Ref.make(List[CommittableRecord[String, GenericRecord]]())
-        onRecord = (record: CommittableRecord[String, GenericRecord]) => {
+        records <- Ref.make(List[CommittableRecord[_, _]]())
+        onRecord = (record: CommittableRecord[_, _]) => {
           records.update(record :: _)
         }
         //

@@ -1,5 +1,6 @@
 package expressions.rest.server
 
+import cats.data.{Kleisli, OptionT}
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
@@ -9,8 +10,9 @@ import expressions.{Cache, JsonTemplate, RichDynamicJson, StringTemplate}
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, Json}
 import org.http4s
+import org.http4s.{HttpRoutes, Request, Response}
 import org.http4s.dsl.Http4sDsl
-import zio.Task
+import zio.{Task, ZEnv, ZIO}
 import zio.interop.catz._
 
 /**
@@ -22,7 +24,7 @@ object RestRoutes extends StrictLogging {
 
   val taskDsl: Http4sDsl[Task] = Http4sDsl[Task]
 
-  def apply(defaultConfig: Config = ConfigFactory.load()) = {
+  def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
 
     for {
       cacheRoute        <- CacheRoute()
