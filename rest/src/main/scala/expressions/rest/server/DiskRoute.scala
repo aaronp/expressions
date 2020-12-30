@@ -3,7 +3,7 @@ package expressions.rest.server
 import cats.implicits._
 import com.typesafe.config.Config
 import expressions.rest.server.Disk.ListEntry
-import org.http4s.circe.CirceEntityCodec._
+import io.circe.Json
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
 import zio.{Task, ZIO}
@@ -37,12 +37,14 @@ object DiskRoute {
     HttpRoutes.of[Task] {
       case GET -> "store" /: "get" /: theRest =>
         service.read(theRest.toList).map {
-          case Some(value) => Response[Task](Status.Ok).withEntity(value)
+          case Some(value) => Response[Task](Status.Ok).withEntity[String](value)
           case None        => Response[Task](Status.Gone)
         }
     }
   }
   def listRoute(service: Seq[String] => Task[Seq[ListEntry]]): HttpRoutes[Task] = {
+
+    import org.http4s.circe.CirceEntityCodec._
     HttpRoutes.of[Task] {
       case GET -> "store" /: "list" /: theRest =>
         service(theRest.toList).map { values =>

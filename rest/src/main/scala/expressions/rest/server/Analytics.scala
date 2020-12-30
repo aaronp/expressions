@@ -28,9 +28,9 @@ object Analytics {
 
   def apply(config: FranzConfig) = {
     for {
-      clock                       <- ZIO.environment[Clock]
-      disk                        <- ZIO.environment[Disk]
-      started                     <- clock.get.instant
+      clock   <- ZIO.environment[Clock]
+      disk    <- ZIO.environment[Disk]
+      started <- clock.get.instant
 //      keyType: SupportedType[_]   = config.keyType
 //      valueType: SupportedType[_] = config.valueType
     } yield ??? //Inst(config, started, clock.get, disk.get, keyType, valueType)
@@ -39,7 +39,9 @@ object Analytics {
   case class Inst(config: FranzConfig, started: Instant, clock: Clock.Service, disk: Disk.Service, keyType: SupportedType[_], valueType: SupportedType[_]) extends Service {
 
     keyType match {
-      case BYTE_ARRAY        => (record: ConsumerRecord[_, _]) => {}
+      case BYTE_ARRAY =>
+        (record: ConsumerRecord[_, _]) =>
+          {}
       case STRING            =>
       case RECORD(namespace) =>
       case LONG              =>

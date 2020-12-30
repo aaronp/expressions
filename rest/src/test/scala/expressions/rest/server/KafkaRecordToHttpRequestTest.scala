@@ -15,11 +15,11 @@ class KafkaRecordToHttpRequestTest extends BaseRouteTest {
       val services: KafkaRecordToHttpRequest[List[HttpRequest]] = {
         val mappingConfig = MappingConfig()
         for {
-          disk <- Disk(mappingConfig.rootConfig)
-          _    <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", s"${value}")
-          _    <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "mapping-test", s"${value.abs}".reverse)
-          templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
-          svc  <- KafkaRecordToHttpRequest.forRootConfig(mappingConfig.rootConfig, templateCache)
+          disk          <- Disk(mappingConfig.rootConfig)
+          _             <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", s"${value}")
+          _             <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "mapping-test", s"${value.abs}".reverse)
+          templateCache = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
+          svc           <- KafkaRecordToHttpRequest.forRootConfig(mappingConfig.rootConfig, templateCache)
         } yield svc
       }.value()
 

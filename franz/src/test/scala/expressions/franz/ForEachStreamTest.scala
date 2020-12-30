@@ -13,16 +13,16 @@ import java.util.UUID
 
 class ForEachStreamTest extends BaseFranzTest {
 
-      def avroRecord(k :Int): GenericRecord = http.HttpRequest
-        .newBuilder()
-        .setBody(ByteBuffer.wrap(Array(1, 2, 3)))
-        .setMethod(http.Method.CONNECT)
-        .setUrl(s"http://example/$k")
-        .setHeaders(new util.HashMap[CharSequence, CharSequence]())
-        .build()
+  def avroRecord(k: Int): GenericRecord =
+    http.HttpRequest
+      .newBuilder()
+      .setBody(ByteBuffer.wrap(Array(1, 2, 3)))
+      .setMethod(http.Method.CONNECT)
+      .setUrl(s"http://example/$k")
+      .setHeaders(new util.HashMap[CharSequence, CharSequence]())
+      .build()
 
   "ForEachStream encoding" ignore {
-
 
     "be able to read records sent w/ different encodings" in {
 
@@ -32,7 +32,7 @@ class ForEachStreamTest extends BaseFranzTest {
       val topic1 = s"foo${UUID.randomUUID()}"
       val topic2 = s"bar${UUID.randomUUID()}"
       val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.kafka.topic=${topic1}")
-      val chunk  = Chunk(
+      val chunk = Chunk(
         new ProducerRecord[String, GenericRecord](topic1, "foo", avroRecord(1)),
         new ProducerRecord[String, GenericRecord](topic2, "bar", avroRecord(2))
       )
@@ -77,7 +77,7 @@ class ForEachStreamTest extends BaseFranzTest {
       val config = FranzConfig.avroKeyValueConfig()
 
       val chunk = Chunk.fromArray((0 to 10).map { i =>
-        val key: GenericRecord  = SchemaGen.recordForJson(json"""{ "key" : $i, "qualifier" : "q" }""")
+        val key: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : $i, "qualifier" : "q" }""")
         new ProducerRecord[GenericRecord, GenericRecord](config.topic, key, avroRecord(i))
       }.toArray)
 
@@ -94,8 +94,8 @@ class ForEachStreamTest extends BaseFranzTest {
 
       val readBack: List[CommittableRecord[GenericRecord, GenericRecord]] = testCase.value()
       readBack.size shouldBe chunk.size
-      val key :GenericRecord= readBack.head.key
-      val value : GenericRecord = readBack.head.value
+      val key: GenericRecord   = readBack.head.key
+      val value: GenericRecord = readBack.head.value
       key.get("qualifier").toString shouldBe "q"
       value.get("method").toString shouldBe "CONNECT"
     }
@@ -104,7 +104,7 @@ class ForEachStreamTest extends BaseFranzTest {
       val topic1 = s"foo${UUID.randomUUID()}"
       val topic2 = s"bar${UUID.randomUUID()}"
       val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.kafka.topic=${topic1},${topic2}")
-      val chunk  = Chunk(
+      val chunk = Chunk(
         new ProducerRecord[String, GenericRecord](topic1, "foo", avroRecord(1)),
         new ProducerRecord[String, GenericRecord](topic2, "bar", avroRecord(2))
       )

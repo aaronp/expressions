@@ -70,16 +70,18 @@ object SupportedType {
     * Exposes a means to represent committable records as json values
     */
   object AsJson {
+
     /**
       * @param config the root configuration (which specifies the Serde types)
       * @return a function which can map/cast any incoming records as json records
       */
     def apply(config: FranzConfig): CommittableRecord[_, _] => CommittableRecord[Json, Json] = {
       val extractor = extractJson(config)
-      (record: CommittableRecord[_, _]) => {
-        val (key, value) = extractor(record)
-        withKeyValue(record, key, value)
-      }
+      (record: CommittableRecord[_, _]) =>
+        {
+          val (key, value) = extractor(record)
+          withKeyValue(record, key, value)
+        }
     }
 
     /**
@@ -89,11 +91,12 @@ object SupportedType {
     def extractJson(config: FranzConfig) = {
       val jsonKey   = keyToJson(config.keyType)
       val jsonValue = valueToJson(config.valueType)
-      (record: CommittableRecord[_, _]) => {
-        val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
-        val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
-        (key, value)
-      }
+      (record: CommittableRecord[_, _]) =>
+        {
+          val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
+          val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
+          (key, value)
+        }
     }
 
     def asError(record: CommittableRecord[_, _], err: Throwable, value: Any, supportedType: SupportedType[_]) = {
@@ -128,7 +131,9 @@ object SupportedType {
           case record: CommittableRecord[IndexedRecord, _] => SchemaGen.asJson(record.key)
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.key)
         }
-      case BYTE_ARRAY => (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.key)
+      case BYTE_ARRAY =>
+        (record: CommittableRecord[_, _]) =>
+          JsonSupport.anyToJson.format(record.key)
     }
     def valueToJson(supportedType: SupportedType[_]): CommittableRecord[_, _] => Json = supportedType match {
       case STRING =>
@@ -146,7 +151,9 @@ object SupportedType {
           case record: CommittableRecord[_, IndexedRecord] => SchemaGen.asJson(record.value)
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.value)
         }
-      case BYTE_ARRAY => (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.value)
+      case BYTE_ARRAY =>
+        (record: CommittableRecord[_, _]) =>
+          JsonSupport.anyToJson.format(record.value)
     }
   }
 }

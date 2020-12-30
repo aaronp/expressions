@@ -1,19 +1,18 @@
 package expressions.rest.server
 
-import cats.data.{Kleisli, OptionT}
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
 import expressions.{Cache, JsonTemplate, RichDynamicJson, StringTemplate}
+import io.circe.Json
 import io.circe.syntax.EncoderOps
-import io.circe.{Encoder, Json}
 import org.http4s
-import org.http4s.{HttpRoutes, Request, Response}
+import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
-import zio.{Task, ZEnv, ZIO}
 import zio.interop.catz._
+import zio.{Task, ZEnv, ZIO}
 
 /**
   * You've got to have a little fun.

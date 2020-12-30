@@ -1,5 +1,6 @@
 package expressions.rest.server
 
+import com.typesafe.config.ConfigFactory
 import io.circe.Decoder
 import org.http4s._
 import org.scalatest.GivenWhenThen
@@ -44,6 +45,8 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
     }
     Files.delete(dir)
   }
+
+  def testConfig() = ConfigFactory.load()
 
   implicit override def patienceConfig = PatienceConfig(timeout = scaled(Span(testTimeout.toSeconds, Seconds)), interval = scaled(Span(150, Millis)))
 

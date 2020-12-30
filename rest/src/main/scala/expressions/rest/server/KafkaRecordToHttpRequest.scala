@@ -23,7 +23,7 @@ import scala.util.Try
   * @param asContext a function which can produce a 'Context' for a Kafka record
   * @tparam B
   */
-final case class KafkaRecordToHttpRequest[B](transformForTopic: Topic => Try[Expression[JsonMsg, B]], asContext: CommittableRecord[_,_] => Context[JsonMsg])
+final case class KafkaRecordToHttpRequest[B](transformForTopic: Topic => Try[Expression[JsonMsg, B]], asContext: CommittableRecord[_, _] => Context[JsonMsg])
 
 object KafkaRecordToHttpRequest {
 

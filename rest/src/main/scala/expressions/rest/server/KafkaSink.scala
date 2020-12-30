@@ -4,8 +4,8 @@ import com.typesafe.config.{Config, ConfigRenderOptions}
 import eie.io.AlphaCounter
 import expressions.Cache
 import expressions.JsonTemplate.Expression
+import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
-import expressions.client.{HttpRequest, HttpResponse}
 import expressions.franz.{ForEachStream, FranzConfig}
 import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, _}
@@ -49,14 +49,6 @@ object KafkaSink {
     def stats(key: RunningSinkId): Task[Option[ConsumerStats]]
     def stop(key: RunningSinkId): Task[Boolean]
     def running(): UIO[List[StartedConsumer]]
-  }
-
-  def validate(responses: List[(HttpRequest, HttpResponse)]) = {
-    responses.map {
-      case (request, resp) =>
-        require(resp.statusCode >= 200 && resp.statusCode < 300, s"Response code was ${resp.statusCode}")
-        request -> resp
-    }
   }
 
   /**
@@ -118,23 +110,24 @@ object KafkaSink {
         kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
-          val coords = {
-            val configStr = {
-              val franz    = rootConfig.withOnlyPath("app.franz")
-              val mappings = rootConfig.withOnlyPath("app.mappings")
-              franz
-                .withFallback(mappings)
-                .root()
-                .render(ConfigRenderOptions.concise())
-            }
-            StartedConsumer(id, configStr, System.currentTimeMillis())
-          }
-          val entry = (coords, fiber)
-          map.updated(id, entry)
+          val consumer = startedConsumerFor(rootConfig, id)
+          map.updated(id, (consumer, fiber))
         }
       } yield id
 
       startIO.provide(env)
+    }
+
+    def startedConsumerFor(rootConfig: Config, id: RunningSinkId) = {
+      val configStr = {
+        val franz    = rootConfig.withOnlyPath("app.franz")
+        val mappings = rootConfig.withOnlyPath("app.mappings")
+        franz
+          .withFallback(mappings)
+          .root()
+          .render(ConfigRenderOptions.concise())
+      }
+      StartedConsumer(id, configStr, System.currentTimeMillis())
     }
 
     override def stop(key: RunningSinkId): Task[Boolean] =

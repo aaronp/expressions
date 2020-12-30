@@ -24,25 +24,22 @@ class ScratchPad extends AnyWordSpec with Matchers {
       import AvroExpressions._
       import expressions.template.{Context, Message}
 
-      (context : Context[Message[RichDynamicJson, RichDynamicJson]]) => {
-        import context._
+      (context: Context[Message[RichDynamicJson, RichDynamicJson]]) =>
+        {
+          import context._
 
-        implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
+          implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
 
-        import expressions.client._
+          import expressions.client._
 
-        import io.circe.syntax._
-        import io.circe.Json
+          import io.circe.syntax._
+          import io.circe.Json
 
-        val key = record.key.getClass
-        val r = HttpRequest.post(s"http://localhost:8080/rest/store/${record.topic}/${key}/${record.partition}").withBody(record.value.jsonValue.noSpaces)
-        List(r)
+          val key = record.key.getClass
+          val r   = HttpRequest.post(s"http://localhost:8080/rest/store/${record.topic}/${key}/${record.partition}").withBody(record.value.jsonValue.noSpaces)
+          List(r)
 
-
-
-
-      }
-
+        }
 
     }
   }

@@ -17,7 +17,7 @@ class JsonSupportTest extends AnyWordSpec with Matchers {
       JsonSupport.anyToJson.format(123) shouldBe 123.asJson
 
       val base64Text = JsonSupport.anyToString.format(helloWorld.noSpaces.getBytes("UTF-8"))
-      val bytes = Base64.getDecoder.decode(base64Text)
+      val bytes      = Base64.getDecoder.decode(base64Text)
       JsonSupport.anyToJson.format(bytes) shouldBe helloWorld
     }
   }
