@@ -23,36 +23,9 @@ class ScratchPad extends AnyWordSpec with Matchers {
       val listed = all.linesIterator.mkString(",")
       println(s"make deleteTopic topic=${listed}")
     }
+
     "work" in {
-      import expressions._
-      import expressions.implicits._
-      import AvroExpressions._
-      import expressions.template.{Context, Message}
 
-      (context: Context[Message[RichDynamicJson, RichDynamicJson]]) =>
-        {
-          import context._
-
-          implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
-
-          import expressions.client._
-          import io.circe.syntax._
-          import io.circe.Json
-          val StoreURL = s"http://localhost:8080/rest/store"
-          val url      = s"$StoreURL/wtf/${record.topic}/${record.partition}/${record.offset}"
-          val body = {
-            val jason: Json = record.value.jsonValue
-            val enrichment = Json.obj(
-              "timestamp" -> System.currentTimeMillis().asJson,
-              "kafka-key" -> record.key.jsonValue
-            )
-            jason.deepMerge(enrichment)
-          }
-
-          val request = HttpRequest.post(url).withBody(body.noSpaces)
-          List(request)
-
-        }
     }
 
     "example" in {
@@ -61,11 +34,9 @@ class ScratchPad extends AnyWordSpec with Matchers {
       import AvroExpressions._
       import expressions.template.{Context, Message}
 
-      (context: Context[Message[RichDynamicJson, RichDynamicJson]]) =>
+      (context: Context[Message[DynamicJson, DynamicJson]]) =>
         {
           import context._
-
-          implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
 
           import expressions.client._
 
@@ -75,10 +46,10 @@ class ScratchPad extends AnyWordSpec with Matchers {
           val StoreURL = s"http://localhost:8080/rest/store"
           val url      = s"$StoreURL/${record.topic}/${record.partition}/${record.offset}"
           val body = {
-            val jason: Json = record.value.jsonValue
+            val jason: Json = record.value.value
             val enrichment = Json.obj(
               "timestamp" -> System.currentTimeMillis().asJson,
-              "kafka-key" -> record.key.jsonValue
+              "kafka-key" -> record.key.value
             )
             jason.deepMerge(enrichment)
           }

@@ -87,13 +87,13 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   val kafkaConfig = franzConfig.getConfig("kafka")
 
-  lazy val randomTopic = s"topic${rand()}"
-  lazy val randomGroup = s"group${rand()}"
+  private lazy val randomTopic = s"topic${rand()}"
+  private lazy val randomGroup = s"group${rand()}"
   val topic = franzConfig.getString("kafka.topic") match {
     case "<random>" => randomTopic
     case topic      => topic
   }
-  lazy val subscription = topic match {
+  lazy val subscription: Subscription = topic match {
     case topic if topic.contains("*") => Subscription.pattern(topic.r)
     case topic if topic.contains(",") => Subscription.Topics(topic.split(",", -1).toSet)
     case topic                        => Subscription.topics(topic)

@@ -24,7 +24,7 @@ object JsonTemplate {
   def newCache[A: ClassTag, B](scriptPrefix: String = ""): Cache[Expression[A, B]] = new Cache[Expression[A, B]](script => apply[A, B](script, scriptPrefix))
 
   /**
-    * We bias these expressions for [[RichDynamicJson]] inputs
+    * We bias these expressions for [[DynamicJson]] inputs
     * @param expression
     * @tparam B
     * @return
@@ -32,17 +32,16 @@ object JsonTemplate {
   def apply[A: ClassTag, B](expression: String, scriptPrefix: String = ""): Try[Expression[A, B]] = {
     val scriptWithImplicitJson =
       s"""
-         |implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
          |
          |$scriptPrefix
          |$expression
          |
          |""".stripMargin
-    forAnyInput[A, B]("Message[RichDynamicJson, RichDynamicJson]", scriptWithImplicitJson)
+    forAnyInput[A, B]("Message[DynamicJson, DynamicJson]", scriptWithImplicitJson)
   }
 
   /**
-    * The resulting code is intended to work for a [[Context]] that has a [[RichDynamicJson]] as a message value.
+    * The resulting code is intended to work for a [[Context]] that has a [[DynamicJson]] as a message value.
     *
     * This allows scripts to work more fluidly w/ json messages in a scripting style, such as:
     * {{{

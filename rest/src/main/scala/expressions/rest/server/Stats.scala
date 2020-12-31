@@ -14,10 +14,6 @@ import scala.util.{Failure, Success, Try}
 
 object Stats {
 
-//  trait Service {
-//    def
-//  }
-
   sealed trait RecordBody
 
   case class Base64Body(base64Data: String) extends RecordBody
@@ -27,7 +23,7 @@ object Stats {
     def apply(record: CommittableRecord[_, _]) = {}
   }
 
-  def updateStats(consumerStats: ConsumerStats, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long): ConsumerStats = {
+  def updateStats(consumerStats: ConsumerStats, record: CommittableRecord[_, _], result: Try[Seq[(HttpRequest, HttpResponse)]], now: Long): ConsumerStats = {
     val summary = RecordSummary(
       recordCoords(record),
       asMessage(result),
@@ -38,11 +34,11 @@ object Stats {
       case Failure(_) => summary +: consumerStats.errors
       case _          => consumerStats.errors
     }
-    val newRecords: List[RecordSummary] = summary :: consumerStats.recentRecords.take(10)
+    val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(10)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors)
   }
 
-  def createStats(id: RunningSinkId, record: CommittableRecord[_, _], result: Try[List[(HttpRequest, HttpResponse)]], now: Long) = {
+  def createStats(id: RunningSinkId, record: CommittableRecord[_, _], result: Try[Seq[(HttpRequest, HttpResponse)]], now: Long) = {
     val summary = RecordSummary(
       recordCoords(record),
       asMessage(result),
@@ -62,7 +58,7 @@ object Stats {
     s"${request.url} yields ${response.statusCode}"
   }
 
-  private def asMessage(results: Try[List[(HttpRequest, HttpResponse)]]): String = {
+  private def asMessage(results: Try[Seq[(HttpRequest, HttpResponse)]]): String = {
     results match {
       case Failure(err)                        => s"Error: $err"
       case Success((request, response) :: Nil) => asMessage(request, response)
@@ -75,7 +71,7 @@ object Stats {
     }
   }
 
-  private def asJson(results: Try[List[(HttpRequest, HttpResponse)]]): Json = {
+  private def asJson(results: Try[Seq[(HttpRequest, HttpResponse)]]): Json = {
     results match {
       case Failure(err)                        => Json.obj("error" -> s"${err}".asJson)
       case Success((request, response) :: Nil) => asJson(request, response)

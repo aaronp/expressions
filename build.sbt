@@ -1,4 +1,5 @@
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
+import scala.collection.immutable
 
 val repo = "expressions"
 name := repo
@@ -131,7 +132,8 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   buildInfoPackage := s"${repo}.build",
   test in assembly := {},
   assemblyMergeStrategy in assembly := {
-    case str if str.contains("application.conf") => MergeStrategy.discard
+    case str if str.contains("application.conf")  => MergeStrategy.discard
+    case str if str.endsWith("module-info.class") => MergeStrategy.discard
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
@@ -285,4 +287,59 @@ pomExtra in Global := {
         </url>
       </developer>
     </developers>
+}
+
+lazy val clientBuild = taskKey[String]("Builds the client").withRank(KeyRanks.APlusTask)
+
+clientBuild := {
+  import sys.process._
+  val workDir = new java.io.File("ui")
+  val output  = sys.process.Process(Seq("flutter", "build", "web"), workDir).!!
+  sLog.value.info(output)
+  output
+}
+
+lazy val assembleApp = taskKey[Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
+
+assembleApp := {
+  import eie.io._
+  val restAssembly = (assembly in (rest, Compile)).value
+
+  // contains the web resources
+  val clientArtifacts = clientBuild.value
+
+  val fullOptPath = (fullOptJS in (clientJS, Compile)).value.data.asPath
+  def fastOptPath = (fastOptJS in (clientJS, Compile)).value.data.asPath
+
+  val jsArtifacts: immutable.Seq[Path] = {
+    val dependencyFiles = fullOptPath.getParent.find(_.fileName.endsWith("-jsdeps.min.js")).toList
+    fullOptPath :: dependencyFiles
+  }
+
+  val dockerTargetDir: java.nio.file.Path = (baseDirectory.value / "target" / "docker").toPath.mkDirs()
+
+  val restResourceDir = (resourceDirectory in (rest, Compile)).value.toPath
+
+  val report =
+    s"""
+       |dockerTargetDir : $dockerTargetDir
+       |clientArtifacts : $clientArtifacts
+       |   restAssembly : $restAssembly
+       |    fullOptPath : $fullOptPath
+       |    jsArtifacts : ${jsArtifacts.mkString("\n")}
+       |
+       |""".stripMargin
+
+  sLog.value.info(report)
+
+  val wwwDir = dockerTargetDir.resolve("www")
+  IO.copyDirectory((baseDirectory.value / "ui" / "build" / "web"), dockerTargetDir.resolve("ui").toFile)
+  IO.copyDirectory(restResourceDir.resolve("www").toFile, wwwDir.toFile)
+
+  import java.nio.file.StandardCopyOption._
+  java.nio.file.Files.copy(restAssembly.toPath, dockerTargetDir.resolve("app.jar"))
+  wwwDir.resolve("js").mkDirs()
+  java.nio.file.Files.copy(fullOptPath, wwwDir.resolve("js/app.js"))
+
+  dockerTargetDir
 }

@@ -38,6 +38,10 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
   val mappingConfig = rootConfig.getConfig("app.mapping")
 
   import args4c.implicits._
+
+  /**
+    * @reutrn an association between a topic pattern (e.g. "foo*") to the path to the mapping file
+    */
   val mappings: Seq[(String, List[String])] = mappingConfig.summaryEntries((_, v) => v).map { entry =>
     entry.key -> Unquote(entry.value.trim).split("/", -1).map(_.trim).toList
   }
@@ -53,6 +57,11 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
     fixed -> regexMap
   }
 
+  /**
+    * Find the path (e.g. as a list of segments) to the mapping script for a particular topic
+    * @param topic the topic to look up
+    * @return the path (e.g. path/to/script.sc is [path, to, script.sc]) for the mapping
+    */
   def lookup(topic: String): Option[List[String]] = {
     pathsByName.get(topic).orElse {
       pathsByRegex.collectFirst {

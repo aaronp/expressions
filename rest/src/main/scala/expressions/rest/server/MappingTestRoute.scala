@@ -2,9 +2,9 @@ package expressions.rest.server
 
 import com.typesafe.scalalogging.StrictLogging
 import expressions.JsonTemplate.Expression
-import expressions.client.{HttpRequest, TransformRequest, TransformResponse}
+import expressions.client.{TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
-import expressions.{Cache, RichDynamicJson}
+import expressions.{Cache, DynamicJson}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
@@ -29,7 +29,7 @@ object MappingTestRoute extends StrictLogging {
 
     transformHandler {
       case TransformRequest(userInputScript, userInput, key, timestamp, headers, topic, offset, partition) =>
-        val inputAsMessage = Message(new RichDynamicJson(userInput), new RichDynamicJson(key), timestamp, headers, topic, offset, partition)
+        val inputAsMessage = Message(DynamicJson(userInput), DynamicJson(key), timestamp, headers, topic, offset, partition)
 
         // we don't want the case-class result but rather its json representation for the check so the 'check' route
         // can displayificate it

@@ -7,7 +7,7 @@ import expressions.rest.server.KafkaSink.RunningSinkId
 class KafkaSinkTest extends BaseRouteTest {
   "KafkaSink" should {
     "be able to start, stop and list sinks" in {
-      val compiler = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
+      val compiler = JsonTemplate.newCache[JsonMsg, Seq[HttpRequest]]("import expressions.client._")
       val underTest = for {
         sink                    <- KafkaSink(compiler)
         started1: RunningSinkId <- sink.start(testConfig())

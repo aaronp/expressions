@@ -9,7 +9,7 @@ import scala.language.dynamics
 
 class AvroExpressionsTest extends AnyWordSpec with Matchers {
 
-  def newData(): example.Example.Builder = {
+  def newData: example.Example.Builder = {
     example.Example.newBuilder().setId("foo").setSomeDouble(12.34).setSomeLong(6).setSomeText("hello").setAddresses(new util.ArrayList[Address]())
   }
 

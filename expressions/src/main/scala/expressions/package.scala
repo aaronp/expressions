@@ -10,7 +10,7 @@ import org.apache.avro.generic.IndexedRecord
   *   dataStream.filter(rule)
   * }}}
   */
-package object expressions extends LowPriorityExpressionImplicits {
+package object expressions extends LowPriorityAvroImplicits {
 
   type Record = IndexedRecord
 

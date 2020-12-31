@@ -1,46 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:kafkaui/config_widget.dart';
+import 'package:ui/editTopicMapping.dart';
+import 'package:ui/configPage.dart';
+import 'package:ui/publishPage.dart';
+import 'package:ui/runningPage.dart';
 
-import 'home_widget.dart';
-import 'list_topics_widget.dart';
-import 'topic_widget.dart';
-import 'topics_widget.dart';
+import 'routeNames.dart';
 
 void main() {
-  runApp(KafkaUIApp());
+  runApp(FranzApp());
 }
 
-class KafkaUIApp extends StatelessWidget {
-
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-  static final lightTheme = ThemeData(
-    primarySwatch: Colors.orange,
-    accentColor: Colors.blue,
-    // primaryColor: Colors.grey[700],
-    // primaryColorBrightness: Brightness.dark,
-    visualDensity: VisualDensity.adaptivePlatformDensity,
-  );
-  static final darkTheme = ThemeData(
-    brightness: Brightness.dark
-  );
-
+class FranzApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Kafka',
-        initialRoute: HomeWidget.path,
-        theme: lightTheme,
-        darkTheme:  darkTheme,
-        themeMode: ThemeMode.dark,
-        navigatorKey: navigatorKey,
-        routes: {
-          HomeWidget.path: (context) => HomeWidget(),
-          ConfigWidget.path: (context) => ConfigWidget(title: 'Config'),
-          ListTopicsWidget.path: (context) => ListTopicsWidget(),
-          TopicWidget.path: (context) => TopicWidget(() {}),
-          TopicsWidget.path: (context) => TopicsWidget()
-        });
+      title: 'Franz',
+      theme: ThemeData(brightness: Brightness.light),
+      darkTheme: ThemeData(brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
+      debugShowCheckedModeBanner: false,
+    initialRoute: RouteNames.config,
+    routes: {
+      RouteNames.config: (context) => ConfigPage(),
+      RouteNames.publish: (context) => PublishPage(),
+      RouteNames.running: (context) => RunningPage(),
+    }
+    );
   }
 }

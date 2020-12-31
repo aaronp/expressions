@@ -17,7 +17,7 @@ class RestRoutesTest extends BaseRouteTest {
       val underTest: HttpRoutes[Task] = RestRoutes().value()
 
       val req = {
-        val jason  = json"""{
+        val jason = json"""{
                       "hello" : {
                         "world" : [
                           {
@@ -31,18 +31,20 @@ class RestRoutesTest extends BaseRouteTest {
                         ]
                       }
                     }"""
-        val script = """import expressions.client._
-                       |
-                       |record.value.hello.world.flatMapSeq { json =>
-                       |json.nested.mapAs { i =>
-                       |  val url = s"${json.name.string.get}-$i"
-                       |  val m = json.name.get[String] match {
-                       |    case "first" => HttpRequest.get(url, Map.empty)
-                       |    case other   => HttpRequest.post(url, Map.empty)
-                       |  }
-                       |  m
-                       |}
-                       |}""".stripMargin
+        val script =
+          """
+            |
+            |        record.value.hello.world.flatMap  { json =>
+            |          json.nested.map { i =>
+            |            val url = s"${json("name").asString}-$i"
+            |            json("name").asString match {
+            |              case "first" => HttpRequest.get(url, Map.empty)
+            |              case other   => HttpRequest.post(url, Map.empty)
+            |            }
+            |          }
+            |        }
+            |
+            |""".stripMargin
         TransformRequest(script, jason)
       }
 

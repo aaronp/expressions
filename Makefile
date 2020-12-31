@@ -1,3 +1,10 @@
+
+buildDocker:
+	sbt assembleApp && docker build . -t expressions:latest
+
+buildFlutterUI:
+	cd ui && flutter build web
+
 startLocalKafka:
 	cd ./franz/src/test/resources/docker/; docker-compose up --remove-orphans &
 

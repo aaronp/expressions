@@ -6,6 +6,10 @@
         </encoder>
     </appender>
 
+    <!--
+    <logger level="trace" name="expressions" />
+    -->
+
     <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>

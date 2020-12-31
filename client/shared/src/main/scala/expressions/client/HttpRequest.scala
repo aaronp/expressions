@@ -4,7 +4,7 @@ import expressions.client.HttpMethod._
 import io.circe.Decoder.Result
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, DecodingFailure, HCursor, Json}
+import io.circe.{Codec, DecodingFailure, Encoder, HCursor, Json}
 
 import java.util.Base64
 case class HttpRequest(method: HttpMethod, url: String, headers: Map[String, String], body: Array[Byte]) {
@@ -29,7 +29,7 @@ case class HttpRequest(method: HttpMethod, url: String, headers: Map[String, Str
       |}""".stripMargin
   }
   def withHeader(key: String, value: String): HttpRequest = copy(headers = headers.updated(key, value))
-  def withBody(newBody: String): HttpRequest              = copy(body = newBody.getBytes("UTF-8"))
+  def withBody[A:Encoder](newBody: A): HttpRequest              = copy(body = newBody.asJson.noSpaces.getBytes("UTF-8"))
 
   def bodyAsBase64: String = Base64.getEncoder.encodeToString(body)
   def bodyAsString         = new String(body, "UTF-8")

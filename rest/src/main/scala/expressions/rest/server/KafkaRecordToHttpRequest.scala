@@ -8,7 +8,7 @@ import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.{FranzConfig, KafkaRecord, SupportedType}
 import expressions.rest.server.KafkaSink.{RunningSinkId, SinkInput}
 import expressions.template.{Context, Message}
-import expressions.{Cache, RichDynamicJson}
+import expressions.{Cache, DynamicJson}
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, Json}
 import zio.clock.Clock
@@ -43,9 +43,9 @@ object KafkaRecordToHttpRequest extends StrictLogging {
 
     def conversionError(record: CommittableRecord[_, _], exp: Throwable)                                   = ConvertToJsonError(record, exp).widen
     def compileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exp: Throwable) = CompileExpressionError(record, context, exp).widen
-    def expressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, List[HttpRequest]], exp: Throwable) =
+    def expressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, Seq[HttpRequest]], exp: Throwable) =
       ExpressionError(record, context, expr, exp).widen
-    def restError(record: CommittableRecord[_, _], failed: List[(HttpRequest, HttpResponse)]) =
+    def restError(record: CommittableRecord[_, _], failed: Seq[(HttpRequest, HttpResponse)]) =
       RestError(record, failed).widen
 
     def coords(r: CommittableRecord[_, _]) = s"{${r.record.topic()}:${r.partition}/${r.offset.offset}@${r.key}}"
@@ -56,14 +56,14 @@ object KafkaRecordToHttpRequest extends StrictLogging {
     case class CompileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exception: Throwable)
         extends Exception(s"Couldn't create an expression for ${coords(record)}: ${exception.getMessage}\nWithContext:\n$context", exception)
         with KafkaErr
-    case class ExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, List[HttpRequest]], exception: Throwable)
+    case class ExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, Seq[HttpRequest]], exception: Throwable)
         extends Exception(s"Couldn't execute expression $expr for ${coords(record)}: ${exception.getMessage}\nWithContext:\n$context", exception)
         with KafkaErr
-    case class RestError(record: CommittableRecord[_, _], failed: List[(HttpRequest, HttpResponse)])
+    case class RestError(record: CommittableRecord[_, _], failed: Seq[(HttpRequest, HttpResponse)])
         extends Exception(s"Not all rest results returned successfully: ${failed}")
         with KafkaErr
 
-    def validate(record: CommittableRecord[_, _], results: List[(HttpRequest, HttpResponse)]): ZIO[Any, Throwable, Unit] = {
+    def validate(record: CommittableRecord[_, _], results: Seq[(HttpRequest, HttpResponse)]): ZIO[Any, Throwable, Unit] = {
       if (results.map(_._2.statusCode).forall(_ == 200)) {
         ZIO.unit
       } else {
@@ -83,7 +83,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
     * @return
     */
   def apply(input: SinkInput,
-            templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]],
+            templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]],
             statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
             clock: Clock): ZIO[Console, Throwable, CommittableRecord[_, _] => Task[Unit]] = {
     val (id, config: Config) = input
@@ -93,7 +93,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
       * @param requests the requests to make
       * @return a task which returns the requests paired with the results
       */
-    def makeRequests(requests: List[HttpRequest]): ZIO[Any, Throwable, List[(HttpRequest, HttpResponse)]] = {
+    def makeRequests(requests: Seq[HttpRequest]): ZIO[Any, Throwable, Seq[(HttpRequest, HttpResponse)]] = {
       ZIO.foreach(requests) { r =>
         logger.info(s"⚡ SENDING ⚡ ${r}")
         Task.fromFuture(_ => RestClient.send(r)).map(r -> _)
@@ -105,9 +105,9 @@ object KafkaRecordToHttpRequest extends StrictLogging {
 
     asRequests(config, templateCache).map { requestsForRecord => (record: CommittableRecord[_, _]) =>
       val writeToRestEndpoint = for {
-        requests: List[HttpRequest]                <- requestsForRecord(record)
-        results: List[(HttpRequest, HttpResponse)] <- makeRequests(requests)
-        _                                          <- KafkaErr.validate(record, results)
+        requests: Seq[HttpRequest]                <- requestsForRecord(record)
+        results: Seq[(HttpRequest, HttpResponse)] <- makeRequests(requests)
+        _                                         <- KafkaErr.validate(record, results)
       } yield results
 
       // update stats
@@ -132,7 +132,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
     * @return  a function that either converts records into [[HttpRequest]]s or fails with a [[KafkaErr]]
     */
   def asRequests(config: Config,
-                 templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[Console, Throwable, CommittableRecord[_, _] => ZIO[Any, KafkaErr, List[HttpRequest]]] = {
+                 templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[Console, Throwable, CommittableRecord[_, _] => ZIO[Any, KafkaErr, Seq[HttpRequest]]] = {
     for {
       _        <- ZIO(logger.info(s"☕ Compiling ☕"))
       restSink <- forRootConfig(config, templateCache)
@@ -141,7 +141,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
         context: Context[JsonMsg] <- Task(restSink.asContext(record)).refineOrDie {
           case transformError => KafkaErr.conversionError(record, transformError)
         }
-        contextAsRequests: Expression[JsonMsg, List[HttpRequest]] <- Task.fromTry(restSink.transformForTopic(record.record.topic)).refineOrDie {
+        contextAsRequests: Expression[JsonMsg, Seq[HttpRequest]] <- Task.fromTry(restSink.transformForTopic(record.record.topic)).refineOrDie {
           case compileError => KafkaErr.compileExpressionError(record, context, compileError)
         }
         requests <- Task(contextAsRequests(context)).refineOrDie {
@@ -160,10 +160,10 @@ object KafkaRecordToHttpRequest extends StrictLogging {
     * @return a function which can transform ConsumerRecords into a database write
     */
   def forRootConfig(rootConfig: Config = ConfigFactory.load(),
-                    templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[List[HttpRequest]]] = {
+                    templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[Console, Throwable, KafkaRecordToHttpRequest[Seq[HttpRequest]]] = {
     val mappingConfig: MappingConfig = MappingConfig(rootConfig)
     val fsDir                        = dataDir(rootConfig)
-    val recordAsContext: CommittableRecord[_, _] => Context[Message[RichDynamicJson, RichDynamicJson]] = SupportedType
+    val recordAsContext: CommittableRecord[_, _] => Context[Message[DynamicJson, DynamicJson]] = SupportedType
       .AsJson(FranzConfig.fromRootConfig(rootConfig))
       .andThen(asMessage[Json, Json])
       .andThen(_.asContext(fsDir))
@@ -172,14 +172,14 @@ object KafkaRecordToHttpRequest extends StrictLogging {
       disk           <- Disk(rootConfig)
       scriptLookup   <- mappingConfig.scriptForTopic(disk)
       scriptForTopic = (topic: Topic) => scriptLookup(topic).flatMap(templateCache.apply)
-      transform      = new KafkaRecordToHttpRequest[List[HttpRequest]](scriptForTopic, recordAsContext)
+      transform      = new KafkaRecordToHttpRequest[Seq[HttpRequest]](scriptForTopic, recordAsContext)
     } yield transform
   }
 
   def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = {
     Message(
-      new RichDynamicJson(record.value.asJson),
-      new RichDynamicJson(record.key.asJson),
+      DynamicJson(record.value.asJson),
+      DynamicJson(record.key.asJson),
       record.timestamp,
       KafkaRecord.headerAsStrings(record),
       record.record.topic(),

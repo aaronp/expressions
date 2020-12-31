@@ -1,7 +1,7 @@
 package expressions.rest.server
 
 import com.typesafe.config.ConfigFactory
-import expressions.{Cache, RichDynamicJson, StringTemplate}
+import expressions.{Cache, DynamicJson, StringTemplate}
 import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.Json
@@ -10,7 +10,7 @@ import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
 
-  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[RichDynamicJson, RichDynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
+  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[DynamicJson, DynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
   "POST /mapping/check" should {
     "return a configuration" in {
 
@@ -18,10 +18,10 @@ class ConfigTestRouteTest extends BaseRouteTest {
       val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
       val script =
         """test {
-           |  arr : "{{ record.value.values.each.int.toList.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
+           |  arr : "{{ record.value.values.each.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
            |  const : "some value"
            |}
-           |x : "{{ record.value.foo.string.get }}"
+           |x : "{{ record.value.foo.asString }}"
           |""".stripMargin
 
       val Some(response) = underTest(post("config/check", TransformRequest(script, jason, Json.fromString("schlussel")).asJson.noSpaces)).value.value()

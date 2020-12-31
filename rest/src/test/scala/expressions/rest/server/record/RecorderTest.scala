@@ -22,7 +22,7 @@ class RecorderTest extends BaseRouteTest {
                     |List(request)""".stripMargin
 
       val input =
-        s"""HTTP/1.1 POST /rest/store/fool.sc Headers(Host: localhost:8080, Connection: keep-alive, Content-Length: 416, User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36, DNT: 1, Content-Type: application/json, Accept: */*, Origin: http://localhost:8080, Sec-Fetch-Site: same-origin, Sec-Fetch-Mode: cors, Sec-Fetch-Dest: empty, Referer: http://localhost:8080/index.html, Accept-Encoding: gzip, deflate, br, Accept-Language: en-GB,en-US;q=0.9,en;q=0.8, Cookie: <REDACTED>) body="$script"""".stripMargin
+        s"""HTTP/1.1 POST /rest/store/fool.sc Headers(Host: localhost:8080, Connection: keep-alive, Content-Length: 416, User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36, DNT: 1, Content-Type: application/value, Accept: */*, Origin: http://localhost:8080, Sec-Fetch-Site: same-origin, Sec-Fetch-Mode: cors, Sec-Fetch-Dest: empty, Referer: http://localhost:8080/index.html, Accept-Encoding: gzip, deflate, br, Accept-Language: en-GB,en-US;q=0.9,en;q=0.8, Cookie: <REDACTED>) body="$script"""".stripMargin
 
       val buffer = Recorder() {
         case (path, name) =>

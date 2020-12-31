@@ -14,7 +14,8 @@ case class Env(env: Map[String, String] = sys.env) extends Dynamic {
   def selectDynamic(fieldName: String): String = env.get(fieldName).getOrElse("")
 }
 case class Message[K, V](value: V, key: K, timestamp: Long = 0, headers: Map[String, String] = Map.empty, topic: String = "", offset: Long = 0, partition: Int = 0) {
-  def withKey(k: String)                                        = copy(key = k)
+  def withKey[A](k: A): Message[A, V] =
+    Message[A, V](value, k, timestamp, headers, topic, offset, partition)
   def asContext(dir: Path = ".".asPath): Context[Message[K, V]] = Context(this, dir)
 }
 object Message {

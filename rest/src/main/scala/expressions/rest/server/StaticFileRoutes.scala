@@ -39,8 +39,8 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRoo
 
     require(jsRootDir.exists(), error)
   }
-  cssRootDirs.foreach { cssRootDir =>
-    require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist")
+  cssRootDirs.foreach { cssRootDir: JPath =>
+    require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist (${cssRootDir.toAbsolutePath})")
   }
 
   def routes[F[_]: Sync: ContextShift](blocker: Blocker = StaticFileRoutes.staticBlocker): HttpRoutes[F] = {

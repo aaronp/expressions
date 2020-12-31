@@ -38,7 +38,10 @@ object DiskRoute {
       case GET -> "store" /: "get" /: theRest =>
         service.read(theRest.toList).map {
           case Some(value) => Response[Task](Status.Ok).withEntity[String](value)
-          case None        => Response[Task](Status.Gone)
+          case None        =>
+//
+            //            Response[Task](Status.Gone)
+            Response[Task](Status.Ok).withEntity[String]("")
         }
     }
   }

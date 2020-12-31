@@ -1,10 +1,11 @@
 package expressions.rest
 
-import expressions.RichDynamicJson
+import expressions.DynamicJson
 import expressions.template.Message
-import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import io.confluent.kafka.schemaregistry.client.rest.entities.Schema
+import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import zio.Has
+
 import scala.jdk.CollectionConverters._
 
 package object server {
@@ -13,7 +14,7 @@ package object server {
   type Analytics = Has[Analytics.Service]
   type Topic     = String
 
-  type JsonMsg = Message[RichDynamicJson, RichDynamicJson]
+  type JsonMsg = Message[DynamicJson, DynamicJson]
 
   /**
     * pimped out the schema client

@@ -61,7 +61,7 @@ object KafkaSink {
     * @param templateCache
     * @return
     */
-  def apply(templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
+  def apply(templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
     for {
       clock    <- ZIO.environment[ZEnv]
       statsMap <- Ref.make(Map[String, ConsumerStats]())

@@ -10,13 +10,13 @@ class MappingTestRouteTest extends BaseRouteTest {
 
   "POST /mapping/check" should {
     "return a configuration" in {
-      val script = """record.value.foo.get[io.circe.Json]""".stripMargin
+      val script = """record.value.foo.value""".stripMargin
 
       val request = {
         val jason = json"""{ "foo" : "bar" }"""
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
-      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]())
+      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]().map(_.andThen(_.asJson)))
 
       val Some(response) = underTest(request).value.value()
 

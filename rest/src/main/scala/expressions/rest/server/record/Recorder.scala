@@ -128,7 +128,9 @@ object Recorder {
     }
 
     private def append(record: Either[Request, Response]): Unit = {
-      buffer += record
+      if (record != null) {
+        buffer += record
+      }
       if (buffer.size > limit) {
         buffer.remove(0)
       }
@@ -166,7 +168,7 @@ object Recorder {
     def log(msg: String): Task[Unit] = {
       Task.effect {
         msg match {
-          case GetR(DumpR(name), h) =>
+          case GetR(DumpR(name), _) =>
             if (name == "") {
               dumpTest("anon")
             } else {

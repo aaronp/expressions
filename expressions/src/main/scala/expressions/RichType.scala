@@ -12,5 +12,5 @@ package expressions
   */
 class RichType(val any: Any) extends AnyVal {
 
-  def =====(other: Any) = any == other
+  def =====(other: Any): Boolean = any == other
 }

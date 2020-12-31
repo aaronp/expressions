@@ -6,7 +6,7 @@ import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
-import expressions.{Cache, RichDynamicJson, StringTemplate}
+import expressions.{Cache, DynamicJson}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
@@ -69,8 +69,8 @@ object ConfigTestRoute extends StrictLogging {
 
     val TransformRequest(configString, userInputJson, userInputKey, timestamp, headers, topic, offset, partition) = request
     import args4c.implicits._
-    val userInput = new RichDynamicJson(userInputJson)
-    val key       = new RichDynamicJson(userInputKey)
+    val userInput = DynamicJson(userInputJson)
+    val key       = DynamicJson(userInputKey)
 
     for {
       // read the input  string as a configuration
