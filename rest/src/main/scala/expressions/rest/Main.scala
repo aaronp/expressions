@@ -1,7 +1,7 @@
 package expressions.rest
 
 import args4c.implicits._
-import org.apache.avro.generic.GenericRecord
+import com.typesafe.config.Config
 import zio._
 import zio.console.putStrLn
 import zio.interop.catz._
@@ -14,11 +14,9 @@ object Main extends CatsApp {
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
     val config = args.toArray.asConfig()
 
-    import args4c.implicits._
-
     for {
       _          <- putStrLn("⭐⭐ Starting Service ⭐⭐")
-      _          <- putStrLn(config.getConfig("app").summaryEntries().sortBy(_.key).map("\tapp." + _).mkString("\n"))
+      _          <- putStrLn(configSummary(config))
       _          <- putStrLn(s"PID:${ProcessHandle.current().pid()}")
       _          <- putStrLn("")
       restServer = RestApp(config)
@@ -27,5 +25,14 @@ object Main extends CatsApp {
       //
       exitCode <- restServer.serve(config)
     } yield exitCode
+  }
+
+  def configSummary(config: Config): String = {
+    config
+      .getConfig("app")
+      .summaryEntries()
+      .sortBy(_.key)
+      .map("\tapp." + _)
+      .mkString("\n")
   }
 }

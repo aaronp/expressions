@@ -67,7 +67,7 @@ object ConfigTestRoute extends StrictLogging {
       } yield (entry.key, scriptedValue)
     }
 
-    val TransformRequest(configString, userInputJson, userInputKey, timestamp, headers, topic) = request
+    val TransformRequest(configString, userInputJson, userInputKey, timestamp, headers, topic, offset, partition) = request
     import args4c.implicits._
     val userInput = new RichDynamicJson(userInputJson)
     val key       = new RichDynamicJson(userInputKey)
@@ -79,7 +79,7 @@ object ConfigTestRoute extends StrictLogging {
       entries <- Task.foreach(config.summaryEntries()) {
         // ... we think it's some kind of script if there's a ' .. {{ .. }} .. '
         case entry if entry.value.contains("{{") && entry.value.contains("}}") =>
-          val msg  = Message(userInput, key, timestamp, headers, topic)
+          val msg  = Message(userInput, key, timestamp, headers, topic, offset, partition)
           val ctxt = asContext(msg)
           eval(entry, ctxt)
         // otherwise just use the key/value as-is

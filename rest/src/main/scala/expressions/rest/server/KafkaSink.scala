@@ -1,12 +1,14 @@
 package expressions.rest.server
 
 import com.typesafe.config.{Config, ConfigRenderOptions}
+import com.typesafe.scalalogging.StrictLogging
 import eie.io.AlphaCounter
 import expressions.Cache
 import expressions.JsonTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 import expressions.franz.{ForEachStream, FranzConfig}
+import expressions.rest.Main
 import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, _}
 
@@ -95,7 +97,8 @@ object KafkaSink {
                               statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
                               makeSink: SinkInput => SinkIO,
                               env: ZEnv)
-      extends Service {
+      extends Service
+      with StrictLogging {
 
     private val counter = AlphaCounter.from(0)
 
@@ -106,6 +109,7 @@ object KafkaSink {
     override def start(rootConfig: Config): Task[RunningSinkId] = {
       val startIO = for {
         id        <- ZIO(counter.next())
+        _         = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
         sink      <- makeSink(id, rootConfig)
         kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork

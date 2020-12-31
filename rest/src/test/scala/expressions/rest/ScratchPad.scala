@@ -18,7 +18,44 @@ class ScratchPad extends AnyWordSpec with Matchers {
             """
 
   "this script" should {
+    "delete topics" in {
+      val all    = """""".stripMargin
+      val listed = all.linesIterator.mkString(",")
+      println(s"make deleteTopic topic=${listed}")
+    }
     "work" in {
+      import expressions._
+      import expressions.implicits._
+      import AvroExpressions._
+      import expressions.template.{Context, Message}
+
+      (context: Context[Message[RichDynamicJson, RichDynamicJson]]) =>
+        {
+          import context._
+
+          implicit val implicitMessageValueSoRichJsonPathAndOthersWillWork = context.record.value.jsonValue
+
+          import expressions.client._
+          import io.circe.syntax._
+          import io.circe.Json
+          val StoreURL = s"http://localhost:8080/rest/store"
+          val url      = s"$StoreURL/wtf/${record.topic}/${record.partition}/${record.offset}"
+          val body = {
+            val jason: Json = record.value.jsonValue
+            val enrichment = Json.obj(
+              "timestamp" -> System.currentTimeMillis().asJson,
+              "kafka-key" -> record.key.jsonValue
+            )
+            jason.deepMerge(enrichment)
+          }
+
+          val request = HttpRequest.post(url).withBody(body.noSpaces)
+          List(request)
+
+        }
+    }
+
+    "example" in {
       import expressions._
       import expressions.implicits._
       import AvroExpressions._
@@ -35,12 +72,20 @@ class ScratchPad extends AnyWordSpec with Matchers {
           import io.circe.syntax._
           import io.circe.Json
 
-          val key = record.key.getClass
-          val r   = HttpRequest.post(s"http://localhost:8080/rest/store/${record.topic}/${key}/${record.partition}").withBody(record.value.jsonValue.noSpaces)
-          List(r)
+          val StoreURL = s"http://localhost:8080/rest/store"
+          val url      = s"$StoreURL/${record.topic}/${record.partition}/${record.offset}"
+          val body = {
+            val jason: Json = record.value.jsonValue
+            val enrichment = Json.obj(
+              "timestamp" -> System.currentTimeMillis().asJson,
+              "kafka-key" -> record.key.jsonValue
+            )
+            jason.deepMerge(enrichment)
+          }
 
+          val request = HttpRequest.post(url).withBody(body.noSpaces)
+          List(request)
         }
-
     }
   }
 }

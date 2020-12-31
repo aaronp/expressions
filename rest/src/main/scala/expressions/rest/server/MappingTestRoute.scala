@@ -28,8 +28,8 @@ object MappingTestRoute extends StrictLogging {
   def apply(cache: Cache[Expression[JsonMsg, Json]], asContext: JsonMsg => Context[JsonMsg] = _.asContext()): HttpRoutes[Task] = {
 
     transformHandler {
-      case TransformRequest(userInputScript, userInput, key, timestamp, headers, topic) =>
-        val inputAsMessage = Message(new RichDynamicJson(userInput), new RichDynamicJson(key), timestamp, headers, topic)
+      case TransformRequest(userInputScript, userInput, key, timestamp, headers, topic, offset, partition) =>
+        val inputAsMessage = Message(new RichDynamicJson(userInput), new RichDynamicJson(key), timestamp, headers, topic, offset, partition)
 
         // we don't want the case-class result but rather its json representation for the check so the 'check' route
         // can displayificate it

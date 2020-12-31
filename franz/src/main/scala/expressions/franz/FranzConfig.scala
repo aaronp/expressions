@@ -72,8 +72,14 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   }
   def withOverrides(conf: String, theRest: String*): FranzConfig = withOverrides(FranzConfig.asConfig(conf, theRest: _*))
 
-  def withOverrides(newFranzConfig: Config): FranzConfig = {
-    copy(franzConfig = newFranzConfig.withFallback(franzConfig).resolve())
+  def withOverrides(newConfig: Config): FranzConfig = {
+    val newFranzConfig = if (newConfig.hasPath("app.franz")) {
+      newConfig.getConfig("app.franz")
+    } else {
+      newConfig
+    }
+    val updated = newFranzConfig.withFallback(franzConfig).resolve()
+    copy(franzConfig = updated)
   }
   def withOverrides(newFranzConfig: FranzConfig): FranzConfig = {
     copy(franzConfig = newFranzConfig.franzConfig.withFallback(franzConfig).resolve())

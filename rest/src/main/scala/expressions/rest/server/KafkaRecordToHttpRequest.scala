@@ -1,6 +1,7 @@
 package expressions.rest.server
 
 import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.scalalogging.StrictLogging
 import expressions.JsonTemplate.Expression
 import expressions.client.kafka.ConsumerStats
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
@@ -8,8 +9,8 @@ import expressions.franz.{FranzConfig, KafkaRecord, SupportedType}
 import expressions.rest.server.KafkaSink.{RunningSinkId, SinkInput}
 import expressions.template.{Context, Message}
 import expressions.{Cache, RichDynamicJson}
-import io.circe.{Encoder, Json}
 import io.circe.syntax.EncoderOps
+import io.circe.{Encoder, Json}
 import zio.clock.Clock
 import zio.console.Console
 import zio.kafka.consumer.CommittableRecord
@@ -25,7 +26,7 @@ import scala.util.Try
   */
 final case class KafkaRecordToHttpRequest[B](transformForTopic: Topic => Try[Expression[JsonMsg, B]], asContext: CommittableRecord[_, _] => Context[JsonMsg])
 
-object KafkaRecordToHttpRequest {
+object KafkaRecordToHttpRequest extends StrictLogging {
 
   import eie.io._
 
@@ -33,15 +34,19 @@ object KafkaRecordToHttpRequest {
     def fail: Task[Nothing] = {
       Task.fail(this)
     }
+    def widen: KafkaErr = {
+      logger.error(s"SINK ERROR: ${this}")
+      this
+    }
   }
   object KafkaErr {
 
-    def conversionError(record: CommittableRecord[_, _], exp: Throwable)                                   = ConvertToJsonError(record, exp)
-    def compileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exp: Throwable) = CompileExpressionError(record, context, exp)
+    def conversionError(record: CommittableRecord[_, _], exp: Throwable)                                   = ConvertToJsonError(record, exp).widen
+    def compileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exp: Throwable) = CompileExpressionError(record, context, exp).widen
     def expressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, List[HttpRequest]], exp: Throwable) =
-      ExpressionError(record, context, expr, exp)
+      ExpressionError(record, context, expr, exp).widen
     def restError(record: CommittableRecord[_, _], failed: List[(HttpRequest, HttpResponse)]) =
-      RestError(record, failed)
+      RestError(record, failed).widen
 
     def coords(r: CommittableRecord[_, _]) = s"{${r.record.topic()}:${r.partition}/${r.offset.offset}@${r.key}}"
 
@@ -90,6 +95,7 @@ object KafkaRecordToHttpRequest {
       */
     def makeRequests(requests: List[HttpRequest]): ZIO[Any, Throwable, List[(HttpRequest, HttpResponse)]] = {
       ZIO.foreach(requests) { r =>
+        logger.info(s"⚡ SENDING ⚡ ${r}")
         Task.fromFuture(_ => RestClient.send(r)).map(r -> _)
       }
       //        // TODO - this is where we might inject some retry/recovery logic (rather than just 'orDie')
@@ -128,6 +134,7 @@ object KafkaRecordToHttpRequest {
   def asRequests(config: Config,
                  templateCache: Cache[Expression[JsonMsg, List[HttpRequest]]]): ZIO[Console, Throwable, CommittableRecord[_, _] => ZIO[Any, KafkaErr, List[HttpRequest]]] = {
     for {
+      _        <- ZIO(logger.info(s"☕ Compiling ☕"))
       restSink <- forRootConfig(config, templateCache)
     } yield { (record: CommittableRecord[_, _]) =>
       for {

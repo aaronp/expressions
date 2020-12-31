@@ -5,9 +5,9 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.client.kafka.PostRecord
 import expressions.franz.FranzConfig
 import expressions.rest.server.RestRoutes.taskDsl._
-import org.http4s.circe.CirceEntityCodec._
 import io.circe.Json
 import io.circe.syntax.EncoderOps
+import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
 import zio.interop.catz._
@@ -24,7 +24,6 @@ object KafkaPublishRoute {
     }
   }
 
-  //, defaultConfig: Config = ConfigFactory.load()
   def publish(handle: PostRecord => UIO[Int]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ (POST -> Root / "kafka" / "publish") => {
@@ -33,9 +32,9 @@ object KafkaPublishRoute {
           result      <- handle(postRequest)
         } yield Response[Task](Status.Ok).withEntity(result)
 
-        resultTask.catchAll {
-          case err =>
-            ZIO.succeed(Response[Task](Status.InternalServerError).withEntity(s"Error: $err"))
+        resultTask.sandbox.either.map {
+          case Left(err)     => Response[Task](Status.InternalServerError).withEntity(s"Error: $err")
+          case Right(result) => result
         }
       }
     }

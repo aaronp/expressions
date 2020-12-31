@@ -1,0 +1,51 @@
+name: kafkaui
+description: KafkaUI client
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # see https://api.flutter.dev/flutter/dart-js/dart-js-library.html
+  js: ^0.6.0
+  dropdown_search: ^0.4.4
+  http: ^0.12.2
+  provider: ^4.3.2+2
+  collection: ^1.14.13
+  file_picker: ^2.0.7
+  toggle_switch: ^0.1.8
+  font_awesome_flutter: ^8.10.0
+  tuple: ^1.0.3
+  flutter_pagewise: ^1.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/assets-and-images/#resolution-aware.
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/assets-and-images/#from-packages

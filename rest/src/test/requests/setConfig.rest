@@ -1,0 +1,29 @@
+# method
+PUT
+
+# url
+http://localhost:8081/config/ben8-value
+
+# http-header
+@Accept: application/json
+@Content-Type: application/json
+
+#body
+{
+  "compatibility": "NONE"
+}
+%%%
+
+# Duration: 23 ms
+# URL: http://localhost:8081/config/ben8-value
+
+# HTTP/1.1 200 OK
+
+@Date: Thu, 31 Dec 2020 16:10:02 GMT
+@Content-Type: application/json
+@Content-Length: 24
+@Server: Jetty(9.4.14.v20181114)
+
+{
+  "compatibility": "NONE"
+}

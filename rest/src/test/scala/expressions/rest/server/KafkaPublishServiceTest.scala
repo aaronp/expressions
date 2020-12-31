@@ -45,7 +45,7 @@ class KafkaPublishServiceTest extends BaseRouteTest {
 
   private def publishRecords(config: FranzConfig) = {
     val recordData = json"""{ "doesnt" : "matter"  }"""
-    val testRecord = PostRecord(recordData, key = json"""{ "testkey" : "theKey" }""", repeat = 10)
+    val testRecord = PostRecord(recordData, key = json"""{ "testkey" : "theKey" }""", repeat = 10, config = s"app.franz.kafka.topic=${config.topic}")
 
     val testCase = for {
       posted      <- KafkaPublishService(config)(testRecord)

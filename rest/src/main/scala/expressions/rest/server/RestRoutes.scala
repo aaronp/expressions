@@ -23,13 +23,19 @@ object RestRoutes extends StrictLogging {
 
   val taskDsl: Http4sDsl[Task] = Http4sDsl[Task]
 
-  def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
+  val ScriptPrefix =
+    """
+      |import io.circe.syntax._
+      |import io.circe.Json
+      |import expressions.client._
+      |""".stripMargin
 
+  def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
     for {
       cacheRoute        <- CacheRoute()
       disk              <- DiskRoute(defaultConfig)
       fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
-      templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]]("import expressions.client._")
+      templateCache     = JsonTemplate.newCache[JsonMsg, List[HttpRequest]](ScriptPrefix)
       kafkaSink         <- KafkaSink(templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
@@ -40,7 +46,7 @@ object RestRoutes extends StrictLogging {
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(defaultConfig)
-      val kafkaRoute                                               = KafkaRoute(kafkaSink)
+      val kafkaRoute                                               = KafkaRoute(defaultConfig, kafkaSink)
       val proxyRoute                                               = ProxyRoute()
 
       kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk <+> proxyRoute

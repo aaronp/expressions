@@ -40,11 +40,6 @@ object JsonSupport {
     }
   }
 
-  // this probably won't be needed
-  private def fromRecordBytes(bytes: Array[Byte]) = {
-    val r: GenericRecord = ???
-  }
-
   /**
     * Functions for turning stuff into json
     */

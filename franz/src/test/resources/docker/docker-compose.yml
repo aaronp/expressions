@@ -5,6 +5,7 @@ volumes:
 services:
   kafka:
     image: landoop/fast-data-dev:2.2.0
+    hostname: kafka
     volumes:
       - certs:/tmp/certs
     environment:
@@ -23,9 +24,33 @@ services:
     ports:
       - 2181:2181
       - 3030:3030
-      - 8081:8081
+      - 3031:3031
       - 9092:9092
+      - 8081:8081
+      - 8082:8082
+      - 8083:8083
       - 19092:19092
+    networks:
+      - test
+
+#  kowl:
+#    image: quay.io/cloudhut/kowl:v1.2.2
+#    restart: on-failure
+#    hostname: kowl
+#    volumes:
+#      - ./kowl.yaml:/etc/kowl/config.yaml
+#    ports:
+#      - "8180:8080"
+#    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
+#    depends_on:
+#      - kafka
+# see https://www.kafkamagic.com/start/
+  magic:
+    image: digitsy/kafka-magic
+    ports:
+      - "8280:80"
+    environment:
+      KMAGIC_ALLOW_TOPIC_DELETE: "true"
     networks:
       - test
 

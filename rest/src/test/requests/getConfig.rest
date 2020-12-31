@@ -1,0 +1,15 @@
+http://localhost:8081/config/ben8-value
+
+%%%
+
+# Duration: 10 ms
+# URL: http://localhost:8081/config/ben8-value
+
+# HTTP/1.1 404 Not Found
+
+@Date: Thu, 31 Dec 2020 16:07:26 GMT
+@Content-Type: application/vnd.schemaregistry.v1+json
+@Content-Length: 51
+@Server: Jetty(9.4.14.v20181114)
+
+{"error_code":40401,"message":"Subject not found."}

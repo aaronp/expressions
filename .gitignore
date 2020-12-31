@@ -14,3 +14,8 @@ shared-src
 .srl
 .target
 .bsp
+rest/src/test/resources/savedSessions
+rest/src/test/resources/database-states
+ui/build
+ui/.idea.dart_tool
+ui/.dart_tool

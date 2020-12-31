@@ -1,0 +1,17 @@
+#http://localhost:8081/subjects/ben8-value/versions/10
+http://localhost:8081/schemas/94
+
+
+
+%%%
+
+# Duration: 24 ms
+# URL: http://localhost:8081/schemas/94
+
+# HTTP/1.1 404 Not Found
+
+@Date: Thu, 31 Dec 2020 16:12:03 GMT
+@Content-Length: 49
+@Server: Jetty(9.4.14.v20181114)
+
+{"error_code":404,"message":"HTTP 404 Not Found"}

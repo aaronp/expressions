@@ -12,16 +12,16 @@ import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 
 object KafkaRoute {
 
-  def apply(service: KafkaSink.Service): HttpRoutes[Task] = {
-    start(service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats)
+  def apply(defaultConfig: Config, service: KafkaSink.Service): HttpRoutes[Task] = {
+    start(defaultConfig, service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats)
   }
 
-  def start(start: Config => Task[String]): HttpRoutes[Task] = {
+  def start(defaultConfig: Config, start: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "kafka" / "start" =>
         for {
           body   <- req.bodyText.compile.string
-          config <- Task(ConfigFactory.parseString(body).withFallback(ConfigFactory.load()).resolve())
+          config <- Task(ConfigFactory.parseString(body).withFallback(defaultConfig).resolve())
           id     <- start(config)
         } yield Response[Task](Status.Ok).withEntity(id)
     }

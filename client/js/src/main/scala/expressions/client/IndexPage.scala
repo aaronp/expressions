@@ -72,8 +72,10 @@ case class IndexPage(targetDivId: String) {
   val scriptTextArea = textarea(cols := 100, rows := 12).render
   scriptTextArea.value = ""
 
-  val topicInputText = input(`type` := "text", id := "topic", size := 20, value := "some-topic").render
-  val keyInputText   = input(`type` := "text", id := "key", size := 20, value := "some-key").render
+  val offsetInputText    = input(`type` := "text", id := "offset", size := 20, value := "3").render
+  val partitionInputText = input(`type` := "text", id := "partition", size := 20, value := "4").render
+  val topicInputText     = input(`type` := "text", id := "topic", size := 20, value := "some-topic").render
+  val keyInputText       = input(`type` := "text", id := "key", size := 20, value := "some-key").render
 
   val jsonInputTextArea = textarea(cols := 100, rows := 12).render
   jsonInputTextArea.value = """{
@@ -215,6 +217,14 @@ case class IndexPage(targetDivId: String) {
         div(topicInputText)
       ),
       div(
+        label(`for` := offsetInputText.id)("Offset:"),
+        div(offsetInputText)
+      ),
+      div(
+        label(`for` := partitionInputText.id)("Partition:"),
+        div(partitionInputText)
+      ),
+      div(
         label(`for` := keyInputText.id)("Key:"),
         keyInputText
       ),
@@ -263,7 +273,15 @@ case class IndexPage(targetDivId: String) {
   }
 
   def transformRequest(inputJson: Json): TransformRequest =
-    TransformRequest(scriptTextArea.value, inputJson, key = Json.fromString(keyInputText.value), topic = topicInputText.value, timestamp = (new Date().getTime()).toLong)
+    TransformRequest(
+      scriptTextArea.value,
+      inputJson,
+      key = Json.fromString(keyInputText.value),
+      topic = topicInputText.value,
+      offset = offsetInputText.value.toLongOption.getOrElse(0),
+      partition = partitionInputText.value.toIntOption.getOrElse(0),
+      timestamp = (new Date().getTime()).toLong
+    )
 
   def checkTransform(): Unit = {
     parse(jsonInputTextArea.value).toTry match {

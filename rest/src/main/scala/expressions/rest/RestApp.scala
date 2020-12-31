@@ -3,10 +3,11 @@ package expressions.rest
 import cats.effect.ConcurrentEffect
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.rest.RestApp.Settings
+import expressions.rest.server.record.LiveRecorder
 import expressions.rest.server.{RestRoutes, StaticFileRoutes}
-import io.circe.Encoder
 import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
 import zio._
@@ -24,14 +25,19 @@ case class RestApp(settings: Settings) {
   import settings._
 
   private def mkRouter(restRoutes: HttpRoutes[Task]) = {
-    val httpApp = org.http4s.server
-      .Router[Task](
-        "/"     -> StaticFileRoutes(riffConfig).routes[Task](),
-        "/rest" -> restRoutes
-      )
-      .orNotFound
-    if (logHeaders || logBody) {
-      Logger.httpApp(logHeaders, logBody)(httpApp)
+    val logAction = if (recordRequestResponse) {
+      Option(LiveRecorder.recordSession())
+    } else {
+      None
+    }
+
+    val httpApp = Router[Task](
+      "/"     -> StaticFileRoutes(riffConfig).routes[Task](), //
+      "/rest" -> restRoutes //
+    ).orNotFound
+
+    if (logHeaders || logBody || recordRequestResponse) {
+      Logger.httpApp(logHeaders, logBody, logAction = logAction)(httpApp)
     } else httpApp
   }
 
@@ -56,7 +62,7 @@ object RestApp {
 
   def apply(settings: Settings): RestApp = new RestApp(settings)
 
-  case class Settings(riffConfig: Config, host: String, port: Int, logHeaders: Boolean, logBody: Boolean)
+  case class Settings(riffConfig: Config, host: String, port: Int, logHeaders: Boolean, logBody: Boolean, recordRequestResponse: Boolean)
 
   object Settings {
     def apply(config: Config): Settings = {
@@ -65,7 +71,8 @@ object RestApp {
         host = config.getString("host"),
         port = config.getInt("port"),
         logHeaders = config.getBoolean("logHeaders"),
-        logBody = config.getBoolean("logBody")
+        logBody = config.getBoolean("logBody"),
+        recordRequestResponse = config.getBoolean("recordRequestResponse")
       )
     }
 

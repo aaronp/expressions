@@ -1,21 +1,18 @@
 package expressions.rest.server
 
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.StrictLogging
 import expressions.client.kafka.PostRecord
 import expressions.franz.{ForeachPublisher, FranzConfig, SupportedType}
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
 import zio.URIO
 import zio.blocking.Blocking
 
 import scala.jdk.CollectionConverters._
-import scala.util.control.NonFatal
 
-object KafkaPublishService {
-
+object KafkaPublishService extends StrictLogging {
 
   def apply(config: FranzConfig): PostRecord => URIO[Blocking, Int] = { record =>
     execPost(record, config)
@@ -23,10 +20,12 @@ object KafkaPublishService {
 
   def execPost(post: PostRecord, config: FranzConfig): URIO[Any with Blocking, Int] = {
     val newConfig: FranzConfig = config.withOverrides(ConfigFactory.parseString(post.config))
+    import args4c.implicits._
+    logger.info(s"Exec w/ ns '${newConfig.namespace}': \n${newConfig.franzConfig.summary()}\n")
 
-    val kt           = config.keyType
-    val vt           = config.valueType
-    val kafkaRecords = asRecords(kt, vt, post, config)
+    val kt           = newConfig.keyType
+    val vt           = newConfig.valueType
+    val kafkaRecords = asRecords(kt, vt, post, newConfig)
     ForeachPublisher.publishAll(newConfig, kafkaRecords).map(_.size).orDie
   }
 
