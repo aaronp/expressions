@@ -9,6 +9,7 @@ import org.scalajs.dom.{XMLHttpRequest, window}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
+import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -20,6 +21,7 @@ object Client {
   val AppJson            = Map("Content-Type" -> "application/json")
 
   object mapping {
+
     def check(request: TransformRequest): Future[TransformResponse] = {
       val url = s"${restServerLocation}/mapping/check"
       Ajax.post(url, request.asJson.noSpaces, headers = AppJson).map { response: XMLHttpRequest =>
@@ -27,6 +29,7 @@ object Client {
       }
     }
   }
+  @JSExportTopLevel("ExprConfig")
   object config {
     def get(): Future[String] = {
       Ajax.get(s"${restServerLocation}/config").map { response: XMLHttpRequest =>
