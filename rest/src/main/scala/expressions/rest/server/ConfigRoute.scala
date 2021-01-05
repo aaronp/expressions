@@ -1,14 +1,15 @@
 package expressions.rest.server
 
+import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
+import expressions.franz.FranzConfig
+import io.circe.Json
+import io.circe.parser.parse
 import io.circe.syntax._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.Task
 import zio.interop.catz._
-import cats.implicits._
-import io.circe.Json
-import io.circe.parser.parse
 
 /**
   * Functions which can help the UI determine what a typesafe config contains
@@ -18,7 +19,7 @@ object ConfigRoute {
   import RestRoutes.taskDsl._
 
   def apply(rootConfig: Config = ConfigFactory.load()): HttpRoutes[Task] = {
-    listMappingsRoute(rootConfig) <+> defaultConfig(rootConfig)
+    listMappingsRoute(rootConfig) <+> defaultConfig(rootConfig) <+> summary(rootConfig)
   }
 
   /**
@@ -38,6 +39,36 @@ object ConfigRoute {
         }
     }
   }
+
+  /**
+    * The 'most interesting bits' from a config
+    */
+  case class ConfigSummary(topic: String, brokers: List[String], mappings: Map[String, List[String]], keyType: String, valueType: String)
+  object ConfigSummary {
+    implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
+  }
+
+  /**
+    * @param rootConfig
+    * @return the default config
+    */
+  def summary(rootConfig: Config): HttpRoutes[Task] = {
+    HttpRoutes.of[Task] {
+      case req @ POST -> Root / "config" / "parse" =>
+        for {
+          body     <- req.bodyText.compile.string
+          config   <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
+          mappings = MappingConfig(config).mappings.toMap
+          fc       = FranzConfig.fromRootConfig(config)
+          summary  = ConfigSummary(topic = fc.topic, brokers = fc.consumerSettings.bootstrapServers, mappings, fc.keyType.name, fc.valueType.name)
+        } yield Response[Task](Status.Ok).withEntity(summary)
+    }
+  }
+
+  /**
+    * @param rootConfig
+    * @return the default config
+    */
   def defaultConfig(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case GET -> Root / "config" =>

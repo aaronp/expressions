@@ -53,6 +53,11 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
     fixed -> regexMap
   }
 
+  /**
+    * Find the path (e.g. as a list of segments) to the mapping script for a particular topic
+    * @param topic the topic to look up
+    * @return the path (e.g. path/to/script.sc is [path, to, script.sc]) for the mapping
+    */
   def lookup(topic: String): Option[List[String]] = {
     pathsByName.get(topic).orElse {
       pathsByRegex.collectFirst {
