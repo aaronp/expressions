@@ -5,6 +5,14 @@ import zio.Task
 class DiskRouteTest extends BaseRouteTest {
 
   "DiskRoute" should {
+    "GET /store/list/missing" in {
+      val svc                         = Disk.Service().value()
+      val underTest: HttpRoutes[Task] = DiskRoute(svc)
+
+      val Some(listed)    = underTest(get("store/list/missing")).value.value()
+      listed.bodyAsString shouldBe "[]"
+    }
+
     "read, write and list arbitrary paths to data" in {
       val svc                         = Disk.Service().value()
       val underTest: HttpRoutes[Task] = DiskRoute(svc)

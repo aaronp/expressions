@@ -16,14 +16,14 @@ import scala.util.Try
   */
 sealed trait SupportedType[A] {
   def of(input: Json): A
-  def name : String
+  def name: String
 }
 object SupportedType {
   def keys(config: FranzConfig): SupportedType[_]   = config.keyType
   def values(config: FranzConfig): SupportedType[_] = config.valueType
 
   case object STRING extends SupportedType[String] {
-    override val name = "string"
+    override val name                    = "string"
     override def of(input: Json): String = input.asString.getOrElse(input.noSpaces)
   }
   case class RECORD(namespace: String) extends SupportedType[GenericRecord] {
@@ -33,7 +33,7 @@ object SupportedType {
     }
   }
   case object LONG extends SupportedType[Long] {
-    override val name = "long"
+    override val name            = "long"
     override def of(input: Json) = input.asNumber.flatMap(_.toLong).getOrElse(sys.error(s"Couldn't convert >${input}< to a long"))
   }
   case object BYTE_ARRAY extends SupportedType[Array[Byte]] {

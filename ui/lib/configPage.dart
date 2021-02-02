@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'client/client.dart';
 
 class ConfigPage extends StatefulWidget {
 
@@ -21,6 +22,20 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder(
+      future : Client.defaultConfig(),
+        builder: (ctxt, snapshot) {
+          if (snapshot.hasData &&
+              snapshot.data != null) {
+            print('snapshot.data is ${snapshot.data}');
+            return build2(ctxt, snapshot.data);
+          } else {
+            return Center(child : Text("Loading"));
+          }
+        });
+
+  }
+  Widget build2(BuildContext context, Map<String, dynamic> summary) {
     final configButton = RaisedButton(onPressed: () {}, child: Text('Config'));
     final config2Button = RaisedButton(onPressed: () {}, child: Text('Config Two'));
     final publishButton = IconButton(
