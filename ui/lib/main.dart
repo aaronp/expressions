@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
       // home: MainPage(title: 'Franz'),
-    initialRoute: RouteNames.home,
+    initialRoute: RouteNames.config,
     routes: {
       RouteNames.home: (context) => MainPage(),
       RouteNames.publish: (context) => PublishPage(),

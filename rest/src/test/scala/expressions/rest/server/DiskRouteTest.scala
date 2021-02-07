@@ -13,6 +13,14 @@ class DiskRouteTest extends BaseRouteTest {
       listed.bodyAsString shouldBe "[]"
     }
 
+    "read a missing path" in {
+      val svc                         = Disk.Service().value()
+      val underTest: HttpRoutes[Task] = DiskRoute(svc)
+
+      val Some(response)  = underTest(get("store/get/metadata/lastSaved")).value.value()
+      response.status.code shouldBe 410
+      response.bodyAsString shouldBe ""
+    }
     "read, write and list arbitrary paths to data" in {
       val svc                         = Disk.Service().value()
       val underTest: HttpRoutes[Task] = DiskRoute(svc)

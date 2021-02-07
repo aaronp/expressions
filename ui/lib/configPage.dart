@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'client/client.dart';
 
 class ConfigPage extends StatefulWidget {
-
   ConfigPage({Key key, this.title}) : super(key: key);
   final String title;
 
@@ -12,32 +11,40 @@ class ConfigPage extends StatefulWidget {
 }
 
 class _ConfigPageState extends State<ConfigPage> {
-  int _counter = 0;
+  var _lastSavedFileName = "";
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  Future<String> defaultConfig() async {
+    var lastSavedFileName = await Client.getLastSaved();
+    if (lastSavedFileName == "") {
+      print("Loading default config");
+      return await Client.defaultConfig();
+    } else {
+      print(
+          "Loading last save $lastSavedFileName, _lastSavedFileName was $_lastSavedFileName");
+      _lastSavedFileName = lastSavedFileName;
+      final readBack = await Client.get(lastSavedFileName);
+      return readBack;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future : Client.defaultConfig(),
+        future: defaultConfig(),
         builder: (ctxt, snapshot) {
-          if (snapshot.hasData &&
-              snapshot.data != null) {
+          if (snapshot.hasData && snapshot.data != null) {
             print('snapshot.data is ${snapshot.data}');
             return build2(ctxt, snapshot.data);
           } else {
-            return Center(child : Text("Loading"));
+            return Center(child: Text("Loading"));
           }
         });
-
   }
+
   Widget build2(BuildContext context, Map<String, dynamic> summary) {
     final configButton = RaisedButton(onPressed: () {}, child: Text('Config'));
-    final config2Button = RaisedButton(onPressed: () {}, child: Text('Config Two'));
+    final config2Button =
+        RaisedButton(onPressed: () {}, child: Text('Config Two'));
     final publishButton = IconButton(
         iconSize: 32,
         tooltip: 'Publish',

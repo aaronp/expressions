@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       darkTheme: ThemeData(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
-      home: ChooseConfig(),
+      home: Scaffold(body: SafeArea(child : Center(child : ChooseConfig()))),
     );
   }
 }
@@ -27,24 +27,23 @@ class ChooseConfig extends StatefulWidget {
 }
 
 class _ChooseConfigState extends State<ChooseConfig> {
-  var chosenConfig = "default0";
+  var chosenConfig = "One";
 
   @override
   Widget build(BuildContext context) {
-    return Container(child : wtf());
-    // return FutureBuilder(
-    //     future: Client.listFiles("config"),
-    //     builder: (ctxt, snapshot) {
-    //       if (snapshot.hasData) {
-    //         // return chooseFile(ctxt, snapshot.data);
-    //         return wtf();
-    //         // return Text("wtf");
-    //       } else if (snapshot.hasError) {
-    //         return Center(child: Text("Error: ${snapshot.error}"));
-    //       } else {
-    //         return Center(child: CircularProgressIndicator());
-    //       }
-    //     });
+    return FutureBuilder(
+        future: Client.listFiles("config"),
+        builder: (ctxt, snapshot) {
+          if (snapshot.hasData) {
+            return chooseFile(ctxt, snapshot.data);
+            // return Text("wtf");
+            // return wtf();
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          } else {
+            return Center(child: CircularProgressIndicator());
+          }
+        });
   }
 
   Widget wtf() {
@@ -58,12 +57,12 @@ class _ChooseConfigState extends State<ChooseConfig> {
         height: 2,
         color: Colors.deepPurpleAccent,
       ),
-      // onChanged: (String newValue) {
-      //   setState(() {
-      //     chosenConfig = newValue;
-      //   });
-      // },
-      items: <String>['One', 'Two', 'Free', 'Four']
+      onChanged: (String newValue) {
+        setState(() {
+          chosenConfig = newValue;
+        });
+      },
+      items: <String>['One', 'Foo', 'Free', 'Four']
           .map<DropdownMenuItem<String>>((String value) {
         return DropdownMenuItem<String>(
           value: value,
@@ -75,21 +74,27 @@ class _ChooseConfigState extends State<ChooseConfig> {
 
   Widget chooseFile(BuildContext context, List<dynamic> files) {
     return Container(
-        child: DropdownButton<String>(
-            value: chosenConfig,
-            icon: Icon(Icons.arrow_downward),
-            // isExpanded: true,
-            onChanged: (String newValue) {
-              setState(() {
-                chosenConfig = newValue;
-              });
-            },
-            items: [
-          DropdownMenuItem<String>(
-            value: "foo",
-            child: Text("foo"),
-          )
-        ]));
+        child: Row(
+          children: [
+
+            DropdownButton<String>(
+                value: chosenConfig,
+                icon: Icon(Icons.arrow_downward),
+                // isExpanded: true,
+                onChanged: (String newValue) {
+                  setState(() {
+                    chosenConfig = newValue;
+                  });
+                },
+                items: <String>['One', 'Foo', 'Free', 'Four']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList()),
+          ],
+        ));
   }
 
   Widget chooseFile2(BuildContext context, List<dynamic> files) {
@@ -124,7 +129,6 @@ class _ChooseConfigState extends State<ChooseConfig> {
 
   DropdownMenuItem<String> dropdownMenuItem(String value, String label) {
     return DropdownMenuItem<String>(
-      key: Key(""),
       value: value,
       child: Text(label),
     );

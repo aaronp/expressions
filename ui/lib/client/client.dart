@@ -38,4 +38,15 @@ class Client {
 
     return body;
   }
+
+  static Future<String> getLastSaved() => get("metadata/lastSaved");
+
+  static Future<String> get(String path) async {
+    var response = await _client.execute(
+      request: rc.Request(method : RequestMethod.get, url: '$HostPort/rest/store/get/$path'),
+    );
+    dynamic body = response.body;
+
+    return body.toString();
+  }
 }
