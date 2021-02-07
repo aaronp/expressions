@@ -11,7 +11,13 @@ class ConfigPage extends StatefulWidget {
 }
 
 class _ConfigPageState extends State<ConfigPage> {
+
+  // our current config filename
   var _lastSavedFileName = "";
+  // the cached value of the configuration as it was loaded
+  var _loadedConfigContent = "";
+  // the edited
+  var _currentConfigContent = "";
 
   Future<String> defaultConfig() async {
     var lastSavedFileName = await Client.getLastSaved();
@@ -36,7 +42,7 @@ class _ConfigPageState extends State<ConfigPage> {
             print('snapshot.data is ${snapshot.data}');
             return build2(ctxt, snapshot.data);
           } else {
-            return Center(child: Text("Loading"));
+            return Center(child: CircularProgressIndicator());
           }
         });
   }
