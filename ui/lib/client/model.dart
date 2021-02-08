@@ -1,39 +1,48 @@
-
 import 'dart:core';
-import 'package:collection/collection.dart';
+import 'dart:convert';
 
 class ConfigSummary {
   ConfigSummary(
       this.topic,
-      // this.mappings,
+      this.mappings,
       this.brokers,
       this.keyType,
-      this.valueType
-      );
+      this.valueType);
+
+  static empty() {
+    return ConfigSummary("", {}, [], "", "");
+  }
 
   String topic;
   List<String> brokers = [];
-  // Map<String, List<String>> mappings = {};
+
+  // Map<String, dynamic> mappings = {};
   Map<String, Object> mappings = {};
   String keyType;
   String valueType;
+
+  @override
+  String toString() {
+    return asJson.toString();
+  }
 
   //Map<String, Object>
   Object get asJson {
     return {
       'topic': topic,
       'brokers': brokers,
-      // 'mappings': mappings,
+      'mappings': jsonEncode(mappings),
       'keyType': keyType,
       'valueType': valueType
     };
   }
 
   static ConfigSummary fromJson(Map<String, dynamic> json) {
+    final List<dynamic> brokers = json['brokers'];
     return ConfigSummary(
         json['topic'],
-        json['brokers'],
-        // json['mappings'],
+        json['mappings'],
+        brokers.map((e) => e.toString()).toList(),
         json['keyType'],
         json['valueType']);
   }

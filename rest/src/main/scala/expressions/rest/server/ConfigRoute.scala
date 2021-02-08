@@ -57,7 +57,9 @@ object ConfigRoute {
       case req @ POST -> Root / "config" / "parse" =>
         for {
           body     <- req.bodyText.compile.string
+          _ = println(s"parsing config:\n$body\n")
           config   <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
+          _ = println(s"parsed config:\n${config.getConfig("app").root().render()}\n")
           mappings = MappingConfig(config).mappings.toMap
           fc       = FranzConfig.fromRootConfig(config)
           summary  = ConfigSummary(topic = fc.topic, brokers = fc.consumerSettings.bootstrapServers, mappings, fc.keyType.name, fc.valueType.name)

@@ -2,6 +2,8 @@ package expressions.rest.server
 
 import org.http4s.HttpRoutes
 import zio.Task
+
+import scala.util.Random
 class DiskRouteTest extends BaseRouteTest {
 
   "DiskRoute" should {
@@ -9,15 +11,30 @@ class DiskRouteTest extends BaseRouteTest {
       val svc                         = Disk.Service().value()
       val underTest: HttpRoutes[Task] = DiskRoute(svc)
 
-      val Some(listed)    = underTest(get("store/list/missing")).value.value()
+      val Some(listed) = underTest(get("store/list/missing")).value.value()
       listed.bodyAsString shouldBe "[]"
     }
 
+    "prob" in {
+      var total = 100000
+      var count = 0
+      def heads = Random.nextDouble() < 0.3
+      while (total > 0) {
+        total = total - 1
+        if (heads || heads) {
+          count = count + 1
+        }
+      }
+
+      val pcnt = count.toDouble / 100000
+      println(pcnt)
+      println()
+    }
     "read a missing path" in {
       val svc                         = Disk.Service().value()
       val underTest: HttpRoutes[Task] = DiskRoute(svc)
 
-      val Some(response)  = underTest(get("store/get/metadata/lastSaved")).value.value()
+      val Some(response) = underTest(get("store/get/metadata/lastSaved")).value.value()
       response.status.code shouldBe 410
       response.bodyAsString shouldBe ""
     }
