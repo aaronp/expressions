@@ -21,6 +21,15 @@ class ConfigSummary {
   String keyType;
   String valueType;
 
+  String brokersAsString() {
+    if (brokers.length == 1) {
+      return brokers.first;
+    } else if (brokers.length == 0) {
+      return "";
+    } else {
+      return brokers.join(", ");
+    }
+  }
   @override
   String toString() {
     return asJson.toString();

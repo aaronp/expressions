@@ -4,13 +4,12 @@ import 'package:ui/publishPage.dart';
 import 'package:ui/runningPage.dart';
 
 import 'common.dart';
-import 'mainPage.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(FranzApp());
 }
 
-class MyApp extends StatelessWidget {
+class FranzApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -20,12 +19,10 @@ class MyApp extends StatelessWidget {
       darkTheme: ThemeData(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
-      // home: MainPage(title: 'Franz'),
     initialRoute: RouteNames.config,
     routes: {
-      RouteNames.home: (context) => MainPage(),
-      RouteNames.publish: (context) => PublishPage(),
       RouteNames.config: (context) => ConfigPage(),
+      RouteNames.publish: (context) => PublishPage(),
       RouteNames.running: (context) => RunningPage(),
     }
     );
