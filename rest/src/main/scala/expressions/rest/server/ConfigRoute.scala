@@ -41,7 +41,13 @@ object ConfigRoute {
   }
 
   /**
-    * The 'most interesting bits' from a config
+    * The parsed pieces from the typesafe config in a json-friendly data structure
+    *
+    * @param topic
+    * @param brokers
+    * @param mappings a mapping of the topic to
+    * @param keyType
+    * @param valueType
     */
   case class ConfigSummary(topic: String, brokers: List[String], mappings: Map[String, List[String]], keyType: String, valueType: String)
   object ConfigSummary {

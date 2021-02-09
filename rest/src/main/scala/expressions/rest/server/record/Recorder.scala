@@ -128,7 +128,9 @@ object Recorder {
     }
 
     private def append(record: Either[Request, Response]): Unit = {
-      buffer += record
+      if (record != null) {
+        buffer += record
+      }
       if (buffer.size > limit) {
         buffer.remove(0)
       }

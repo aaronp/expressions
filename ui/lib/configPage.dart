@@ -18,6 +18,10 @@ class LoadedConfig {
   String loadedContent;
   ConfigSummary summary;
 
+  bool isEmpty() {
+    return summary.isEmpty();
+  }
+
   @override
   String toString() {
     return "LoadedConfig(fileName: $fileName, summary: $summary)";
@@ -51,6 +55,10 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
+    _reload();
+  }
+
+  void _reload() {
     defaultConfig().then((value) {
       setState(() {
         print('Setting value to $value');
@@ -61,6 +69,9 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_currentConfig.isEmpty()) {
+      _reload();
+    }
     final runningButton = IconButton(
         iconSize: 32,
         tooltip: 'Open',
@@ -72,16 +83,7 @@ class _ConfigPageState extends State<ConfigPage> {
       appBar: AppBar(title: Text('Config'), actions: [
         runningButton,
       ]),
-      body: FutureBuilder(
-          future: defaultConfig(),
-          builder: (ctxt, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              print('snapshot.data is ${snapshot.data}');
-              return configSummaryWidget(ctxt, snapshot.data);
-            } else {
-              return Center(child: CircularProgressIndicator());
-            }
-          }),
+      body: configSummaryWidget(),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Save',
         child: Icon(Icons.save),
@@ -89,7 +91,7 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  Widget configSummaryWidget(BuildContext context, LoadedConfig summary) {
+  Widget configSummaryWidget() {
     final runningButton = IconButton(
         iconSize: 32,
         tooltip: 'Config',
@@ -100,6 +102,7 @@ class _ConfigPageState extends State<ConfigPage> {
     return Scaffold(
       appBar: AppBar(
           title: Text(_currentConfig.fileName),
+          backgroundColor: Colors.grey[800],
           actions: [
             runningButton,
           ],
@@ -165,8 +168,8 @@ class _ConfigPageState extends State<ConfigPage> {
             Container(
                 // width: 200,
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text("Mappings :", style: mappingStyle),
+                  padding: const EdgeInsets.fromLTRB(8.0,28.0,8.0,8.0),
+                  child: Text("Topic Mappings:", style: mappingStyle),
                 ),
                 alignment: AlignmentDirectional.topStart),
             mappingsList(),
@@ -174,29 +177,47 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+  static String _unquote(String input) {
+    final trimmed = input.trim();
+    if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+      return trimmed.substring(1, trimmed.length - 2);
+    }
+    return trimmed;
+  }
+
   Widget mappingsList() {
-    print("_currentConfig.summary.mappings.length is ${_currentConfig.summary.mappings.length}");
-    return ListView.separated(
-        itemCount: _currentConfig.summary.mappings.length,
-        shrinkWrap: false,
-        padding: EdgeInsets.zero,
-        separatorBuilder: (BuildContext context, int index) {
-          return SizedBox(
-            height: 10,
-          );
-        },
-        itemBuilder: (_, index) {
-          print("index is ${index}");
-          final mapping = _currentConfig.summary.mappings[index];
-          // return mappingItem(index, mapping);
-          return ListTile(
-            dense: true,
-            contentPadding:
+    final mappingList = <Widget>[];
+    _currentConfig.summary.mappings.forEach((quotedKey, value) {
+      final key = _unquote(quotedKey);
+      final path = value.join("/");
+      final entry = ListTile(
+        dense: true,
+        contentPadding:
             const EdgeInsets.symmetric(horizontal: 26.0, vertical: 0.0),
-            //https://fonts.google.com/specimen/Playfair+Display?category=Serif,Sans+Serif,Display,Monospace
-            title: Text('${index + 1}: ${mapping}', style: TextStyle(fontSize: 18)),
-          );
-        });
+        //https://fonts.google.com/specimen/Playfair+Display?category=Serif,Sans+Serif,Display,Monospace
+        title: RaisedButton.icon(
+            onPressed: () {},
+            color: Colors.grey[700],
+            icon: Icon(
+              Icons.edit,
+              color: Colors.white,
+            ),
+            label: Text('${key} (${path})')),
+      );
+      mappingList.add(entry);
+    });
+    print(
+        "_currentConfig.summary.mappings.length is ${_currentConfig.summary.mappings.length}");
+    return LimitedBox(
+        maxHeight: 400,
+        child: ListView.separated(
+            itemCount: _currentConfig.summary.mappings.length,
+            shrinkWrap: false,
+            padding: EdgeInsets.zero,
+            separatorBuilder: (BuildContext context, int index) {
+              return Divider();
+            },
+            itemBuilder: (_, index) => mappingList[index]));
   }
 
   Widget mappingItem(int index, Object mapping) {
@@ -210,7 +231,7 @@ class _ConfigPageState extends State<ConfigPage> {
         width: 20,
         height: 20,
         decoration: BoxDecoration(
-          color: Colors.blue,
+          // color: Colors.blue,
           borderRadius: BorderRadius.circular(26),
         ),
       ),

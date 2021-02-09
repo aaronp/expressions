@@ -38,6 +38,10 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
   val mappingConfig = rootConfig.getConfig("app.mapping")
 
   import args4c.implicits._
+
+  /**
+    * @reutrn an association between a topic pattern (e.g. "foo*") to the path to the mapping file
+    */
   val mappings: Seq[(String, List[String])] = mappingConfig.summaryEntries((_, v) => v).map { entry =>
     entry.key -> Unquote(entry.value.trim).split("/", -1).map(_.trim).toList
   }
