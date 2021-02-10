@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:ui/editConfigWidget.dart';
 import 'package:ui/editTopicMapping.dart';
 import 'package:ui/publishWidget.dart';
+import 'package:ui/runningConsumersWidget.dart';
 
 import 'client/client.dart';
 import 'client/configSummary.dart';
@@ -77,11 +79,19 @@ class _ConfigPageState extends State<ConfigPage> {
     if (_currentConfig.isEmpty()) {
       _reload();
     }
+
+    final runningButton = IconButton(
+        iconSize: 32,
+        tooltip: 'Running',
+        icon: Icon(Icons.list),
+        color: Colors.red,
+        onPressed: () => onListRunning(context));
+
     return Scaffold(
         appBar: AppBar(
             title: Text('Franz: Configuration', textAlign: TextAlign.start),
             actions: [
-          // runningButton,
+          runningButton,
         ]),
         body: configSummaryWidget(
             context) // This trailing comma makes auto-formatting nicer for build methods.
@@ -101,7 +111,7 @@ class _ConfigPageState extends State<ConfigPage> {
         tooltip: 'Config',
         icon: Icon(Icons.settings),
         color: Colors.red,
-        onPressed: () {});
+        onPressed: () => onEditConfig(ctxt));
 
     return Scaffold(
       appBar: AppBar(
@@ -232,33 +242,28 @@ class _ConfigPageState extends State<ConfigPage> {
     return trimmed;
   }
 
-  void onPublish(BuildContext ctxt) {
-    Navigator.push(ctxt, MaterialPageRoute(builder: (context) => PublishWidget()));
-  }
+  void onListRunning(BuildContext ctxt) => _push(ctxt, RunningConsumersWidget());
 
-  void onConsume(BuildContext ctxt) {
-    Navigator.push(ctxt, MaterialPageRoute(builder: (context) => PublishWidget()));
-  }
+  void onPublish(BuildContext ctxt) => _push(ctxt, PublishWidget());
 
-  void onEditMapping(BuildContext ctxt, MappingEntry entry) {
-    Navigator.push(
-      ctxt,
-      MaterialPageRoute(builder: (context) => EditTopicMappingWidget(entry)),
-    );
-  }
+  void onEditConfig(BuildContext ctxt) => _push(ctxt, EditConfigWidget());
+
+  void onConsume(BuildContext ctxt)  => _push(ctxt,PublishWidget());
+
+  void onEditMapping(BuildContext ctxt, MappingEntry entry) => _push(ctxt, EditTopicMappingWidget(entry));
+
+  void onAddMapping(BuildContext ctxt)  => _push(ctxt, EditTopicMappingWidget(MappingEntry("", "")));
+
   void onRemoveMapping(BuildContext ctxt, String key) {
     setState(() {
       _currentConfig.summary.mappings.remove(key);
     });
   }
 
-  void onAddMapping(BuildContext ctxt) {
-    Navigator.push(
-      ctxt,
-      MaterialPageRoute(
-          builder: (context) => EditTopicMappingWidget(MappingEntry("", ""))),
-    );
+  void _push(BuildContext ctxt, Widget page) {
+    Navigator.push(ctxt, MaterialPageRoute(builder: (context) => page));
   }
+
 
   Widget mappingsList(BuildContext ctxt) {
     final mappingList = <Widget>[];
