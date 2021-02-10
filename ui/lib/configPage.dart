@@ -1,10 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:ui/editConfigWidget.dart';
 import 'package:ui/editTopicMapping.dart';
 import 'package:ui/publishWidget.dart';
 import 'package:ui/runningConsumersWidget.dart';
 
-import 'client/client.dart';
+import 'client/configClient.dart';
+import 'client/diskClient.dart';
 import 'client/configSummary.dart';
 import 'client/mappingEntry.dart';
 
@@ -39,13 +42,12 @@ class _ConfigPageState extends State<ConfigPage> {
   LoadedConfig _currentConfig = LoadedConfig("", "", ConfigSummary.empty());
 
   Future<LoadedConfig> defaultConfig() async {
-    var lastSavedFileName = await Client.getLastSaved();
+    var lastSavedFileName = await DiskClient.getLastSaved();
     if (lastSavedFileName == "") {
-      final content = await Client.defaultConfig();
+      final content = await ConfigClient.defaultConfig();
       return summaryFor("application.conf", content);
     } else {
-      print("lastSavedFileName is >$lastSavedFileName<");
-      final content = await Client.get(lastSavedFileName);
+      final content = await DiskClient.get(lastSavedFileName);
       return summaryFor(lastSavedFileName, content);
     }
   }
@@ -54,7 +56,7 @@ class _ConfigPageState extends State<ConfigPage> {
     if (content == "") {
       return LoadedConfig(fileName, content, ConfigSummary.empty());
     } else {
-      final summary = await Client.configSummary(content);
+      final summary = await ConfigClient.configSummary(content);
       return LoadedConfig(fileName, content, summary);
     }
   }
@@ -87,16 +89,56 @@ class _ConfigPageState extends State<ConfigPage> {
         color: Colors.red,
         onPressed: () => onListRunning(context));
 
-    return Scaffold(
-        appBar: AppBar(
-            title: Text('Franz: Configuration', textAlign: TextAlign.start),
-            actions: [
-          runningButton,
-        ]),
-        body: configSummaryWidget(
-            context) // This trailing comma makes auto-formatting nicer for build methods.
-        );
+    return SafeArea(
+        child: Scaffold(
+            appBar: AppBar(
+                title: Text('Configuration', textAlign: TextAlign.start),
+                actions: [runningButton]),
+            body: configSummaryWidget(context) // This trailing comma makes auto-formatting nicer for build methods.
+        ));
   }
+
+  Column configColumn(BuildContext ctxt) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        configEntry("Brokers",
+            _currentConfig.summary.brokersAsString()),
+        configEntry("Topic", _currentConfig.summary.topic),
+        configEntry("Key Type", _currentConfig.summary.keyType),
+        configEntry(
+            "Value Type", _currentConfig.summary.valueType),
+        Container(
+          height: 400.0,
+          alignment: Alignment.topLeft,
+          child: mappingsWidget(ctxt),
+        ),
+        buttonBar(ctxt)
+      ],
+    );
+  }
+
+  Column workingColumn(BuildContext ctxt) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                configEntry("Brokers",
+                    _currentConfig.summary.brokersAsString()),
+                configEntry("Topic", _currentConfig.summary.topic),
+                configEntry("Key Type", _currentConfig.summary.keyType),
+                configEntry("Value Type", _currentConfig.summary.valueType),
+                Container(
+                  height: 420.0,
+                  alignment: Alignment.topLeft,
+                  child: mappingsWidget(ctxt),
+                ),
+                buttonBar(ctxt),
+              ],
+            );
+  }
+
 
   Widget configSummaryWidget(BuildContext ctxt) {
     final openButton = IconButton(
@@ -114,33 +156,25 @@ class _ConfigPageState extends State<ConfigPage> {
         onPressed: () => onEditConfig(ctxt));
 
     return Scaffold(
-      appBar: AppBar(
-          title: Text(_currentConfig.fileName),
-          backgroundColor: Colors.grey[800],
-          actions: [
-            openButton,
-            editButton,
-          ],
-          primary: false,
-          automaticallyImplyLeading: false),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            configEntry("Brokers", _currentConfig.summary.brokersAsString()),
-            configEntry("Topic", _currentConfig.summary.topic),
-            configEntry("Key Type", _currentConfig.summary.keyType),
-            configEntry("Value Type", _currentConfig.summary.valueType),
-            mappingsWidget(ctxt),
-            buttonBar(ctxt)
-          ],
-        ),
-      ),
-    );
+        appBar: AppBar(
+            title: Text(_currentConfig.fileName),
+            backgroundColor: Colors.grey[800],
+            actions: [
+              openButton,
+              editButton,
+            ],
+            primary: false,
+            automaticallyImplyLeading: false),
+        body: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints viewportConstraints) {
+            return SingleChildScrollView(
+                child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: viewportConstraints.maxHeight),
+                    child: IntrinsicHeight(child : configColumn(ctxt))));
+          },
+        ));
   }
+
 
   static const labelStyle = TextStyle(
     fontSize: 14.0,
@@ -172,41 +206,39 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   Widget mappingsWidget(BuildContext ctxt) {
-    return Expanded(
-      child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-                // width: 200,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8.0, 28.0, 8.0, 8.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 8.0),
-                        child: Text("Topic Mappings:", style: mappingStyle),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8.0, 8.0, 18.0, 8.0),
-                        child: OutlinedButton.icon(
-                            onPressed: () => onAddMapping(ctxt),
-                            icon: Icon(Icons.add, color: Colors.white),
-                            style: ButtonStyle(
-                                backgroundColor:
-                                    MaterialStateProperty.all<Color>(
-                                        Colors.grey[700])),
-                            label: Text('Add')),
-                      )
-                    ],
-                  ),
+    return Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            // width: 200,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8.0, 28.0, 8.0, 8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 8.0),
+                      child: Text("Topic Mappings:", style: mappingStyle),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 18.0, 8.0),
+                      child: OutlinedButton.icon(
+                          onPressed: () => onAddMapping(ctxt),
+                          icon: Icon(Icons.add, color: Colors.white),
+                          style: ButtonStyle(
+                              backgroundColor:
+                              MaterialStateProperty.all<Color>(
+                                  Colors.grey[700])),
+                          label: Text('Add')),
+                    )
+                  ],
                 ),
-                alignment: AlignmentDirectional.topStart),
-            mappingsList(ctxt),
-          ]),
-    );
+              ),
+              alignment: AlignmentDirectional.topStart),
+          mappingsList(ctxt),
+        ]);
   }
 
   Widget buttonBar(BuildContext ctxt) {
@@ -219,6 +251,7 @@ class _ConfigPageState extends State<ConfigPage> {
         onConsume(ctxt);
       },
     );
+
     final publishButton = ElevatedButton.icon(
       icon: Icon(Icons.publish, color: Colors.white),
       label: Text('Publish'),
@@ -242,17 +275,20 @@ class _ConfigPageState extends State<ConfigPage> {
     return trimmed;
   }
 
-  void onListRunning(BuildContext ctxt) => _push(ctxt, RunningConsumersWidget());
+  void onListRunning(BuildContext ctxt) =>
+      _push(ctxt, RunningConsumersWidget());
 
   void onPublish(BuildContext ctxt) => _push(ctxt, PublishWidget());
 
-  void onEditConfig(BuildContext ctxt) => _push(ctxt, EditConfigWidget());
+  void onEditConfig(BuildContext ctxt) => _push(ctxt, EditConfigWidget(_currentConfig.loadedContent));
 
-  void onConsume(BuildContext ctxt)  => _push(ctxt,PublishWidget());
+  void onConsume(BuildContext ctxt) => _push(ctxt, PublishWidget());
 
-  void onEditMapping(BuildContext ctxt, MappingEntry entry) => _push(ctxt, EditTopicMappingWidget(entry));
+  void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
+      _push(ctxt, EditTopicMappingWidget(entry));
 
-  void onAddMapping(BuildContext ctxt)  => _push(ctxt, EditTopicMappingWidget(MappingEntry("", "")));
+  void onAddMapping(BuildContext ctxt) =>
+      _push(ctxt, EditTopicMappingWidget(MappingEntry("", "")));
 
   void onRemoveMapping(BuildContext ctxt, String key) {
     setState(() {
@@ -263,7 +299,6 @@ class _ConfigPageState extends State<ConfigPage> {
   void _push(BuildContext ctxt, Widget page) {
     Navigator.push(ctxt, MaterialPageRoute(builder: (context) => page));
   }
-
 
   Widget mappingsList(BuildContext ctxt) {
     final mappingList = <Widget>[];
@@ -284,13 +319,8 @@ class _ConfigPageState extends State<ConfigPage> {
             color: Colors.white,
           ));
 
-      final mappingButtons = Row(
-        children: [
-          editButton,
-          Text('$key ($path)'),
-          deleteButton
-        ]
-      );
+      final mappingButtons =
+          Row(children: [editButton, Text('$key ($path)'), deleteButton]);
 
       final entry = ListTile(
         dense: true,

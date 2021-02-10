@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'client/client.dart';
+import 'client/diskClient.dart';
 
 void main() {
   runApp(MyApp());
@@ -32,7 +32,7 @@ class _ChooseConfigState extends State<ChooseConfig> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-        future: Client.listFiles("config"),
+        future: DiskClient.listFiles("config"),
         builder: (ctxt, snapshot) {
           if (snapshot.hasData) {
             return chooseFile(ctxt, snapshot.data);

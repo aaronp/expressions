@@ -1,5 +1,6 @@
 package expressions.rest.server
 
+import args4c.StringEntry
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.franz.FranzConfig
@@ -19,7 +20,11 @@ object ConfigRoute {
   import RestRoutes.taskDsl._
 
   def apply(rootConfig: Config = ConfigFactory.load()): HttpRoutes[Task] = {
-    listMappingsRoute(rootConfig) <+> defaultConfig(rootConfig) <+> summary(rootConfig)
+    listMappingsRoute(rootConfig) <+>
+      defaultConfig(rootConfig) <+>
+      listEntries(rootConfig) <+>
+      formatJson(rootConfig) <+>
+      summary(rootConfig)
   }
 
   /**
@@ -54,6 +59,50 @@ object ConfigRoute {
     implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
   }
 
+  case class ConfigLine(comments: List[String], origin: String, key: String, value: String)
+  object ConfigLine {
+    implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigLine]
+    def apply(config: Config): Seq[ConfigLine] = {
+      import args4c.implicits._
+      config.summaryEntries().map {
+        case StringEntry(comments, origin, key, value) => ConfigLine(comments, origin, key, value)
+      }
+    }
+  }
+
+  /** enumerate the config entries with their comments, origin, key, value
+    * @param rootConfig
+    * @return the default config
+    */
+  def listEntries(rootConfig: Config): HttpRoutes[Task] = {
+    import args4c.implicits._
+    HttpRoutes.of[Task] {
+      case req @ POST -> Root / "config" / "entries" =>
+        for {
+          body   <- req.bodyText.compile.string
+          config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
+          lines  = ConfigLine(config.withOnlyPath("app"))
+        } yield Response[Task](Status.Ok).withEntity(lines)
+    }
+  }
+
+  def formatConfigAsJson(config: Config): List[String] = {
+    val Right(json) = io.circe.parser.parse(config.root.render(ConfigRenderOptions.concise()))
+    json.spaces4.linesIterator.toList
+  }
+
+  def formatJson(rootConfig: Config): HttpRoutes[Task] = {
+    import args4c.implicits._
+    HttpRoutes.of[Task] {
+      case req @ POST -> Root / "config" / "format" =>
+        for {
+          body   <- req.bodyText.compile.string
+          config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
+          lines  = formatConfigAsJson(config.withOnlyPath("app"))
+        } yield Response[Task](Status.Ok).withEntity(lines)
+    }
+  }
+
   /**
     * @param rootConfig
     * @return the default config
@@ -63,9 +112,9 @@ object ConfigRoute {
       case req @ POST -> Root / "config" / "parse" =>
         for {
           body     <- req.bodyText.compile.string
-          _ = println(s"parsing config:\n$body\n")
+          _        = println(s"parsing config:\n$body\n")
           config   <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
-          _ = println(s"parsed config:\n${config.getConfig("app").root().render()}\n")
+          _        = println(s"parsed config:\n${config.getConfig("app").root().render()}\n")
           mappings = MappingConfig(config).mappings.toMap
           fc       = FranzConfig.fromRootConfig(config)
           summary  = ConfigSummary(topic = fc.topic, brokers = fc.consumerSettings.bootstrapServers, mappings, fc.keyType.name, fc.valueType.name)

@@ -1,24 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:ui/client/configClient.dart';
 
 import 'client/mappingEntry.dart';
 
 class EditConfigWidget extends StatefulWidget {
+  EditConfigWidget(this.configuration);
+
+  String configuration;
+
   @override
   _EditConfigWidgetState createState() => _EditConfigWidgetState();
 }
 
 class _EditConfigWidgetState extends State<EditConfigWidget> {
   final _formKey = GlobalKey<FormState>();
-  final _fileNameController = TextEditingController();
+  final _configTextController = TextEditingController();
+  var _formattedLines = <String>[];
   @override
   void dispose() {
     super.dispose();
-    _fileNameController.dispose();
+    _configTextController.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    ConfigClient.formatConfig(this.widget.configuration).then((formattedLines) {
+      setState(() {
+        _formattedLines = formattedLines;
+        _configTextController.text = _formattedLines.join("\n");
+      });
+    });
   }
 
   @override
@@ -30,15 +42,16 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
             backgroundColor: Colors.grey[800],
             actions: [
             ]),
-        body: Center(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-            ],
-          ),
+        body: Card(
+            color: Colors.grey,
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _configTextController,
+                maxLines: 80,
+                decoration: InputDecoration.collapsed(hintText: "Configuration"),
+              ),
+            )
         ) // This trailing comma makes auto-formatting nicer for build methods.
     ));
   }
