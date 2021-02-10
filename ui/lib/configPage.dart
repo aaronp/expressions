@@ -280,7 +280,15 @@ class _ConfigPageState extends State<ConfigPage> {
 
   void onPublish(BuildContext ctxt) => _push(ctxt, PublishWidget());
 
-  void onEditConfig(BuildContext ctxt) => _push(ctxt, EditConfigWidget(_currentConfig.loadedContent));
+  void onEditConfig(BuildContext ctxt) async {
+    final editedConfig = await _push(ctxt, EditConfigWidget(_currentConfig.loadedContent));
+    print("editedConfig is ");
+    print(editedConfig);
+    final newSummary = await summaryFor(_currentConfig.fileName, editedConfig.toString());
+    setState(() {
+      _currentConfig = newSummary;
+    });
+  }
 
   void onConsume(BuildContext ctxt) => _push(ctxt, PublishWidget());
 
@@ -296,8 +304,8 @@ class _ConfigPageState extends State<ConfigPage> {
     });
   }
 
-  void _push(BuildContext ctxt, Widget page) {
-    Navigator.push(ctxt, MaterialPageRoute(builder: (context) => page));
+  Future<Object> _push(BuildContext ctxt, Widget page) async {
+    return await Navigator.push(ctxt, MaterialPageRoute(builder: (context) => page));
   }
 
   Widget mappingsList(BuildContext ctxt) {

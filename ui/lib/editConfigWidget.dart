@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ui/client/configClient.dart';
 
-import 'client/mappingEntry.dart';
-
 class EditConfigWidget extends StatefulWidget {
   EditConfigWidget(this.configuration);
 
@@ -16,6 +14,7 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
   final _formKey = GlobalKey<FormState>();
   final _configTextController = TextEditingController();
   var _formattedLines = <String>[];
+
   @override
   void dispose() {
     super.dispose();
@@ -35,24 +34,46 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // final MappingEntry args = ModalRoute.of(context).settings.arguments;
-    return SafeArea(child: Scaffold(
-        appBar: AppBar(
-            title: Text("Edit Config"),
-            backgroundColor: Colors.grey[800],
-            actions: [
-            ]),
-        body: Card(
-            color: Colors.grey,
-            child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _configTextController,
-                maxLines: 80,
-                decoration: InputDecoration.collapsed(hintText: "Configuration"),
-              ),
-            )
-        ) // This trailing comma makes auto-formatting nicer for build methods.
-    ));
+    final saveButton = IconButton(
+        onPressed: () => onSave(context),
+        icon: Icon(Icons.save));
+    final cancelButton = IconButton(
+        onPressed: () => onCancel(context),
+        icon: Icon(Icons.cancel_outlined));
+    return SafeArea(
+        child: Scaffold(
+            appBar: AppBar(
+                title: Text("Edit Config"),
+                backgroundColor: Colors.grey[800],
+                actions: [saveButton, cancelButton]),
+            body: LayoutBuilder(builder:
+                (BuildContext context, BoxConstraints viewportConstraints) {
+              return SingleChildScrollView(
+                  child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          minHeight: viewportConstraints.maxHeight),
+                      child: IntrinsicHeight(
+                          child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: TextField(
+                          controller: _configTextController,
+                          maxLines: 180,
+                          decoration: InputDecoration.collapsed(
+                              hintText: "Configuration"),
+                        ),
+                      ))));
+            })));
+  }
+
+  void onSave(BuildContext ctxt) {
+    print("Popping");
+    print(_configTextController.text);
+    Navigator.pop(ctxt, _configTextController.text);
+  }
+
+  void onCancel(BuildContext ctxt) {
+    print("Popping");
+    print(_configTextController.text);
+    Navigator.pop(ctxt, this.widget.configuration);
   }
 }
