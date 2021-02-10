@@ -8,8 +8,10 @@ class Client {
 
   static final HostPort = "http://localhost:8080";
 
+  static final HttpHeaders = { "Access-Control-Allow-Origin" : "*" };
+
   static Future<ConfigSummary> configSummary(String config) async {
-    var request = rc.Request(url: '$HostPort/rest/config/parse', body: config);
+    var request = rc.Request(url: '$HostPort/rest/config/parse', body: config, headers: HttpHeaders);
 
     try {
       var response = await _client.execute(request: request);
@@ -22,7 +24,8 @@ class Client {
 
   static Future<String> defaultConfig() async {
     var response = await _client.execute(
-      request: rc.Request(url: '$HostPort/rest/config'),
+      request: rc.Request(
+          method: RequestMethod.get, url: '$HostPort/rest/config', headers: HttpHeaders),
     );
     final configAsJson = response.body;
     return jsonEncode(configAsJson);
@@ -30,9 +33,7 @@ class Client {
 
   static Future<List<dynamic>> listFiles(String path) async {
     var response = await _client.execute(
-      request: rc.Request(
-          method: RequestMethod.get, url: '$HostPort/rest/store/list/$path'),
-    );
+      request: rc.Request(method: RequestMethod.get, url: '$HostPort/rest/store/list/$path', headers: HttpHeaders));
     List<dynamic> body = response.body;
 
     return body;
@@ -47,7 +48,7 @@ class Client {
       print("Client.get('$path')");
       var response = await _client.execute(
         request: rc.Request(
-            method: RequestMethod.get, url: '$HostPort/rest/store/get/$path'),
+            method: RequestMethod.get, url: '$HostPort/rest/store/get/$path', headers: HttpHeaders),
       );
       // return jsonEncode();
       print("Client.get('$path') returning >${response.body}<, isNull=${response.body == null}");
