@@ -79,7 +79,7 @@ object ConfigRoute {
     */
   def defaultConfig(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case GET -> Root / "config" =>
+      case _ -> Root / "config" =>
         Task {
           val franzConf   = rootConfig.withOnlyPath("app.franz")
           val mappingConf = rootConfig.withOnlyPath("app.mapping")

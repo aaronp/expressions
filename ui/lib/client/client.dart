@@ -1,7 +1,7 @@
 import 'package:rest_client/rest_client.dart' as rc;
 import 'package:rest_client/rest_client.dart';
 import 'dart:convert';
-import 'model.dart';
+import 'configSummary.dart';
 
 class Client {
   static final _client = rc.Client();
@@ -25,10 +25,7 @@ class Client {
       request: rc.Request(url: '$HostPort/rest/config'),
     );
     final configAsJson = response.body;
-    String cj = jsonEncode(configAsJson);
-    print('configAsJson is $cj');
-
-    return cj;
+    return jsonEncode(configAsJson);
   }
 
   static Future<List<dynamic>> listFiles(String path) async {
@@ -41,17 +38,25 @@ class Client {
     return body;
   }
 
-  static Future<String> getLastSaved() => get("metadata/lastSaved");
+  static Future<String> getLastSaved() {
+    return get("metadata/lastSaved");
+  }
 
   static Future<String> get(String path) async {
     try {
+      print("Client.get('$path')");
       var response = await _client.execute(
         request: rc.Request(
             method: RequestMethod.get, url: '$HostPort/rest/store/get/$path'),
       );
-      return jsonEncode(response.body);
+      // return jsonEncode();
+      print("Client.get('$path') returning >${response.body}<, isNull=${response.body == null}");
+      if (response.body == null) {
+        return "";
+      }
+      return response.body;
     } catch (e) {
-      print("Error  getting '$path': $e");
+      print("Error getting '$path': >>$e<<");
       return "";
     }
   }

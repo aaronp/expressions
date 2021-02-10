@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:ui/editTopicMapping.dart';
 import 'package:ui/configPage.dart';
 import 'package:ui/publishPage.dart';
 import 'package:ui/runningPage.dart';
 
-import 'common.dart';
+import 'routeNames.dart';
 
 void main() {
   runApp(FranzApp());
