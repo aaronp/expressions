@@ -1,6 +1,7 @@
+include ./Makefile.vars
 
 buildDocker:
-	sbt assembleApp && docker build . --build-arg GITSHA="$GITSHA" --build-arg TIMESTAMP="$TIMESTAMP" -t expressions:latest
+	./build.sh
 
 buildFlutterUI:
 	cd ui && flutter build web
