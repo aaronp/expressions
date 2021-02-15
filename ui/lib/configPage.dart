@@ -92,34 +92,38 @@ class _ConfigPageState extends State<ConfigPage> {
     return SafeArea(
         child: Scaffold(
             appBar: AppBar(
-                title: Text('Configuration', textAlign: TextAlign.start),
+                title: Align(alignment : Alignment.topLeft, child : Text('Configuration', textAlign: TextAlign.start)),
                 actions: [runningButton]),
             body: configSummaryWidget(context) // This trailing comma makes auto-formatting nicer for build methods.
         ));
   }
 
-  Column configColumn(BuildContext ctxt) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        configEntry("Brokers",
-            _currentConfig.summary.brokersAsString()),
-        configEntry("Topic", _currentConfig.summary.topic),
-        configEntry("Key Type", _currentConfig.summary.keyType),
-        configEntry(
-            "Value Type", _currentConfig.summary.valueType),
-        Container(
-          height: 400.0,
-          alignment: Alignment.topLeft,
-          child: mappingsWidget(ctxt),
-        ),
-        buttonBar(ctxt)
-      ],
+  Widget configColumn(BuildContext ctxt) {
+    return Container(
+      // decoration: BoxDecoration(color: Colors.red),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          configEntry("Brokers",
+              _currentConfig.summary.brokersAsString()),
+          configEntry("Topic", _currentConfig.summary.topic),
+          configEntry("Key Type", _currentConfig.summary.keyType),
+          configEntry(
+              "Value Type", _currentConfig.summary.valueType),
+          Container(
+            height: 400.0,
+            alignment: Alignment.topLeft,
+            child: mappingsWidget(ctxt),
+          ),
+          buttonBar(ctxt)
+        ],
+      ),
     );
   }
 
-  Column workingColumn(BuildContext ctxt) {
+  Widget workingColumn(BuildContext ctxt) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

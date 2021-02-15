@@ -89,7 +89,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   private lazy val randomTopic = s"topic${rand()}"
   private lazy val randomGroup = s"group${rand()}"
-  val topic = franzConfig.getString("kafka.topic") match {
+  val topic = kafkaConfig.getString("topic") match {
     case "<random>" => randomTopic
     case topic      => topic
   }
@@ -178,6 +178,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     serializerName.toLowerCase match {
       case "string" | "strings" => SupportedType.STRING
       case "long" | "longs"     => SupportedType.LONG
+      case "bytes"              => SupportedType.BYTE_ARRAY
       case "avro"               => SupportedType.RECORD(namespace)
       case _ =>
         instantiate[Any](serializerName) match {

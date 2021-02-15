@@ -12,7 +12,7 @@ import scala.util.Try
   * e.g turn some [[Context]] into a string, with use-cases like:
   *
   * {{{
-  *   someJsonDoc = """ { "key" : "{{ record.key.toUpperCase }}", "foo" : "{{ if (record.value.path.to.foo) "x" else "y" }}", "double-host" : "{{ env.HOST * 2 }}"  } """
+  *   someJsonDoc = """ { "key" : "{{ record.key.toUpperCase }}", "foo" : "{{ if (record.content.path.to.foo) "x" else "y" }}", "double-host" : "{{ env.HOST * 2 }}"  } """
   * }}}
   *
   */

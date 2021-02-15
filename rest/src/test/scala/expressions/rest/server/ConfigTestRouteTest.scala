@@ -10,7 +10,7 @@ import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
 
-  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[DynamicJson, DynamicJson]("implicit val _implicitJsonValue = record.value.jsonValue")
+  val expressionForString: Cache[StringExpression[JsonMsg]] = StringTemplate.newCache[DynamicJson, DynamicJson]("implicit val _implicitJsonValue = record.content.jsonValue")
   "POST /mapping/check" should {
     "return a configuration" in {
 
@@ -18,10 +18,10 @@ class ConfigTestRouteTest extends BaseRouteTest {
       val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
       val script =
         """test {
-           |  arr : "{{ record.value.values.each.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
-           |  const : "some value"
+           |  arr : "{{ record.content.values.each.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
+           |  const : "some content"
            |}
-           |x : "{{ record.value.foo.asString }}"
+           |x : "ASDF{{ record.content.foo.asString }}"
           |""".stripMargin
 
       val Some(response) = underTest(post("config/check", TransformRequest(script, jason, Json.fromString("schlussel")).asJson.noSpaces)).value.value()

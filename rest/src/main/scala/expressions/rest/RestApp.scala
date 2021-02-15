@@ -9,7 +9,7 @@ import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.server.middleware.Logger
+import org.http4s.server.middleware.{CORS, Logger}
 import zio._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -33,7 +33,7 @@ case class RestApp(settings: Settings) {
 
     val httpApp = Router[Task](
       "/"     -> StaticFileRoutes(riffConfig).routes[Task](), //
-      "/rest" -> restRoutes //
+      "/rest" -> CORS(restRoutes) //
     ).orNotFound
 
     if (logHeaders || logBody || recordRequestResponse) {
@@ -52,7 +52,7 @@ case class RestApp(settings: Settings) {
         .serve
         .compile[Task, Task, cats.effect.ExitCode]
         .drain
-        .fold(_ => ExitCode.failure, _ => ExitCode.success)
+        .exitCode
     } yield exitCode
 }
 

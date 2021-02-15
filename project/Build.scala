@@ -5,7 +5,7 @@ import java.nio.file.Path
 
 object Build {
 
-  val zioVersion = "1.0.1"
+  val zioVersion = "1.0.5"
   val zio = List(
     "dev.zio" %% "zio-interop-cats" % "2.2.0.0",
     "dev.zio" %% "zio"              % zioVersion,
@@ -25,15 +25,15 @@ object Build {
     )
   }
 
-  val Http4sVersion = "0.21.7"
+  val Http4sVersion = "0.21.20"
 
-  val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.0"
+  val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.1"
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
   val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
   val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.30")
 
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.2" % "test"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.6" % "test"
 
   def franz: List[ModuleID] = {
     zio ++ logging ++ circe ++
@@ -50,6 +50,7 @@ object Build {
   }
 
   def jvmClient = circe ++ Seq(
+    "com.softwaremill.sttp.client3" %% "core" % "3.1.0",
     "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
     scalaTest
   )

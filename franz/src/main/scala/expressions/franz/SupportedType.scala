@@ -2,10 +2,14 @@ package expressions.franz
 
 import io.circe.Json
 import io.circe.syntax.EncoderOps
+import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
 import org.apache.avro.generic.{GenericRecord, IndexedRecord}
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.serialization.Serdes.{ByteArraySerde, LongSerde, StringSerde}
+import org.apache.kafka.common.serialization.{Serde, StringDeserializer, StringSerializer}
 import zio.kafka.consumer.CommittableRecord
 
+import java.lang
 import scala.util.Try
 
 /**
@@ -19,15 +23,37 @@ sealed trait SupportedType[A] {
   def name: String
 }
 object SupportedType {
-  def keys(config: FranzConfig): SupportedType[_]   = config.keyType
-  def values(config: FranzConfig): SupportedType[_] = config.valueType
+
+  def serdeForName(typ : String): Option[Serde[_]] = {
+    forName(typ).map {
+      case STRING => new StringSerde
+      case LONG => new LongSerde
+      case BYTE_ARRAY => new ByteArraySerde
+      case RECORD(namespace) => new GenericAvroSerde()
+    }
+  }
+  def avroNamespaceForName(typ : String): Option[String] = {
+    forName(typ).flatMap {
+      case RECORD(namespace) => Some(namespace)
+      case _ => None
+    }
+  }
+  def forName(name: String): Option[SupportedType[_]] = {
+    name match {
+      case s"avro:$namespace"        => Some(RECORD(namespace))
+      case n if n == STRING.name     => Some(STRING)
+      case n if n == LONG.name       => Some(LONG)
+      case n if n == BYTE_ARRAY.name => Some(BYTE_ARRAY)
+      case _                         => None
+    }
+  }
 
   case object STRING extends SupportedType[String] {
     override val name                    = "string"
     override def of(input: Json): String = input.asString.getOrElse(input.noSpaces)
   }
   case class RECORD(namespace: String) extends SupportedType[GenericRecord] {
-    override val name = "avro"
+    override def name = s"avro:$namespace"
     override def of(input: Json): GenericRecord = {
       SchemaGen.recordForJson(input, namespace)
     }
@@ -80,11 +106,10 @@ object SupportedType {
       */
     def apply(config: FranzConfig): CommittableRecord[_, _] => CommittableRecord[Json, Json] = {
       val extractor = extractJson(config)
-      (record: CommittableRecord[_, _]) =>
-        {
-          val (key, value) = extractor(record)
-          withKeyValue(record, key, value)
-        }
+      (record: CommittableRecord[_, _]) => {
+        val (key, value) = extractor(record)
+        withKeyValue(record, key, value)
+      }
     }
 
     /**
@@ -94,12 +119,11 @@ object SupportedType {
     def extractJson(config: FranzConfig) = {
       val jsonKey   = keyToJson(config.keyType)
       val jsonValue = valueToJson(config.valueType)
-      (record: CommittableRecord[_, _]) =>
-        {
-          val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
-          val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
-          (key, value)
-        }
+      (record: CommittableRecord[_, _]) => {
+        val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
+        val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
+        (key, value)
+      }
     }
 
     def asError(record: CommittableRecord[_, _], err: Throwable, value: Any, supportedType: SupportedType[_]) = {
@@ -135,8 +159,7 @@ object SupportedType {
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.key)
         }
       case BYTE_ARRAY =>
-        (record: CommittableRecord[_, _]) =>
-          JsonSupport.anyToJson.format(record.key)
+        (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.key)
     }
     def valueToJson(supportedType: SupportedType[_]): CommittableRecord[_, _] => Json = supportedType match {
       case STRING =>
@@ -155,8 +178,7 @@ object SupportedType {
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.value)
         }
       case BYTE_ARRAY =>
-        (record: CommittableRecord[_, _]) =>
-          JsonSupport.anyToJson.format(record.value)
+        (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.value)
     }
   }
 }

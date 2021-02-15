@@ -18,7 +18,7 @@ class StringTemplateTest extends AnyWordSpec with Matchers {
       expression(ctxt) shouldBe "some constant text"
     }
     "resolve a multi-part expression" in {
-      val expression = StringTemplate[String, Int]("key:{{ record.key}} value: {{ record.value * 3 }}")
+      val expression = StringTemplate[String, Int]("key:{{ record.key}} value: {{ record.content * 3 }}")
       val ctxt       = Message.of(2).withKey("foo").asContext()
       expression(ctxt) shouldBe "key:foo value: 6"
     }

@@ -19,3 +19,6 @@ rest/src/test/resources/database-states
 ui/build
 ui/.idea.dart_tool
 ui/.dart_tool
+ui/.flutter-plugins-dependencies
+.flutter-plugins
+.packages

@@ -10,3 +10,10 @@ of a larger ecosystems, such as Kafka sink transformations.
 The rest app assumes a locally running Kafka instance, but just running `make` from the root will do the trick.
 
 Then just fire up `DevMain` and head on over to `http://localhost:8080/index.html`
+
+# TODO:
+
+ * Add means to save a ConfigSummary and apply that to a config
+  - entails translating between e.g. 'string' or 'avro' and string/avro serde
+ * make ConfigSummary editable on the UI
+ * 

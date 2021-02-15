@@ -40,11 +40,13 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
     final cancelButton = IconButton(
         onPressed: () => onCancel(context),
         icon: Icon(Icons.cancel_outlined));
+
+
     return SafeArea(
         child: Scaffold(
             appBar: AppBar(
                 title: Text("Edit Config"),
-                backgroundColor: Colors.grey[800],
+                backgroundColor: Theme.of(context).colorScheme.background,
                 actions: [saveButton, cancelButton]),
             body: LayoutBuilder(builder:
                 (BuildContext context, BoxConstraints viewportConstraints) {
@@ -72,8 +74,6 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
   }
 
   void onCancel(BuildContext ctxt) {
-    print("Popping");
-    print(_configTextController.text);
     Navigator.pop(ctxt, this.widget.configuration);
   }
 }

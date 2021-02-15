@@ -5,7 +5,7 @@ import NoWhitespace._
 
 /**
   * term := <prop> | <value>
-  * value := text | number | boolean
+  * content := text | number | boolean
   * number := long | double
   * text := "quoted" | 'quoted' | no-Whitespace
   * prop := 'a.b.c # jpath  or xpath

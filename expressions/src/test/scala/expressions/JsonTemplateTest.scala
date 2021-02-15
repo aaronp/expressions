@@ -16,7 +16,7 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
     "work" in {
       val template                                   = JsonTemplate.newCache[JsonMsg, Json]()
       val Success(script: Expression[JsonMsg, Json]) = template("""
-          |        val requests = record.value.hello.world.flatMap  { json =>
+          |        val requests = record.content.hello.world.flatMap  { json =>
           |          json.nested.map { i =>
           |            val url = s"${json("name").asString}-$i"
           |            json("name").asString match {

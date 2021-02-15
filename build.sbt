@@ -37,7 +37,7 @@ val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "cir
 
 val testDependencies = List(
   "junit"                  % "junit"      % "4.12"  % "test",
-  "org.scalatest"          %% "scalatest" % "3.2.2" % "test",
+  "org.scalatest"          %% "scalatest" % "3.2.6" % "test",
   "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
   "org.pegdown"            % "pegdown"    % "1.6.0" % "test"
 )
@@ -132,6 +132,7 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   buildInfoPackage := s"${repo}.build",
   test in assembly := {},
   assemblyMergeStrategy in assembly := {
+    case str if str.contains("simulacrum")        => MergeStrategy.first
     case str if str.contains("application.conf")  => MergeStrategy.discard
     case str if str.endsWith("module-info.class") => MergeStrategy.discard
     case x =>
@@ -337,9 +338,19 @@ assembleApp := {
   IO.copyDirectory(restResourceDir.resolve("www").toFile, wwwDir.toFile)
 
   import java.nio.file.StandardCopyOption._
-  java.nio.file.Files.copy(restAssembly.toPath, dockerTargetDir.resolve("app.jar"))
   wwwDir.resolve("js").mkDirs()
-  java.nio.file.Files.copy(fullOptPath, wwwDir.resolve("js/app.js"))
+
+  val appJar = dockerTargetDir.resolve("app.jar")
+  val appJs  = wwwDir.resolve("js/app.js")
+  List(appJar, appJs).foreach {
+    case file if file.exists() =>
+      sLog.value.info(s"Replacing $file")
+      file.delete()
+    case file => sLog.value.info(s"Creating $file")
+  }
+
+  java.nio.file.Files.copy(restAssembly.toPath, appJar)
+  java.nio.file.Files.copy(fullOptPath, appJs)
 
   dockerTargetDir
 }

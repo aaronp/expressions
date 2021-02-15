@@ -1,6 +1,7 @@
+include ./Makefile.vars
 
 buildDocker:
-	sbt assembleApp && docker build . -t expressions:latest
+	./build.sh
 
 buildFlutterUI:
 	cd ui && flutter build web

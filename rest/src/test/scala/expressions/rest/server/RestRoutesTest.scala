@@ -34,7 +34,7 @@ class RestRoutesTest extends BaseRouteTest {
         val script =
           """
             |
-            |        record.value.hello.world.flatMap  { json =>
+            |        record.content.hello.world.flatMap  { json =>
             |          json.nested.map { i =>
             |            val url = s"${json("name").asString}-$i"
             |            json("name").asString match {

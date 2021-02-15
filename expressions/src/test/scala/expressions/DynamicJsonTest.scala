@@ -32,10 +32,9 @@ class DynamicJsonTest extends AnyWordSpec with Matchers {
 
       val ints = for {
         world <- input.asDynamic.hello.world
-        x     <- world.asDynamic.nested.each
+        x     <- world.nested.each
       } yield x.asInt()
 
-//      val ints2 = input.asDynamic.hello.world.flatMap(_.nested).map(_.asInt())
       ints should contain only (1, 2, 3, 4, 5)
       input.asDynamic.hello.world.each.flatMap(_.nested.each.map(_.asInt())) should contain only (1, 2, 3, 4, 5)
     }
