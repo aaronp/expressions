@@ -1,6 +1,6 @@
 
 buildDocker:
-	sbt assembleApp && docker build . -t expressions:latest
+	sbt assembleApp && docker build . --build-arg GITSHA="$GITSHA" --build-arg TIMESTAMP="$TIMESTAMP" -t expressions:latest
 
 buildFlutterUI:
 	cd ui && flutter build web
