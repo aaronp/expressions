@@ -337,13 +337,19 @@ assembleApp := {
   IO.copyDirectory(restResourceDir.resolve("www").toFile, wwwDir.toFile)
 
   import java.nio.file.StandardCopyOption._
-  val appJar = dockerTargetDir.resolve("app.jar")
-  if (appJar.exists()) {
-    appJar.delete()
-  }
-  java.nio.file.Files.copy(restAssembly.toPath, appJar)
   wwwDir.resolve("js").mkDirs()
-  java.nio.file.Files.copy(fullOptPath, wwwDir.resolve("js/app.js"))
+
+  val appJar = dockerTargetDir.resolve("app.jar")
+  val appJs  = wwwDir.resolve("js/app.js")
+  List(appJar, appJs).foreach {
+    case file if file.exists() =>
+      sLog.value.info(s"Replacing $file")
+      file.delete()
+    case file => sLog.value.info(s"Creating $file")
+  }
+
+  java.nio.file.Files.copy(restAssembly.toPath, appJar)
+  java.nio.file.Files.copy(fullOptPath, appJs)
 
   dockerTargetDir
 }
