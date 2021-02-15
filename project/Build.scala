@@ -50,6 +50,7 @@ object Build {
   }
 
   def jvmClient = circe ++ Seq(
+    "com.softwaremill.sttp.client3" %% "core" % "3.1.0",
     "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
     scalaTest
   )

@@ -33,15 +33,6 @@ object RestClient {
         // automatically each time the `IO` is run.
         val r = asHttp4sReq(req)
 
-        //
-        // SERIOUSLY!
-        // no wonder people hate fucking scala.
-        //
-        // "How do I get the response back" ... "oh, we hide all that shit from you, unless you want o compile/fold a stream..."
-        //
-
-//        val dec = implicitly[EntityDecoder[IO, String]]
-//        val dec = implicitly[EntityDecoder[IO, String]]
         client.expect[String](r)
       }
     }

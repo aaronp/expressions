@@ -2,6 +2,8 @@
 
 LOGBACK_LOCATION=${LOGBACK_LOCATION:-/app/config/logback.xml}
 
+# we initialise JVM_ARGS against 'JVM' so the docker container can easily '-e JVM=...'
+JVM_ARGS="$JVM $JVM_ARGS"
 JVM_ARGS="$JVM_ARGS -server"
 JVM_ARGS="$JVM_ARGS -XX:MaxMetaspaceSize=256m"
 JVM_ARGS="$JVM_ARGS -Xmn100m"
