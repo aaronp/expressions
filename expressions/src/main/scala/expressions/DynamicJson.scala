@@ -4,7 +4,7 @@ import io.circe.Json
 import scala.language.dynamics
 
 /**
-  * [[RichJsonPath]] sucks because it needs an implicit Json value.
+  * [[RichJsonPath]] sucks because it needs an implicit Json content.
   */
 case class DynamicJson(value: Json) extends Dynamic {
 

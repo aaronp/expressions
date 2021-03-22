@@ -20,32 +20,37 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   final _codeFocusNode = FocusNode();
   final _codeTextController = TextEditingController();
+  final _mappingTestResultsController = TextEditingController();
 
   String _topic = "";
   String _offset = "";
   String _partition = "";
   String _key = "";
+  String _mappingCode = "";
 
   final _editorScrollController = ScrollController();
   static const DefaultCode = '''
   // The mapping code transforms a context into a collection of HttpRequests
-   
+  val StoreURL = s"http://localhost:8080/rest/store"
+  val url      = s"\$StoreURL/\${record.topic}/\${record.partition}/\${record.offset}"
+  val body = {
+    val enrichment = Json.obj(
+      "timestamp" -> System.currentTimeMillis().asJson,
+      "kafka-key" -> record.key.value
+    )
+    record.content.value.deepMerge(enrichment)
+  }
+
+  List(HttpRequest.post(url).withBody(body.noSpaces))
   ''';
 
-  @override
-  void dispose() {
-    super.dispose();
-    _fileNameController.dispose();
-    _codeTextController.dispose();
-    _codeFocusNode.dispose();
-    _editorScrollController.dispose();
-  }
 
   @override
   void initState() {
     super.initState();
     entry = this.widget.entry;
     _codeTextController.text = "Loading ${entry.filePath} ...";
+    _mappingTestResultsController.text = "";
 
     _fileNameController.text = entry.filePath;
     DiskClient.get(entry.filePath).then((content) {
@@ -59,6 +64,9 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     });
   }
 
+  void _onTestMapping() {
+
+  }
   @override
   Widget build(BuildContext context) {
     // final MappingEntry args = ModalRoute.of(context).settings.arguments;
@@ -80,6 +88,19 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   }
 
   void _saveMapping() {}
+
+  Widget testResults(BuildContext context) {
+    return Card(
+        color: Theme.of(context).colorScheme.background,
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: TextField(
+            maxLines: 120,
+            controller: _codeTextController,
+            decoration: InputDecoration.collapsed(hintText: DefaultCode),
+          ),
+        ));
+  }
 
   Widget codeEditor(BuildContext context) {
     return Card(
@@ -138,7 +159,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
           Flexible(
               child: FieldWidget("Key:", "The Message Key", "key",
                   (value) => _key = value, _ok)),
-          Flexible(child: Container())
+          Flexible(child: ElevatedButton(onPressed: _onTestMapping))
         ],
       ),
     );
@@ -159,6 +180,16 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         ),
       );
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _fileNameController.dispose();
+    _codeTextController.dispose();
+    _mappingTestResultsController.dispose();
+    _codeFocusNode.dispose();
+    _editorScrollController.dispose();
   }
 }
 

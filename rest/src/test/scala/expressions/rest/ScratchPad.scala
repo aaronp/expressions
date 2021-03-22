@@ -42,12 +42,11 @@ class ScratchPad extends AnyWordSpec with Matchers {
           val StoreURL = s"http://localhost:8080/rest/store"
           val url      = s"$StoreURL/${record.topic}/${record.partition}/${record.offset}"
           val body = {
-            val jason: Json = record.value.value
             val enrichment = Json.obj(
               "timestamp" -> System.currentTimeMillis().asJson,
               "kafka-key" -> record.key.value
             )
-            jason.deepMerge(enrichment)
+            record.content.value.deepMerge(enrichment)
           }
 
           val request = HttpRequest.post(url).withBody(body.noSpaces)

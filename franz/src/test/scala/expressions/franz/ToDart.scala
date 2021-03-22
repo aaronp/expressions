@@ -10,7 +10,8 @@ object ToDart {
   def main(a: Array[String]) = {
 
     Seq(
-      """case class MappingEntry(topic : String, filePath  :String)
+      """
+        |case class TransformResponse(result : String, messages : Option[String])
         |""".stripMargin
     ).map(asDart).foreach(println)
   }
@@ -18,7 +19,6 @@ object ToDart {
   case class Form(questions: List[Question])
   case class Question(text: String, values: List[Choice], kind: String, required: Boolean, weight: Double)
   case class Choice(text: String, score: Int)
-  //Valueslider, single, multiple, text
 
   implicit class Tap[A](val value: A) extends AnyVal {
     def tap(f: A => Unit): A = {

@@ -41,7 +41,7 @@ object JsonTemplate {
   }
 
   /**
-    * The resulting code is intended to work for a [[Context]] that has a [[DynamicJson]] as a message value.
+    * The resulting code is intended to work for a [[Context]] that has a [[DynamicJson]] as a message content.
     *
     * This allows scripts to work more fluidly w/ json messages in a scripting style, such as:
     * {{{

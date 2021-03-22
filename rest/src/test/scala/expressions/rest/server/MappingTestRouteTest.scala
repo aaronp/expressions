@@ -10,7 +10,7 @@ class MappingTestRouteTest extends BaseRouteTest {
 
   "POST /mapping/check" should {
     "return a configuration" in {
-      val script = """record.value.foo.value""".stripMargin
+      val script = """record.content.foo.content""".stripMargin
 
       val request = {
         val jason = json"""{ "foo" : "bar" }"""
