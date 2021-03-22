@@ -132,6 +132,7 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   buildInfoPackage := s"${repo}.build",
   test in assembly := {},
   assemblyMergeStrategy in assembly := {
+    case str if str.contains("simulacrum")        => MergeStrategy.first
     case str if str.contains("application.conf")  => MergeStrategy.discard
     case str if str.endsWith("module-info.class") => MergeStrategy.discard
     case x =>
