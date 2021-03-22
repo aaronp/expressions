@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:ui/verticalSplitView.dart';
 
@@ -64,6 +66,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     _codeTextController.text = "Loading ${entry.filePath} ...";
     _mappingTestResultsController.text = "";
 
+    _testInputController.text = TestInput;
     _fileNameController.text = entry.filePath;
     DiskClient.get(entry.filePath).then((content) {
       setState(() {
@@ -86,8 +89,11 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         _topic,
         _offset,
         _partition);
-    print(request.asJson);
-    MappingCheck.check(request);
+    MappingCheck.check(request).then((value) {
+      setState(() {
+        _mappingTestResultsController.text = jsonEncode(value.asJson).toString();
+      });
+    });
   }
 
   @override
@@ -101,7 +107,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
               child: Text("Mapping for topic: ${entry.topic}")),
           backgroundColor: Theme.of(context).colorScheme.background,
           actions: [
-            IconButton(onPressed: _saveMapping, icon: Icon(Icons.save))
+            IconButton(onPressed: _resetCode, icon: Icon(Icons.refresh_sharp)),
+            IconButton(onPressed: () => _saveMapping(context), icon: Icon(Icons.save))
           ]),
       body: VerticalSplitView(
           key: Key("split"),
@@ -110,7 +117,14 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     ));
   }
 
-  void _saveMapping() {}
+  void _saveMapping(BuildContext context) async {
+    await DiskClient.store(entry.filePath, _codeTextController.text);
+    Navigator.of(context).pop();
+  }
+
+  void _resetCode() {
+    _codeTextController.text = DefaultCode;
+  }
 
   Widget codeEditor(BuildContext context) {
     return Card(
@@ -188,28 +202,30 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
                 Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Container(
+                      constraints: BoxConstraints(maxHeight: 200),
                       decoration: BoxDecoration(color: Colors.purple),
-                      child: TextField(
-                        maxLines: 20,
-                        controller: _testInputController,
-                        decoration:
-                            InputDecoration.collapsed(hintText: TestInput),
-                      ),
+                      child: Scrollbar(
+                          isAlwaysShown: true,
+                          child: SingleChildScrollView(
+                              child: TextField(
+                            maxLines: 10,
+                            controller: _testInputController,
+                          ))),
                     )),
                 Flexible(
                     child: ElevatedButton(
                         child: Text("Test"), onPressed: _onTestMapping)),
                 Flexible(
                     child: Container(
-                      padding: const EdgeInsets.all(8.0),
-                      color: Theme.of(ctxt).colorScheme.background,
-                      child: TextField(
-                  maxLines: 20,
-                  controller: _mappingTestResultsController,
-                  decoration: InputDecoration.collapsed(
+                  padding: const EdgeInsets.all(8.0),
+                  color: Theme.of(ctxt).colorScheme.background,
+                  child: TextField(
+                    maxLines: 20,
+                    controller: _mappingTestResultsController,
+                    decoration: InputDecoration.collapsed(
                         hintText: "// test results go here"),
-                ),
-                    ))
+                  ),
+                ))
               ],
             ))),
       );
@@ -246,11 +262,14 @@ class FieldWidget extends StatefulWidget {
 class _FieldWidgetState extends State<FieldWidget> {
   final _focusNode = FocusNode();
 
-  // final _textController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    widget.onUpdate(widget.initialValue);
+  }
 
   @override
   void dispose() {
-    // _textController.dispose();
     _focusNode.dispose();
     super.dispose();
   }

@@ -1,11 +1,15 @@
 import 'package:rest_client/rest_client.dart' as rc;
 import 'http.dart';
+import 'dart:convert';
 
 class MappingCheck {
+  /**
+   * check (test) the given request mapping
+   */
   static Future<TransformResponse> check(TransformRequest request) async {
-    var httpRequest = rc.Request(method: rc.RequestMethod.post, url: '${Rest.HostPort}/rest/mapping/check', body: request.asJson.toString(), headers: Rest.HttpHeaders);
+    final checkJson = jsonEncode(request.asJson);
+    var httpRequest = rc.Request(method: rc.RequestMethod.post, url: '${Rest.HostPort}/rest/mapping/check', body: checkJson, headers: Rest.HttpHeaders);
     var response = await Rest.client.execute(request: httpRequest);
-
     return TransformResponse.fromJson(response.body);
   }
 }
@@ -63,19 +67,29 @@ class TransformResponse {
       this.messages
       );
 
-  String result;
+  List<String> result;
   String messages = null;
 
   Map<String, Object> get asJson {
-    return {
-      'result': result,
-      'messages': messages
-    };
+    if (result.length == 0) {
+      return {
+        'result': null,
+        'messages': messages
+      };
+    } else {
+      assert(result.length == 1);
+      return {
+        'result': result.first,
+        'messages': messages
+      };
+    }
   }
 
   static TransformResponse fromJson(Map<String, dynamic> json) {
+    final List<dynamic> list = json['result'];
+    final optionalResult = list.map((e) => e.toString()).toList();
     return TransformResponse(
-        json['result'],
+        optionalResult,
         json['messages']);
   }
 }

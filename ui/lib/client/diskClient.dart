@@ -35,4 +35,18 @@ class DiskClient {
       return "";
     }
   }
+
+  static Future<void> store(String path, String content) async {
+    try {
+      print("Client.store('$path', '$content')");
+      var response = await Rest.client.execute(
+        request: rc.Request(
+            method: RequestMethod.post, url: '${Rest.HostPort}/rest/store/$path', headers: Rest.HttpHeaders),
+      );
+      assert(response.statusCode == 200, "Store returned ${response.statusCode}");
+    } catch (e) {
+      print("Error storing '$path': >>$e<<");
+      return "";
+    }
+  }
 }

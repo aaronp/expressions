@@ -26,18 +26,14 @@ class ScratchPad extends AnyWordSpec with Matchers {
 
     "example" in {
       import expressions._
-      import expressions.implicits._
-      import AvroExpressions._
       import expressions.template.{Context, Message}
 
       (context: Context[Message[DynamicJson, DynamicJson]]) =>
-        {
+        val result = {
           import context._
-
           import expressions.client._
-
-          import io.circe.syntax._
           import io.circe.Json
+          import io.circe.syntax._
 
           val StoreURL = s"http://localhost:8080/rest/store"
           val url      = s"$StoreURL/${record.topic}/${record.partition}/${record.offset}"
@@ -52,6 +48,8 @@ class ScratchPad extends AnyWordSpec with Matchers {
           val request = HttpRequest.post(url).withBody(body.noSpaces)
           List(request)
         }
+
+        result.foreach(println)
     }
   }
 }
