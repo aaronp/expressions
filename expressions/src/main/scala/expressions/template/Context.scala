@@ -24,6 +24,13 @@ object Message {
   }
 }
 
+/**
+  * The context is passed to some black-box function which is intended to compute a result
+  * @param record
+  * @param env
+  * @param fs
+  * @tparam A
+  */
 case class Context[A](record: A, env: Env, fs: FileSystem) {
   def withEnv(first: (String, String), theRest: (String, String)*): Context[A] = withEnv((first +: theRest).toMap)
   def withEnv(newEnv: Map[String, String]): Context[A]                         = copy(env = Env(env.env ++ newEnv))

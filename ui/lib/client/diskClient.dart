@@ -33,7 +33,7 @@ class DiskClient {
       if (response.body == null) {
         return "";
       }
-      return response.body;
+      return response.body.toString();
     } catch (e) {
       print("Error getting '$path': >>$e<<");
       return "";

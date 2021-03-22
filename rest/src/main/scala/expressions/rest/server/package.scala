@@ -11,7 +11,6 @@ import scala.jdk.CollectionConverters._
 package object server {
 
   type Disk      = Has[Disk.Service]
-  type Analytics = Has[Analytics.Service]
   type Topic     = String
 
   type JsonMsg = Message[DynamicJson, DynamicJson]
