@@ -32,7 +32,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     // final MappingEntry args = ModalRoute.of(context).settings.arguments;
     return SafeArea(child: Scaffold(
         appBar: AppBar(
-            title: Text("Topic: ${entry.topic}"),
+            title: Align(alignment: Alignment.topLeft, child : Text("Mapping for topic: ${entry.topic}")),
             backgroundColor: Colors.grey[800],
             actions: [
             ]),

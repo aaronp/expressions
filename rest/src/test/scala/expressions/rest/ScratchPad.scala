@@ -24,9 +24,7 @@ class ScratchPad extends AnyWordSpec with Matchers {
       println(s"make deleteTopic topic=${listed}")
     }
 
-    "work" in {
-
-    }
+    "work" in {}
 
     "example" in {
       import expressions._

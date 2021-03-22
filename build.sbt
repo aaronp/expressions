@@ -37,7 +37,7 @@ val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "cir
 
 val testDependencies = List(
   "junit"                  % "junit"      % "4.12"  % "test",
-  "org.scalatest"          %% "scalatest" % "3.2.2" % "test",
+  "org.scalatest"          %% "scalatest" % "3.2.6" % "test",
   "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
   "org.pegdown"            % "pegdown"    % "1.6.0" % "test"
 )
