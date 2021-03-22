@@ -28,7 +28,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   int _offset = 0;
   int _partition = 0;
   String _key = "";
-  String _mappingCode = "";
 
   final _editorScrollController = ScrollController();
   static const DefaultCode = '''
@@ -46,6 +45,17 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   List(HttpRequest.post(url).withBody(body.noSpaces))
   ''';
 
+  static const TestInput = '''{
+    "input" : {
+      "flag" : true,
+      "array" : [1,2,3],
+      "text" : "testing",
+      "nested" : {
+        "deep" : false,
+        "pi" :  3.141592
+      }
+    }
+  }''';
   @override
   void initState() {
     super.initState();
@@ -107,9 +117,9 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         child: Padding(
           padding: EdgeInsets.all(8.0),
           child: TextField(
-            maxLines: 120,
-            controller: _codeTextController,
-            decoration: InputDecoration.collapsed(hintText: DefaultCode),
+            maxLines: 40,
+            controller: _mappingTestResultsController,
+            decoration: InputDecoration.collapsed(hintText: "// test results go here"),
           ),
         ));
   }
@@ -142,15 +152,21 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
    * The test widget
    */
   Widget testInput(BuildContext context) {
-    return Card(
-        margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Container(
-              constraints: BoxConstraints(maxHeight: 300, maxWidth: 400),
-              child: testInputsForm()),
-        ));
+    final size = MediaQuery.of(context).size;
+    // return Card(
+    //     margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
+    //     child: Padding(
+    //       padding: const EdgeInsets.all(16.0),
+    //       child: ,
+    //     ));
+    return Container(
+        constraints: BoxConstraints(
+            maxHeight: size.height * 0.80, maxWidth: size.width * 0.75),
+        child:
+        testInputsForm()
+    );
   }
+
 
   Form testInputsForm() {
     return Form(
@@ -169,12 +185,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
               child: FieldWidget("Partition:", "The Kafka Partition", "2",
                   (value) => _partition = int.parse(value), _isNumber)),
           Flexible(
-              child: FieldWidget("Key:", "The Message Key", "key",
-                  (value) => _key = value, _ok)),
-          Flexible(child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(child : Text("Test"), onPressed: _onTestMapping),
-          ))
+              child: FieldWidget("Key:", "The Message Key", "some-key",
+                  (value) => _key = value, _ok))
         ],
       ),
     );
@@ -185,15 +197,17 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       return SizedBox(
         width: constraints.maxWidth,
         height: constraints.maxHeight,
-        child: Column(
+        child: SingleChildScrollView(
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
                 "x: ${constraints.maxWidth}, maxH:${constraints.maxHeight}  minW:${constraints.minWidth} minH:${constraints.minHeight}"),
-            testInput(ctxt)
+            testInput(ctxt),
+            testResults(ctxt)
           ],
-        ),
+        )),
       );
     });
   }
@@ -242,19 +256,18 @@ class _FieldWidgetState extends State<FieldWidget> {
     return TextFormField(
       initialValue: widget.initialValue,
       focusNode: _focusNode,
-      // controller: _textController,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      cursorWidth: 4,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+      cursorWidth: 1,
       cursorColor: Colors.black87,
       decoration: InputDecoration(
           hintText: widget.hintText,
           labelText: widget.labelText,
           labelStyle:
-              const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
           hintStyle:
-              const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
           errorStyle:
-              const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           errorMaxLines: 2),
       onSaved: widget.onUpdate,
       validator: widget.validator,
