@@ -51,7 +51,8 @@ case class RestApp(settings: Settings) {
         .withHttpApp(httpRoutes)
         .serve
         .compile[Task, Task, cats.effect.ExitCode]
-        .drain.exitCode
+        .drain
+        .exitCode
     } yield exitCode
 }
 

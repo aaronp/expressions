@@ -2,6 +2,8 @@ import 'package:rest_client/rest_client.dart' as rc;
 import 'http.dart';
 import 'dart:convert';
 
+import 'httpRequest.dart';
+
 class MappingCheck {
   /**
    * check (test) the given request mapping
@@ -67,7 +69,7 @@ class TransformResponse {
       this.messages
       );
 
-  List<String> result;
+  List<HttpRequest> result;
   String messages = null;
 
   Map<String, Object> get asJson {
@@ -87,7 +89,7 @@ class TransformResponse {
 
   static TransformResponse fromJson(Map<String, dynamic> json) {
     final List<dynamic> list = json['result'];
-    final optionalResult = list.map((e) => e.toString()).toList();
+    final optionalResult = list.map((e) => HttpRequest.fromJson(e)).toList();
     return TransformResponse(
         optionalResult,
         json['messages']);

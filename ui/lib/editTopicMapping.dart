@@ -220,7 +220,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
                   padding: const EdgeInsets.all(8.0),
                   color: Theme.of(ctxt).colorScheme.background,
                   child: TextField(
-                    maxLines: 20,
+                    maxLines: 10,
                     controller: _mappingTestResultsController,
                     decoration: InputDecoration.collapsed(
                         hintText: "// test results go here"),

@@ -11,7 +11,7 @@ object ToDart {
 
     Seq(
       """
-        |case class TransformResponse(result : String, messages : Option[String])
+        |case class HttpRequest(method: String, url: String, headers: Map[String, String], body: String)
         |""".stripMargin
     ).map(asDart).foreach(println)
   }

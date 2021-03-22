@@ -19,7 +19,9 @@ case class DynamicJson(value: Json) extends Dynamic {
   def asDoubleOpt: Option[Double]   = value.asNumber.map(_.toDouble)
   def asDouble(default: Double = 0) = asDoubleOpt.getOrElse(default)
 
-  final def each: Vector[DynamicJson] = value.asArray.getOrElse(Vector.empty).map(DynamicJson.apply)
+  final def each: Vector[DynamicJson] = {
+    value.asArray.getOrElse(Vector.empty).map(DynamicJson.apply)
+  }
 
   final def selectDynamic(field: String): DynamicJson = apply(field)
 

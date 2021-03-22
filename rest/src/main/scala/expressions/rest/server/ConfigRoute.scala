@@ -46,7 +46,6 @@ object ConfigRoute {
     }
   }
 
-
   /** enumerate the config entries with their comments, origin, key, value
     * @param rootConfig
     * @return the default config

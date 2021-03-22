@@ -3,7 +3,6 @@ package expressions.rest.server
 import args4c.StringEntry
 import com.typesafe.config.Config
 
-
 /**
   * The parsed pieces from the typesafe config in a json-friendly data structure
   *
