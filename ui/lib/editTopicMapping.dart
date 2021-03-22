@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ui/verticalSplitView.dart';
 
 import 'client/diskClient.dart';
+import 'client/mappingCheck.dart';
 import 'client/mappingEntry.dart';
 
 class EditTopicMappingWidget extends StatefulWidget {
@@ -20,11 +21,12 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   final _codeFocusNode = FocusNode();
   final _codeTextController = TextEditingController();
+  final _testInputController = TextEditingController();
   final _mappingTestResultsController = TextEditingController();
 
   String _topic = "";
-  String _offset = "";
-  String _partition = "";
+  int _offset = 0;
+  int _partition = 0;
   String _key = "";
   String _mappingCode = "";
 
@@ -43,7 +45,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   List(HttpRequest.post(url).withBody(body.noSpaces))
   ''';
-
 
   @override
   void initState() {
@@ -65,8 +66,19 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   }
 
   void _onTestMapping() {
-
+    final request = TransformRequest(
+        _codeTextController.text,
+        _testInputController.text,
+        _key,
+        DateTime.now().millisecondsSinceEpoch,
+        Map(),
+        _topic,
+        _offset,
+        _partition);
+    print(request.asJson);
+    MappingCheck.check(request);
   }
+
   @override
   Widget build(BuildContext context) {
     // final MappingEntry args = ModalRoute.of(context).settings.arguments;
@@ -136,8 +148,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
           padding: const EdgeInsets.all(16.0),
           child: Container(
               constraints: BoxConstraints(maxHeight: 300, maxWidth: 400),
-              child : testInputsForm()
-          ),
+              child: testInputsForm()),
         ));
   }
 
@@ -145,6 +156,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     return Form(
       key: _formKey,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Flexible(
@@ -152,14 +164,17 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
                   (value) => _topic = value, _ok)),
           Flexible(
               child: FieldWidget("Offset:", "The Kafka Offset", "1",
-                  (value) => _offset = value, _isNumber)),
+                  (value) => _offset = int.parse(value), _isNumber)),
           Flexible(
               child: FieldWidget("Partition:", "The Kafka Partition", "2",
-                  (value) => _partition = value, _isNumber)),
+                  (value) => _partition = int.parse(value), _isNumber)),
           Flexible(
               child: FieldWidget("Key:", "The Message Key", "key",
                   (value) => _key = value, _ok)),
-          Flexible(child: ElevatedButton(onPressed: _onTestMapping))
+          Flexible(child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(child : Text("Test"), onPressed: _onTestMapping),
+          ))
         ],
       ),
     );
@@ -172,6 +187,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         height: constraints.maxHeight,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
                 "x: ${constraints.maxWidth}, maxH:${constraints.maxHeight}  minW:${constraints.minWidth} minH:${constraints.minHeight}"),
@@ -188,6 +204,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     _fileNameController.dispose();
     _codeTextController.dispose();
     _mappingTestResultsController.dispose();
+    _testInputController.dispose();
     _codeFocusNode.dispose();
     _editorScrollController.dispose();
   }
@@ -230,8 +247,8 @@ class _FieldWidgetState extends State<FieldWidget> {
       cursorWidth: 4,
       cursorColor: Colors.black87,
       decoration: InputDecoration(
-          hintText: widget.labelText,
-          labelText: widget.hintText,
+          hintText: widget.hintText,
+          labelText: widget.labelText,
           labelStyle:
               const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           hintStyle:
