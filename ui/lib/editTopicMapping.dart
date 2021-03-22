@@ -56,6 +56,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       }
     }
   }''';
+
   @override
   void initState() {
     super.initState();
@@ -111,19 +112,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   void _saveMapping() {}
 
-  Widget testResults(BuildContext context) {
-    return Card(
-        color: Theme.of(context).colorScheme.background,
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: TextField(
-            maxLines: 40,
-            controller: _mappingTestResultsController,
-            decoration: InputDecoration.collapsed(hintText: "// test results go here"),
-          ),
-        ));
-  }
-
   Widget codeEditor(BuildContext context) {
     return Card(
         color: Theme.of(context).colorScheme.background,
@@ -148,46 +136,30 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   String _ok(String text) => null;
 
-  /**
-   * The test widget
-   */
-  Widget testInput(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    // return Card(
-    //     margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
-    //     child: Padding(
-    //       padding: const EdgeInsets.all(16.0),
-    //       child: ,
-    //     ));
+  Widget testInputsForm() {
     return Container(
-        constraints: BoxConstraints(
-            maxHeight: size.height * 0.80, maxWidth: size.width * 0.75),
-        child:
-        testInputsForm()
-    );
-  }
-
-
-  Form testInputsForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Flexible(
-              child: FieldWidget("Topic:", "The Kafka Topic", "some-topic",
-                  (value) => _topic = value, _ok)),
-          Flexible(
-              child: FieldWidget("Offset:", "The Kafka Offset", "1",
-                  (value) => _offset = int.parse(value), _isNumber)),
-          Flexible(
-              child: FieldWidget("Partition:", "The Kafka Partition", "2",
-                  (value) => _partition = int.parse(value), _isNumber)),
-          Flexible(
-              child: FieldWidget("Key:", "The Message Key", "some-key",
-                  (value) => _key = value, _ok))
-        ],
+      constraints: BoxConstraints(maxHeight: 300),
+      decoration: BoxDecoration(color: Colors.blue),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Flexible(
+                child: FieldWidget("Topic:", "The Kafka Topic", "some-topic",
+                    (value) => _topic = value, _ok)),
+            Flexible(
+                child: FieldWidget("Offset:", "The Kafka Offset", "1",
+                    (value) => _offset = int.parse(value), _isNumber)),
+            Flexible(
+                child: FieldWidget("Partition:", "The Kafka Partition", "2",
+                    (value) => _partition = int.parse(value), _isNumber)),
+            Flexible(
+                child: FieldWidget("Key:", "The Message Key", "some-key",
+                    (value) => _key = value, _ok))
+          ],
+        ),
       ),
     );
   }
@@ -197,17 +169,49 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       return SizedBox(
         width: constraints.maxWidth,
         height: constraints.maxHeight,
-        child: SingleChildScrollView(
-            child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-                "x: ${constraints.maxWidth}, maxH:${constraints.maxHeight}  minW:${constraints.minWidth} minH:${constraints.minHeight}"),
-            testInput(ctxt),
-            testResults(ctxt)
-          ],
-        )),
+        child: Scrollbar(
+            isAlwaysShown: true,
+            child: SingleChildScrollView(
+                child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    "x: ${constraints.maxWidth}, maxH:${constraints.maxHeight}  minW:${constraints.minWidth} minH:${constraints.minHeight}"),
+                Flexible(child: testInputsForm()),
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                    child: Text("Test Input:"),
+                  ),
+                ),
+                Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Container(
+                      decoration: BoxDecoration(color: Colors.purple),
+                      child: TextField(
+                        maxLines: 20,
+                        controller: _testInputController,
+                        decoration:
+                            InputDecoration.collapsed(hintText: TestInput),
+                      ),
+                    )),
+                Flexible(
+                    child: ElevatedButton(
+                        child: Text("Test"), onPressed: _onTestMapping)),
+                Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.all(8.0),
+                      color: Theme.of(ctxt).colorScheme.background,
+                      child: TextField(
+                  maxLines: 20,
+                  controller: _mappingTestResultsController,
+                  decoration: InputDecoration.collapsed(
+                        hintText: "// test results go here"),
+                ),
+                    ))
+              ],
+            ))),
       );
     });
   }
