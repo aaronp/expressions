@@ -165,9 +165,7 @@ object Client {
 
   object proxy {
     def makeRequest(input: HttpRequest): Future[HttpResponse] = {
-//      Ajax(r.method.name, r.url, data = ByteBuffer.wrap(r.body), 0, headers = r.headers, false, "").map { resp =>
-//        HttpResponse(resp.status, resp.responseText)
-//      }
+
       val promise = Promise[HttpResponse]()
       Ajax.post(s"${restServerLocation}/proxy", input.asJson.noSpaces, headers = AppJson).onComplete {
         case Success(response: XMLHttpRequest) =>

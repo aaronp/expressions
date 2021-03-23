@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:html';
 
 import 'package:flutter/material.dart';
-import 'package:pretty_json/pretty_json.dart';
 import 'package:ui/client/httpRequest.dart';
+import 'package:ui/client/httpResponse.dart';
 import 'package:ui/verticalSplitView.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,6 +43,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   final _testInputScrollController = ScrollController();
   TransformResponse _testResult = null;
   bool _testInFlight = false;
+  Map<int, HttpResponse> _executeResponseByIndex = Map();
+  Map<int, bool> _executingRequestByIndex = Map();
 
   String _topic = "";
   int _offset = 0;
@@ -145,7 +147,9 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   void _saveMapping(BuildContext context) async {
     await DiskClient.store(entry.filePath, _codeTextController.text);
-    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
+    // Navigator.of(context).pop();
   }
 
   void _resetCode() {
@@ -186,7 +190,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   Widget testInputsForm() {
     return Container(
       constraints: BoxConstraints(maxHeight: 200),
-      // decoration: BoxDecoration(color: Colors.blue),
       child: Form(
         key: _formKey,
         child: Column(
@@ -237,14 +240,14 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
             padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Text("Test Input:",
                 style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w100)),
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
         Padding(
             padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Container(
               // constraints: BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(color: Colors.purple),
+              decoration: BoxDecoration(color: Colors.deepPurple),
               child: Scrollbar(
                   isAlwaysShown: true,
                   controller: _testInputScrollController,
@@ -281,41 +284,54 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         width: 400,
         height: 400,
         child: ListView.separated(
-            itemBuilder: (_, index) => httpResult(requests[index]),
+            itemBuilder: (_, index) => httpResultWidget(index, requests[index]),
             separatorBuilder: (_, index) => Divider(),
             itemCount: requests.length));
   }
 
-  Widget httpResult(HttpRequest request) {
-    String body = "";
-    try {
-      JsonEncoder encoder = new JsonEncoder.withIndent('  ');
-      final jason = jsonDecode(request.body);
-
-      print("jason:");
-      print(jason);
-      final fmt1 = encoder.convert(request.body);
-      final fmt = prettyJson(request.body, indent: 4);
-      print("Formatting:");
-      print(fmt);
-      body = fmt;
-    } catch (e) {
-      print("bang: " + e);
-      body = request.body.toString();
+  Widget httpResponseWidget(int index, HttpResponse response) {
+    if (_executingRequestByIndex[index] == true) {
+      return CircularProgressIndicator();
     }
+    final body = (response.body != null && response.body.isNotEmpty)
+        ? ": ${response.body}"
+        : "";
+    return Text("Response status ${response.statusCode} $body");
+  }
+
+  /**
+   * The widget (card) for a single http result
+   */
+  Widget httpResultWidget(int index, HttpRequest request) {
+    String body = request.body;
+    final executeButton = OutlinedButton.icon(
+        onPressed: () => _executeTestRequest(index, request),
+        icon: Icon(Icons.not_started_outlined),
+        label: Text("Execute"));
     return Container(
         decoration: BoxDecoration(shape: BoxShape.circle),
-        child: Container(
-            constraints: BoxConstraints(maxHeight: 100),
+        child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: 300,
+              maxWidth: 300,
+            ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 InkWell(
-                    child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text("${request.method} ${request.url}",
-                            style: const TextStyle(color: Colors.blue))),
+                    child: Text("${request.method} ${request.url}",
+                        style: const TextStyle(color: Colors.blue)),
                     onTap: () => launch(request.url)),
                 new Text(body),
+                _executingRequestByIndex.containsKey(index)
+                    ? Row(
+                        children: [
+                          httpResponseWidget(
+                              index, _executeResponseByIndex[index]),
+                          executeButton
+                        ],
+                      )
+                    : executeButton
               ],
             )));
   }
@@ -337,13 +353,25 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     final title = length == 1 ? "Result" : "Results";
     return Flexible(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Align(
-              alignment: Alignment.topLeft,
-              child: Text("${_testResult.result.length} $title",
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold))),
-        ));
+      padding: const EdgeInsets.all(8.0),
+      child: Align(
+          alignment: Alignment.topLeft,
+          child: Text("${_testResult.result.length} $title",
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+    ));
+  }
+
+  void _executeTestRequest(int index, HttpRequest request) async {
+    setState(() {
+      _executingRequestByIndex[index] = true;
+      _executeResponseByIndex[index] = null;
+    });
+    final HttpResponse result = await request.exec();
+    setState(() {
+      _executingRequestByIndex[index] = false;
+      _executeResponseByIndex[index] = result;
+    });
   }
 }
 
