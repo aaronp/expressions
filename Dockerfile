@@ -13,8 +13,13 @@ LABEL org.opencontainers.image.version="${GITSHA}"
 LABEL commit="${GITSHA}"
 
 COPY target/docker/app.jar /app/lib/app.jar
-COPY target/docker/www /app/www
-COPY target/docker/ui /app/ui
+
+# this is for the 'basic' UI:
+#COPY target/docker/www /app/www
+#COPY target/docker/ui /app/ui
+
+COPY ui/build/web /app/www
+
 ADD build/boot.sh /app/boot.sh
 ADD build/userConf.conf /app/data/userConf.conf
 ADD build/application.conf /app/config/application.conf
@@ -26,7 +31,9 @@ RUN echo " +--------------------------------------------------------------------
     echo " +------------------------------------------------------------------------" >> /build.txt
 
 RUN mkdir /app/logs && \
-    mkdir /app/jfr
+    mkdir /app/jfr && \
+    mkdir /app/www/css && \
+    mkdir /app/www/js
 
 EXPOSE 8080/tcp
 EXPOSE 9090/tcp

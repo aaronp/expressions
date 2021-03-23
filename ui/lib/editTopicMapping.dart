@@ -10,7 +10,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'client/diskClient.dart';
 import 'client/mappingCheck.dart';
 import 'client/mappingEntry.dart';
+import 'fieldWidget.dart';
 
+/**
+ * Debug entry point
+ */
 void main() {
   runApp(MaterialApp(
       title: 'Franz',
@@ -41,7 +45,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   final _editorScrollController = ScrollController();
   final _testScrollController = ScrollController();
   final _testInputScrollController = ScrollController();
-  TransformResponse _testResult = null;
+  TransformResponse _testResult;
   bool _testInFlight = false;
   Map<int, HttpResponse> _executeResponseByIndex = Map();
   Map<int, bool> _executingRequestByIndex = Map();
@@ -99,29 +103,33 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   }
 
   void _onTestMapping(BuildContext ctxt) {
-    try {
-      final testJason = jsonDecode(_testInputController.text);
-      final request = TransformRequest(
-          _codeTextController.text,
-          testJason,
-          _key,
-          DateTime.now().millisecondsSinceEpoch,
-          Map(),
-          _topic,
-          _offset,
-          _partition);
-      setState(() {
-        _testInFlight = true;
-      });
-      MappingCheck.check(request).then((TransformResponse value) {
+    if (_formKey.currentState.validate()) {
+      _formKey.currentState.save();
+      try {
+        final testJason = jsonDecode(_testInputController.text);
+        final request = TransformRequest(
+            _codeTextController.text,
+            testJason,
+            _key,
+            DateTime.now().millisecondsSinceEpoch,
+            Map(),
+            _topic,
+            _offset,
+            _partition);
         setState(() {
-          _testInFlight = false;
-          _testResult = value;
+          _testInFlight = true;
         });
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(ctxt)
-          .showSnackBar(SnackBar(content: Text("Invalid json: ${e}")));
+        MappingCheck.check(request).then((TransformResponse value) {
+          setState(() {
+            _testInFlight = false;
+            _testResult = value;
+          });
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(ctxt)
+            .showSnackBar(SnackBar(content: Text("Invalid json: ${e}")));
+      }
+
     }
   }
 
@@ -162,7 +170,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       Padding(
         padding: const EdgeInsets.all(8.0),
         child: FieldWidget("Mapped Topic:", "The Kafka Topic", entry.topic,
-            (newTopic) => entry.topic = newTopic, _ok),
+            (newTopic) => entry.topic = newTopic, textOk),
       ),
       Padding(
         padding: const EdgeInsets.all(8.0),
@@ -186,17 +194,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     ]);
   }
 
-  String _isNumber(String x) {
-    try {
-      int.parse(x);
-      return null;
-    } catch (e) {
-      return "${x} is not a number";
-    }
-  }
-
-  String _ok(String text) => null;
-
   Widget testInputsForm() {
     return Container(
       constraints: BoxConstraints(maxHeight: 200),
@@ -208,16 +205,16 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
           children: <Widget>[
             Flexible(
                 child: FieldWidget("Topic:", "The Kafka Topic", "some-topic",
-                    (value) => _topic = value, _ok)),
+                    (value) => _topic = value, textOk)),
             Flexible(
                 child: FieldWidget("Offset:", "The Kafka Offset", "1",
-                    (value) => _offset = int.parse(value), _isNumber)),
+                    (value) => _offset = int.parse(value), validateNumber)),
             Flexible(
                 child: FieldWidget("Partition:", "The Kafka Partition", "2",
-                    (value) => _partition = int.parse(value), _isNumber)),
+                    (value) => _partition = int.parse(value), validateNumber)),
             Flexible(
                 child: FieldWidget("Key:", "The Message Key", "some-key",
-                    (value) => _key = value, _ok))
+                    (value) => _key = value, textOk))
           ],
         ),
       ),
@@ -385,56 +382,3 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   }
 }
 
-typedef OnUpdate = void Function(String value);
-
-class FieldWidget extends StatefulWidget {
-  @override
-  _FieldWidgetState createState() => _FieldWidgetState();
-  String labelText;
-  String hintText;
-  String initialValue;
-  OnUpdate onUpdate;
-  FormFieldValidator<String> validator;
-
-  FieldWidget(this.labelText, this.hintText, this.initialValue, this.onUpdate,
-      this.validator);
-}
-
-class _FieldWidgetState extends State<FieldWidget> {
-  final _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    widget.onUpdate(widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: widget.initialValue,
-      focusNode: _focusNode,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
-      cursorWidth: 1,
-      cursorColor: Colors.black87,
-      decoration: InputDecoration(
-          hintText: widget.hintText,
-          labelText: widget.labelText,
-          labelStyle:
-              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-          hintStyle:
-              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-          errorStyle:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          errorMaxLines: 2),
-      onSaved: widget.onUpdate,
-      validator: widget.validator,
-    );
-  }
-}

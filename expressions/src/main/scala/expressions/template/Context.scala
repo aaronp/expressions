@@ -26,9 +26,6 @@ object Message {
 
 /**
   * The context is passed to some black-box function which is intended to compute a result
-  * @param record
-  * @param env
-  * @param fs
   * @tparam A
   */
 case class Context[A](record: A, env: Env, fs: FileSystem) {

@@ -13,39 +13,39 @@ import expressions.franz.SupportedType
   * @param keyType the key type
   * @param valueType the value type
   */
-case class ConfigSummary(topic: String,
-                         brokers: List[String],
-                         mappings: Map[String, List[String]],
-                         keyType: String,
-                         valueType: String) {
+case class ConfigSummary(topic: String, brokers: List[String], mappings: Map[String, List[String]], keyType: String, valueType: String) {
 
   /** @return the configsummary as a config
     */
-  def asConfig() : Config = {
-    val namespaceSetting : String = {
-      SupportedType.avroNamespaceForName(keyType)
-        .orElse(SupportedType.avroNamespaceForName(valueType)).fold("") { ns => s"""namespace : "$ns" """
-      }
+  def asConfig(): Config = {
+    val namespaceSetting: String = {
+      SupportedType
+        .avroNamespaceForName(keyType)
+        .orElse(SupportedType.avroNamespaceForName(valueType))
+        .fold("") { ns =>
+          s"""namespace : "$ns" """
+        }
     }
 
     val mappingsEntries = mappings.map {
-      case (k, path) => s""" "$k" : ${path.mkString("\"","/","\"")} """
+      case (k, path) => s""" "$k" : ${path.mkString("\"", "/", "\"")} """
     }
 
-    val keySerde = SupportedType.serdeForName(keyType).fold(keyType -> keyType)( serde =>
-      serde.serializer().getClass.getName ->
-      serde.deserializer().getClass.getName
-    )
-    val valueSerde = SupportedType.serdeForName(valueType).fold(valueType -> valueType)( serde =>
-      serde.serializer().getClass.getName ->
-      serde.deserializer().getClass.getName
-    )
+    val keySerde = SupportedType
+      .serdeForName(keyType)
+      .fold(keyType -> keyType)(serde =>
+        serde.serializer().getClass.getName ->
+          serde.deserializer().getClass.getName)
+    val valueSerde = SupportedType
+      .serdeForName(valueType)
+      .fold(valueType -> valueType)(serde =>
+        serde.serializer().getClass.getName ->
+          serde.deserializer().getClass.getName)
 
-    ConfigFactory.parseString(
-      s"""app.franz : {
+    ConfigFactory.parseString(s"""app.franz : {
         |  kafka : {
         |    topic : "${topic}"
-        |    brokers : ${brokers.mkString("\"",",","\"")}
+        |    brokers : ${brokers.mkString("\"", ",", "\"")}
         |
         |    key.serializer: "${keySerde._1}"
         |    key.deserializer: "${keySerde._2}"
@@ -55,7 +55,7 @@ case class ConfigSummary(topic: String,
         |  }
         | $namespaceSetting
         |  mapping {
-        |${mappingsEntries.mkString("    ","\n    ","")}
+        |${mappingsEntries.mkString("    ", "\n    ", "")}
         |  }
         |}""".stripMargin)
   }

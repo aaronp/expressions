@@ -12,6 +12,9 @@ import zio.blocking.Blocking
 
 import scala.jdk.CollectionConverters._
 
+/**
+  * Handles the publishing of [[PostRecord]] records to Kafka
+  */
 object KafkaPublishService extends StrictLogging {
 
   def apply(config: FranzConfig): PostRecord => URIO[Blocking, Int] = { record =>
@@ -21,7 +24,7 @@ object KafkaPublishService extends StrictLogging {
   def execPost(post: PostRecord, config: FranzConfig): URIO[Any with Blocking, Int] = {
     val newConfig: FranzConfig = config.withOverrides(ConfigFactory.parseString(post.config))
     import args4c.implicits._
-    logger.info(s"Exec w/ ns '${newConfig.namespace}': \n${newConfig.franzConfig.summary()}\n")
+    logger.info(s"Exec w/ namespace '${newConfig.namespace}': \n${newConfig.franzConfig.summary()}\n")
 
     val kt           = newConfig.keyType
     val vt           = newConfig.valueType
@@ -29,7 +32,10 @@ object KafkaPublishService extends StrictLogging {
     ForeachPublisher.publishAll(newConfig, kafkaRecords).map(_.size).orDie
   }
 
-  def asRecords[K, V](keyType: SupportedType[K], valueType: SupportedType[V], post: PostRecord, newConfig: FranzConfig) = {
+  /**
+    * convert the PostRecord into a collection of ProducerRecords
+    */
+  def asRecords[K, V](keyType: SupportedType[K], valueType: SupportedType[V], post: PostRecord, newConfig: FranzConfig): Seq[ProducerRecord[K, V]] = {
     post.repeat match {
       case n if n > 1 =>
         (0 until n).map(post.replacePlaceholder).map(asRecord(keyType, valueType, _, newConfig))
@@ -50,6 +56,8 @@ object KafkaPublishService extends StrictLogging {
     } else {
       valueType.of(post.data)
     }
+
+    logger.debug(s"Publishing $key of type ${value.getClass} to $topic:\n$value")
 
     post.partition match {
       case Some(p) => new ProducerRecord[K, V](topic, p, key, value, kafkaHeaders.asJava)

@@ -18,7 +18,7 @@ case class PostRecord(data: Json,
                       partition: Option[Int] = None,
                       topicOverride: Option[String] = None,
                       headers: Map[String, String] = Map.empty) {
-  def isTombstone                                = data == null || data.asString.exists(_.trim.isEmpty) || data.isNull
+  def isTombstone: Boolean = data == null || data.asString.exists(_.trim.isEmpty) || data.isNull
   def replacePlaceholder(value: Int): PostRecord = replacePlaceholder(value.toString)
   def replacePlaceholder(value: String): PostRecord = {
     copy(

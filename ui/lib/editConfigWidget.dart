@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ui/client/configClient.dart';
 
 class EditConfigWidget extends StatefulWidget {
-  EditConfigWidget(this.configuration);
+  EditConfigWidget(this.fileName, this.configuration);
 
+  String fileName;
   String configuration;
 
   @override
@@ -11,7 +12,6 @@ class EditConfigWidget extends StatefulWidget {
 }
 
 class _EditConfigWidgetState extends State<EditConfigWidget> {
-  final _formKey = GlobalKey<FormState>();
   final _configTextController = TextEditingController();
   var _formattedLines = <String>[];
 

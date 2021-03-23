@@ -24,18 +24,18 @@ sealed trait SupportedType[A] {
 }
 object SupportedType {
 
-  def serdeForName(typ : String): Option[Serde[_]] = {
+  def serdeForName(typ: String): Option[Serde[_]] = {
     forName(typ).map {
-      case STRING => new StringSerde
-      case LONG => new LongSerde
-      case BYTE_ARRAY => new ByteArraySerde
+      case STRING            => new StringSerde
+      case LONG              => new LongSerde
+      case BYTE_ARRAY        => new ByteArraySerde
       case RECORD(namespace) => new GenericAvroSerde()
     }
   }
-  def avroNamespaceForName(typ : String): Option[String] = {
+  def avroNamespaceForName(typ: String): Option[String] = {
     forName(typ).flatMap {
       case RECORD(namespace) => Some(namespace)
-      case _ => None
+      case _                 => None
     }
   }
   def forName(name: String): Option[SupportedType[_]] = {
@@ -106,10 +106,11 @@ object SupportedType {
       */
     def apply(config: FranzConfig): CommittableRecord[_, _] => CommittableRecord[Json, Json] = {
       val extractor = extractJson(config)
-      (record: CommittableRecord[_, _]) => {
-        val (key, value) = extractor(record)
-        withKeyValue(record, key, value)
-      }
+      (record: CommittableRecord[_, _]) =>
+        {
+          val (key, value) = extractor(record)
+          withKeyValue(record, key, value)
+        }
     }
 
     /**
@@ -119,11 +120,12 @@ object SupportedType {
     def extractJson(config: FranzConfig) = {
       val jsonKey   = keyToJson(config.keyType)
       val jsonValue = valueToJson(config.valueType)
-      (record: CommittableRecord[_, _]) => {
-        val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
-        val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
-        (key, value)
-      }
+      (record: CommittableRecord[_, _]) =>
+        {
+          val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
+          val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
+          (key, value)
+        }
     }
 
     def asError(record: CommittableRecord[_, _], err: Throwable, value: Any, supportedType: SupportedType[_]) = {
@@ -159,7 +161,8 @@ object SupportedType {
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.key)
         }
       case BYTE_ARRAY =>
-        (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.key)
+        (record: CommittableRecord[_, _]) =>
+          JsonSupport.anyToJson.format(record.key)
     }
     def valueToJson(supportedType: SupportedType[_]): CommittableRecord[_, _] => Json = supportedType match {
       case STRING =>
@@ -178,7 +181,8 @@ object SupportedType {
           case record: CommittableRecord[_, _]             => JsonSupport.anyToJson.format(record.value)
         }
       case BYTE_ARRAY =>
-        (record: CommittableRecord[_, _]) => JsonSupport.anyToJson.format(record.value)
+        (record: CommittableRecord[_, _]) =>
+          JsonSupport.anyToJson.format(record.value)
     }
   }
 }

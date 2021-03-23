@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui/editTopicMapping.dart';
 import 'package:ui/configPage.dart';
-import 'package:ui/publishPage.dart';
 import 'package:ui/runningPage.dart';
 
 import 'routeNames.dart';
@@ -23,7 +21,7 @@ class FranzApp extends StatelessWidget {
     initialRoute: RouteNames.config,
     routes: {
       RouteNames.config: (context) => ConfigPage(),
-      RouteNames.publish: (context) => PublishPage(),
+      // RouteNames.publish: (context) => PublishPage("",""),
       RouteNames.running: (context) => RunningPage(),
     }
     );

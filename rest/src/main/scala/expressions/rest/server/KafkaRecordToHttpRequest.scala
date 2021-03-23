@@ -73,14 +73,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
   }
 
   /**
-    *
     * @param input an application ID and configuration pair
-    * @param templateCache
-    * @param statsMap
-    * @param clock
-    * @tparam K
-    * @tparam V
-    * @return
     */
   def apply(input: SinkInput,
             templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]],
@@ -98,9 +91,6 @@ object KafkaRecordToHttpRequest extends StrictLogging {
         logger.info(s"⚡ SENDING ⚡ ${r}")
         Task.fromFuture(_ => RestClient.send(r)).map(r -> _)
       }
-      //        // TODO - this is where we might inject some retry/recovery logic (rather than just 'orDie')
-      //        .repeatUntilM(r => UIO(r.isRight).delay(1.second))
-      //        .provide(clock)
     }
 
     asRequests(config, templateCache).map { requestsForRecord => (record: CommittableRecord[_, _]) =>
