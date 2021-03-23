@@ -24,8 +24,9 @@ dependencies:
   flutter:
     sdk: flutter
   rest_client: ^1.0.6+1
-
+  url_launcher: ^6.0.2
   dropdown_formfield: ^0.1.3
+  pretty_json:
 
 dev_dependencies:
   flutter_test:

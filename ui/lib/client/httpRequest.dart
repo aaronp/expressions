@@ -9,7 +9,7 @@ class HttpRequest {
   String method;
   String url;
   Map<String, String> headers;
-  String body;
+  dynamic body;
 
   Map<String, Object> get asJson {
     return {

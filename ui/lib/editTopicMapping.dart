@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:html';
 
 import 'package:flutter/material.dart';
+import 'package:pretty_json/pretty_json.dart';
 import 'package:ui/client/httpRequest.dart';
 import 'package:ui/verticalSplitView.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'client/diskClient.dart';
 import 'client/mappingCheck.dart';
@@ -38,6 +40,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   final _testInputController = TextEditingController();
   final _editorScrollController = ScrollController();
   final _testScrollController = ScrollController();
+  final _testInputScrollController = ScrollController();
   TransformResponse _testResult = null;
   bool _testInFlight = false;
 
@@ -101,20 +104,21 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
           _key,
           DateTime.now().millisecondsSinceEpoch,
           Map(),
-    _topic,
-    _offset,
-    _partition);
-    setState(() {
-    _testInFlight = true;
-    });
-    MappingCheck.check(request).then((TransformResponse value) {
-    setState(() {
-    _testInFlight = false;
-    _testResult = value;
-    });
-    });
-    } catch(e) {
-      ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(content : Text("Invalid json: ${e}")));
+          _topic,
+          _offset,
+          _partition);
+      setState(() {
+        _testInFlight = true;
+      });
+      MappingCheck.check(request).then((TransformResponse value) {
+        setState(() {
+          _testInFlight = false;
+          _testResult = value;
+        });
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(ctxt)
+          .showSnackBar(SnackBar(content: Text("Invalid json: ${e}")));
     }
   }
 
@@ -243,6 +247,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
               decoration: BoxDecoration(color: Colors.purple),
               child: Scrollbar(
                   isAlwaysShown: true,
+                  controller: _testInputScrollController,
                   child: SingleChildScrollView(
                       child: TextField(
                     maxLines: 10,
@@ -256,6 +261,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
                     ? CircularProgressIndicator()
                     : Text("Test Mapping"),
                 onPressed: () => _onTestMapping(context))),
+        if (_testResult != null) _resultsTitle(_testResult.result.length),
         if (_testResult != null) testResults(_testResult)
       ],
     );
@@ -271,22 +277,47 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       return Text("Result : ${response.asJson.toString()}");
     }
 
-    return httpResult(requests.first);
-
     return SizedBox(
-      width: 400,
-      height: 400,
-      child: SingleChildScrollView(
-          child: ListView.separated(
-              itemBuilder: (_, index) => httpResult(requests[index]),
-              separatorBuilder: (_, index) => Divider(),
-              itemCount: requests.length)),
-    );
+        width: 400,
+        height: 400,
+        child: ListView.separated(
+            itemBuilder: (_, index) => httpResult(requests[index]),
+            separatorBuilder: (_, index) => Divider(),
+            itemCount: requests.length));
   }
 
   Widget httpResult(HttpRequest request) {
-    print("Creating httpResult for ${request.asJson}");
-    return Text("${request.asJson}");
+    String body = "";
+    try {
+      JsonEncoder encoder = new JsonEncoder.withIndent('  ');
+      final jason = jsonDecode(request.body);
+
+      print("jason:");
+      print(jason);
+      final fmt1 = encoder.convert(request.body);
+      final fmt = prettyJson(request.body, indent: 4);
+      print("Formatting:");
+      print(fmt);
+      body = fmt;
+    } catch (e) {
+      print("bang: " + e);
+      body = request.body.toString();
+    }
+    return Container(
+        decoration: BoxDecoration(shape: BoxShape.circle),
+        child: Container(
+            constraints: BoxConstraints(maxHeight: 100),
+            child: Column(
+              children: [
+                InkWell(
+                    child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Text("${request.method} ${request.url}",
+                            style: const TextStyle(color: Colors.blue))),
+                    onTap: () => launch(request.url)),
+                new Text(body),
+              ],
+            )));
   }
 
   @override
@@ -297,7 +328,22 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     _testInputController.dispose();
     _editorScrollController.dispose();
     _testInputController.dispose();
+    _testScrollController.dispose();
+    _testInputScrollController.dispose();
     _codeFocusNode.dispose();
+  }
+
+  Widget _resultsTitle(int length) {
+    final title = length == 1 ? "Result" : "Results";
+    return Flexible(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Align(
+              alignment: Alignment.topLeft,
+              child: Text("${_testResult.result.length} $title",
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold))),
+        ));
   }
 }
 
