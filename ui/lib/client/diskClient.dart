@@ -14,7 +14,8 @@ class DiskClient {
     return body;
   }
   static Future<String> getLastSaved() {
-    return get("metadata/lastSaved");
+    // return get("metadata/lastSaved");
+    return Future.value("");
   }
 
   static Future<String> get(String path) async {

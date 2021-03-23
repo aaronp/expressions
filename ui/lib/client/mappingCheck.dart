@@ -1,7 +1,8 @@
-import 'package:rest_client/rest_client.dart' as rc;
-import 'http.dart';
 import 'dart:convert';
 
+import 'package:rest_client/rest_client.dart' as rc;
+
+import 'http.dart';
 import 'httpRequest.dart';
 
 class MappingCheck {
@@ -10,29 +11,25 @@ class MappingCheck {
    */
   static Future<TransformResponse> check(TransformRequest request) async {
     final checkJson = jsonEncode(request.asJson);
-    var httpRequest = rc.Request(method: rc.RequestMethod.post, url: '${Rest.HostPort}/rest/mapping/check', body: checkJson, headers: Rest.HttpHeaders);
+    var httpRequest = rc.Request(
+        method: rc.RequestMethod.post,
+        url: '${Rest.HostPort}/rest/mapping/check',
+        body: checkJson,
+        headers: Rest.HttpHeaders);
     var response = await Rest.client.execute(request: httpRequest);
     return TransformResponse.fromJson(response.body);
   }
 }
 
 class TransformRequest {
-  TransformRequest(
-      this.script,
-      this.input,
-      this.key,
-      this.timestamp,
-      this.headers,
-      this.topic,
-      this.offset,
-      this.partition
-      );
+  TransformRequest(this.script, this.input, this.key, this.timestamp,
+      this.headers, this.topic, this.offset, this.partition);
 
   String script;
-  String input;
+  dynamic input;
   String key;
   int timestamp;
-  Map<String,String> headers;
+  Map<String, String> headers;
   String topic;
   int offset;
   int partition;
@@ -64,34 +61,26 @@ class TransformRequest {
 }
 
 class TransformResponse {
-  TransformResponse(
-      this.result,
-      this.messages
-      );
+  TransformResponse(this.result, this.messages);
 
-  List<HttpRequest> result;
+  List<dynamic> result;
   String messages = null;
+
+  List<HttpRequest> asRequests() => result.map((json) {
+        return HttpRequest.fromJson(json);
+      }).toList();
 
   Map<String, Object> get asJson {
     if (result.length == 0) {
-      return {
-        'result': null,
-        'messages': messages
-      };
+      return {'result': null, 'messages': messages};
     } else {
       assert(result.length == 1);
-      return {
-        'result': result.first,
-        'messages': messages
-      };
+      return {'result': result.first, 'messages': messages};
     }
   }
 
   static TransformResponse fromJson(Map<String, dynamic> json) {
     final List<dynamic> list = json['result'];
-    final optionalResult = list.map((e) => HttpRequest.fromJson(e)).toList();
-    return TransformResponse(
-        optionalResult,
-        json['messages']);
+    return TransformResponse(list, json['messages']);
   }
 }

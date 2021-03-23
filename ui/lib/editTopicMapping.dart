@@ -1,11 +1,23 @@
 import 'dart:convert';
+import 'dart:html';
 
 import 'package:flutter/material.dart';
+import 'package:ui/client/httpRequest.dart';
 import 'package:ui/verticalSplitView.dart';
 
 import 'client/diskClient.dart';
 import 'client/mappingCheck.dart';
 import 'client/mappingEntry.dart';
+
+void main() {
+  runApp(MaterialApp(
+      title: 'Franz',
+      theme: ThemeData(brightness: Brightness.light),
+      darkTheme: ThemeData(brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
+      debugShowCheckedModeBanner: false,
+      home: EditTopicMappingWidget(MappingEntry("foo", "bar"))));
+}
 
 class EditTopicMappingWidget extends StatefulWidget {
   EditTopicMappingWidget(this.entry);
@@ -24,14 +36,16 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   final _codeFocusNode = FocusNode();
   final _codeTextController = TextEditingController();
   final _testInputController = TextEditingController();
-  final _mappingTestResultsController = TextEditingController();
+  final _editorScrollController = ScrollController();
+  final _testScrollController = ScrollController();
+  TransformResponse _testResult = null;
+  bool _testInFlight = false;
 
   String _topic = "";
   int _offset = 0;
   int _partition = 0;
   String _key = "";
 
-  final _editorScrollController = ScrollController();
   static const DefaultCode = '''
   // The mapping code transforms a context into a collection of HttpRequests
   val StoreURL = s"http://localhost:8080/rest/store"
@@ -64,7 +78,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     super.initState();
     entry = this.widget.entry;
     _codeTextController.text = "Loading ${entry.filePath} ...";
-    _mappingTestResultsController.text = "";
 
     _testInputController.text = TestInput;
     _fileNameController.text = entry.filePath;
@@ -79,21 +92,30 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     });
   }
 
-  void _onTestMapping() {
-    final request = TransformRequest(
-        _codeTextController.text,
-        _testInputController.text,
-        _key,
-        DateTime.now().millisecondsSinceEpoch,
-        Map(),
-        _topic,
-        _offset,
-        _partition);
-    MappingCheck.check(request).then((value) {
-      setState(() {
-        _mappingTestResultsController.text = jsonEncode(value.asJson).toString();
-      });
+  void _onTestMapping(BuildContext ctxt) {
+    try {
+      final testJason = jsonDecode(_testInputController.text);
+      final request = TransformRequest(
+          _codeTextController.text,
+          testJason,
+          _key,
+          DateTime.now().millisecondsSinceEpoch,
+          Map(),
+    _topic,
+    _offset,
+    _partition);
+    setState(() {
+    _testInFlight = true;
     });
+    MappingCheck.check(request).then((TransformResponse value) {
+    setState(() {
+    _testInFlight = false;
+    _testResult = value;
+    });
+    });
+    } catch(e) {
+      ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(content : Text("Invalid json: ${e}")));
+    }
   }
 
   @override
@@ -103,12 +125,12 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         child: Scaffold(
       appBar: AppBar(
           title: Align(
-              alignment: Alignment.topLeft,
-              child: Text("Mapping for topic: ${entry.topic}")),
+              alignment: Alignment.topLeft, child: Text("Edit Topic Mapping")),
           backgroundColor: Theme.of(context).colorScheme.background,
           actions: [
             IconButton(onPressed: _resetCode, icon: Icon(Icons.refresh_sharp)),
-            IconButton(onPressed: () => _saveMapping(context), icon: Icon(Icons.save))
+            IconButton(
+                onPressed: () => _saveMapping(context), icon: Icon(Icons.save))
           ]),
       body: VerticalSplitView(
           key: Key("split"),
@@ -127,16 +149,23 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   }
 
   Widget codeEditor(BuildContext context) {
-    return Card(
-        color: Theme.of(context).colorScheme.background,
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: TextField(
-            maxLines: 120,
-            controller: _codeTextController,
-            decoration: InputDecoration.collapsed(hintText: DefaultCode),
-          ),
-        ));
+    return sizedColumn(_editorScrollController, [
+      Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: FieldWidget("Mapped Topic:", "The Kafka Topic", entry.topic,
+            (newTopic) => entry.topic = newTopic, _ok),
+      ),
+      Card(
+          color: Theme.of(context).colorScheme.background,
+          child: Padding(
+            padding: EdgeInsets.all(8.0),
+            child: TextField(
+              maxLines: 60,
+              controller: _codeTextController,
+              decoration: InputDecoration.collapsed(hintText: DefaultCode),
+            ),
+          ))
+    ]);
   }
 
   String _isNumber(String x) {
@@ -152,8 +181,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   Widget testInputsForm() {
     return Container(
-      constraints: BoxConstraints(maxHeight: 300),
-      decoration: BoxDecoration(color: Colors.blue),
+      constraints: BoxConstraints(maxHeight: 200),
+      // decoration: BoxDecoration(color: Colors.blue),
       child: Form(
         key: _formKey,
         child: Column(
@@ -178,58 +207,86 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     );
   }
 
-  Widget testingWidget(BuildContext context) {
+  Widget sizedColumn(ScrollController sc, List<Widget> contents) {
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
       return SizedBox(
-        width: constraints.maxWidth,
-        height: constraints.maxHeight,
-        child: Scrollbar(
-            isAlwaysShown: true,
-            child: SingleChildScrollView(
-                child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                    "x: ${constraints.maxWidth}, maxH:${constraints.maxHeight}  minW:${constraints.minWidth} minH:${constraints.minHeight}"),
-                Flexible(child: testInputsForm()),
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                    child: Text("Test Input:"),
-                  ),
-                ),
-                Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Container(
-                      constraints: BoxConstraints(maxHeight: 200),
-                      decoration: BoxDecoration(color: Colors.purple),
-                      child: Scrollbar(
-                          isAlwaysShown: true,
-                          child: SingleChildScrollView(
-                              child: TextField(
-                            maxLines: 10,
-                            controller: _testInputController,
-                          ))),
-                    )),
-                Flexible(
-                    child: ElevatedButton(
-                        child: Text("Test"), onPressed: _onTestMapping)),
-                Flexible(
-                    child: Container(
-                  padding: const EdgeInsets.all(8.0),
-                  color: Theme.of(ctxt).colorScheme.background,
-                  child: TextField(
-                    maxLines: 10,
-                    controller: _mappingTestResultsController,
-                    decoration: InputDecoration.collapsed(
-                        hintText: "// test results go here"),
-                  ),
-                ))
-              ],
-            ))),
-      );
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: Scrollbar(
+              isAlwaysShown: true,
+              controller: sc,
+              child: SingleChildScrollView(
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: contents))));
     });
+  }
+
+  Widget testingWidget(BuildContext context) {
+    return sizedColumn(
+      _testScrollController,
+      [
+        Flexible(child: testInputsForm()),
+        Flexible(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+            child: Text("Test Input:",
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w100)),
+          ),
+        ),
+        Padding(
+            padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
+            child: Container(
+              // constraints: BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(color: Colors.purple),
+              child: Scrollbar(
+                  isAlwaysShown: true,
+                  child: SingleChildScrollView(
+                      child: TextField(
+                    maxLines: 10,
+                    controller: _testInputController,
+                  ))),
+            )),
+        Flexible(
+            child: OutlinedButton.icon(
+                icon: Icon(Icons.bug_report),
+                label: _testInFlight
+                    ? CircularProgressIndicator()
+                    : Text("Test Mapping"),
+                onPressed: () => _onTestMapping(context))),
+        if (_testResult != null) testResults(_testResult)
+      ],
+    );
+  }
+
+  Widget testResults(TransformResponse response) {
+    if (response.messages != null && response.messages.isNotEmpty) {
+      return Text("Error : ${response.messages}");
+    }
+
+    final List<HttpRequest> requests = response.asRequests();
+    if (requests.isEmpty || requests.length != response.result.length) {
+      return Text("Result : ${response.asJson.toString()}");
+    }
+
+    return httpResult(requests.first);
+
+    return SizedBox(
+      width: 400,
+      height: 400,
+      child: SingleChildScrollView(
+          child: ListView.separated(
+              itemBuilder: (_, index) => httpResult(requests[index]),
+              separatorBuilder: (_, index) => Divider(),
+              itemCount: requests.length)),
+    );
+  }
+
+  Widget httpResult(HttpRequest request) {
+    print("Creating httpResult for ${request.asJson}");
+    return Text("${request.asJson}");
   }
 
   @override
@@ -237,10 +294,10 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     super.dispose();
     _fileNameController.dispose();
     _codeTextController.dispose();
-    _mappingTestResultsController.dispose();
+    _testInputController.dispose();
+    _editorScrollController.dispose();
     _testInputController.dispose();
     _codeFocusNode.dispose();
-    _editorScrollController.dispose();
   }
 }
 
@@ -279,16 +336,16 @@ class _FieldWidgetState extends State<FieldWidget> {
     return TextFormField(
       initialValue: widget.initialValue,
       focusNode: _focusNode,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
       cursorWidth: 1,
       cursorColor: Colors.black87,
       decoration: InputDecoration(
           hintText: widget.hintText,
           labelText: widget.labelText,
           labelStyle:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
           hintStyle:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
           errorStyle:
               const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           errorMaxLines: 2),

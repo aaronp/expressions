@@ -36,11 +36,11 @@ object DiskRoute {
   def getRoute(service: Disk.Service): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case GET -> "store" /: "get" /: theRest =>
+        println(s"Getting ${theRest}")
         service.read(theRest.toList).map {
           case Some(value) => Response[Task](Status.Ok).withEntity[String](value)
           case None        =>
-//
-            //            Response[Task](Status.Gone)
+            println(s"${theRest} Missing, returning nowt")
             Response[Task](Status.Ok).withEntity[String]("")
         }
     }

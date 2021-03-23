@@ -21,10 +21,13 @@ class HttpRequest {
   }
 
   static HttpRequest fromJson(Map<String, dynamic> json) {
+    print("parsing http response from  ${json.runtimeType} >>$json<<");
+    //json['headers']
+    final headers = Map();
     return HttpRequest(
         json['method'],
         json['url'],
-        json['headers'],
+        Map(),
         json['body']);
   }
 }
