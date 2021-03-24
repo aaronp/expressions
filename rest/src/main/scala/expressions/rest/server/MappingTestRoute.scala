@@ -1,7 +1,7 @@
 package expressions.rest.server
 
 import com.typesafe.scalalogging.StrictLogging
-import expressions.JsonTemplate.Expression
+import expressions.CodeTemplate.Expression
 import expressions.client.{TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
 import expressions.{Cache, DynamicJson}

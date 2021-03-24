@@ -11,11 +11,11 @@ abstract class BaseFranzTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   implicit val rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
-  def zenv = rt.environment
+  def zenv: zio.ZEnv = rt.environment
 
   def testTimeout: Duration = 30.seconds
 
-  def shortTimeoutJava = 200.millis
+  def shortTimeoutJava: Duration = 200.millis
 
   implicit def asRichZIO[A](zio: => ZIO[_root_.zio.ZEnv, Any, A])(implicit rt: _root_.zio.Runtime[_root_.zio.ZEnv]) = new {
     def value(): A = rt.unsafeRun(zio.timeout(testTimeout)).getOrElse(sys.error("Test timeout"))

@@ -21,31 +21,38 @@ object FranzConfig {
 
   def apply(conf: String, theRest: String*): FranzConfig = new FranzConfig(asConfig(conf, theRest: _*))
 
-  def fromRootConfig(rootConfig: Config = ConfigFactory.load()) = FranzConfig(rootConfig.getConfig("app.franz"))
+  def fromRootConfig(rootConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig(rootConfig.getConfig("app.franz"))
 
   def stringKeyAvroValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
-    keyConf[StringDeserializer, StringSerializer]
-      .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer])
+    keyConf[StringDeserializer, StringSerializer]()
+      .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer]())
       .withFallback(rootFallbackConfig)
   }
   def stringKeyStringValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
-    keyConf[StringDeserializer, StringSerializer]
-      .withFallback(valueConf[StringDeserializer, StringSerializer])
+    keyConf[StringDeserializer, StringSerializer]()
+      .withFallback(valueConf[StringDeserializer, StringSerializer]())
       .withFallback(rootFallbackConfig)
   }
   def avroKeyValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
-    keyConf[KafkaAvroDeserializer, KafkaAvroSerializer]
-      .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer])
+    keyConf[KafkaAvroDeserializer, KafkaAvroSerializer]()
+      .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer]())
       .withFallback(rootFallbackConfig)
   }
 
-  def keyConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag]   = serdeConf[D, S]("key")
-  def valueConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag] = serdeConf[D, S]("value")
+  def keyConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag]() = {
+    serdeConf[D, S]("key")
+  }
+
+  def valueConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag]() = {
+    serdeConf[D, S](s"value")
+  }
   private def serdeConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag](`type`: String) = {
     ConfigFactory.parseString(
-      s"""app.franz.kafka {
-         |  ${`type`}.deserializer : "${implicitly[ClassTag[D]].runtimeClass.getName}"
-         |  ${`type`}.serializer : "${implicitly[ClassTag[S]].runtimeClass.getName}"
+      s"""app.franz {
+         |  consumer.${`type`}.deserializer : "${implicitly[ClassTag[D]].runtimeClass.getName}"
+         |  consumer.${`type`}.serializer : "${implicitly[ClassTag[S]].runtimeClass.getName}" 
+         |  producer.${`type`}.deserializer : "${implicitly[ClassTag[D]].runtimeClass.getName}"
+         |  producer.${`type`}.serializer : "${implicitly[ClassTag[S]].runtimeClass.getName}"
          |}""".stripMargin,
       ConfigParseOptions.defaults.setOriginDescription("FranzConfig (programmatic)")
     )
@@ -59,8 +66,8 @@ object FranzConfig {
   private val counter    = AlphaCounter.from(System.currentTimeMillis())
   private def nextRand() = counter.next()
 }
-final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
 
+final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
   override def toString: String = {
     import args4c.implicits._
     franzConfig
@@ -85,11 +92,16 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     copy(franzConfig = newFranzConfig.franzConfig.withFallback(franzConfig).resolve())
   }
 
-  val kafkaConfig = franzConfig.getConfig("kafka")
+  val consumerConfig = franzConfig.getConfig("consumer")
+  val producerConfig = franzConfig.getConfig("producer")
 
   private lazy val randomTopic = s"topic${rand()}"
   private lazy val randomGroup = s"group${rand()}"
-  val topic = kafkaConfig.getString("topic") match {
+  val topic = consumerConfig.getString("topic") match {
+    case "<random>" => randomTopic
+    case topic      => topic
+  }
+  val producerTopic = producerConfig.getString("topic") match {
     case "<random>" => randomTopic
     case topic      => topic
   }
@@ -98,8 +110,8 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     case topic if topic.contains(",") => Subscription.Topics(topic.split(",", -1).toSet)
     case topic                        => Subscription.topics(topic)
   }
-  val blockOnCommits = franzConfig.getBoolean("kafka.blockOnCommits")
-  val concurrency = franzConfig.getInt("kafka.concurrency") match {
+  val blockOnCommits = consumerConfig.getBoolean("blockOnCommits")
+  val concurrency = consumerConfig.getInt("concurrency") match {
     case n if n <= 0 => java.lang.Runtime.getRuntime.availableProcessors()
     case n           => n
   }
@@ -113,39 +125,55 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   }
 
   lazy val consumerSettings: ConsumerSettings = {
-    val offset = kafkaConfig.getString("offset") match {
+    val offset = consumerConfig.getString("offset") match {
       case "earliest" => OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest)
       case "latest"   => OffsetRetrieval.Auto(AutoOffsetStrategy.Latest)
       case specific =>
         sys.error(s"Bad kafka.offset: only earliest/latest currently supported: $specific")
     }
 
-    ConsumerSettings(kafkaConfig.asList("brokers"))
-      .withProperties(asJavaMap(kafkaConfig).asScala.toSeq: _*)
-      .withGroupId(groupId(kafkaConfig))
+    ConsumerSettings(consumerConfig.asList("bootstrap.servers"))
+      .withProperties(asJavaMap(consumerConfig).asScala.toSeq: _*)
+      .withGroupId(groupId(consumerConfig))
       .withOffsetRetrieval(offset)
   }
 
   def producerSettings: ProducerSettings = {
-    ProducerSettings(kafkaConfig.asList("brokers"))
-      .withProperties(asJavaMap(kafkaConfig).asScala.toSeq: _*)
+    ProducerSettings(producerConfig.asList("bootstrap.servers"))
+      .withProperties(asJavaMap(producerConfig).asScala.toSeq: _*)
   }
 
-  def keyType: SupportedType[_]  = typeOf(kafkaConfig.getConfig("key"))
-  def keySerde[K]: Serde[Any, K] = serdeFor[K](kafkaConfig.getConfig("key"))
+  def consumerKeyType: SupportedType[_]  = keyType(consumerConfig.getConfig("key"))
+  def consumerKeySerde[K]: Serde[Any, K] = keySerde[K]()
 
-  def valueType: SupportedType[_] = typeOf(kafkaConfig.getConfig("value"))
-  def valueSerde[V]               = serdeFor[V](kafkaConfig.getConfig("value"))
+  def consumerValueType: SupportedType[_]  = valueType(consumerConfig.getConfig("value"))
+  def consumerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
 
-  def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = producer[K, V](keySerde[K], valueSerde[V])
+  def producerKeyType: SupportedType[_]  = keyType(producerConfig.getConfig("key"))
+  def producerKeySerde[K]: Serde[Any, K] = keySerde[K]()
+
+  def producerValueType: SupportedType[_]  = valueType(producerConfig.getConfig("value"))
+  def producerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
+
+  def keyType(keyConfig: Config = consumerConfig.getConfig("key")): SupportedType[_]  = typeOf(keyConfig)
+  def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Serde[Any, K] = serdeFor[K](keyConfig)
+
+  def valueType(valueConfig: Config = consumerConfig.getConfig("value")): SupportedType[_]  = typeOf(valueConfig)
+  def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Serde[Any, V] = serdeFor[V](valueConfig)
+
+  def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
+    val k = keySerde[K](producerConfig.getConfig("key"))
+    val v = valueSerde[V](producerConfig.getConfig("value"))
+    producer[K, V](k, v)
+  }
 
   def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
     Producer.make(producerSettings, keySerde, valueSerde)
   }
 
   lazy val schemaRegistryClient: SchemaRegistryClient = {
-    val baseUrls            = kafkaConfig.asList("schema.registry.url").asJava
-    val identityMapCapacity = kafkaConfig.getInt("identityMapCapacity")
+    val baseUrls            = consumerConfig.asList("schema.registry.url").asJava
+    val identityMapCapacity = consumerConfig.getInt("identityMapCapacity")
     new CachedSchemaRegistryClient(baseUrls, identityMapCapacity)
   }
 
@@ -180,15 +208,17 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
       case "long" | "longs"     => SupportedType.LONG
       case "bytes"              => SupportedType.BYTE_ARRAY
       case "avro"               => SupportedType.RECORD(namespace)
+      case s"avro:$ns"          => SupportedType.RECORD(ns)
       case _ =>
         instantiate[Any](serializerName) match {
-          case _: StringSerializer                                   => SupportedType.STRING
-          case _: ByteArraySerializer                                => SupportedType.BYTE_ARRAY
-          case _: ByteBufferSerializer                               => SupportedType.BYTE_ARRAY
-          case _: LongSerializer                                     => SupportedType.LONG
-          case _: ByteArraySerializer                                => SupportedType.BYTE_ARRAY
-          case _: io.confluent.kafka.serializers.KafkaAvroSerializer => SupportedType.RECORD(namespace)
-          case other                                                 => sys.error(s"Couldn't determine supported type from serializer '$other'")
+          case _: StringSerializer                                             => SupportedType.STRING
+          case _: ByteArraySerializer                                          => SupportedType.BYTE_ARRAY
+          case _: ByteBufferSerializer                                         => SupportedType.BYTE_ARRAY
+          case _: LongSerializer                                               => SupportedType.LONG
+          case _: ByteArraySerializer                                          => SupportedType.BYTE_ARRAY
+          case _: io.confluent.kafka.serializers.KafkaAvroSerializer           => SupportedType.RECORD(namespace)
+          case _: io.confluent.kafka.streams.serdes.avro.GenericAvroSerializer => SupportedType.RECORD(namespace)
+          case other                                                           => sys.error(s"Couldn't determine supported type from serializer '$other'")
         }
     }
   }

@@ -1,4 +1,4 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.StrictLogging
@@ -9,7 +9,6 @@ import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
 import zio.URIO
 import zio.blocking.Blocking
-
 import scala.jdk.CollectionConverters._
 
 /**
@@ -26,8 +25,8 @@ object KafkaPublishService extends StrictLogging {
     import args4c.implicits._
     logger.info(s"Exec w/ namespace '${newConfig.namespace}': \n${newConfig.franzConfig.summary()}\n")
 
-    val kt           = newConfig.keyType
-    val vt           = newConfig.valueType
+    val kt           = newConfig.consumerKeyType
+    val vt           = newConfig.consumerValueType
     val kafkaRecords = asRecords(kt, vt, post, newConfig)
     ForeachPublisher.publishAll(newConfig, kafkaRecords).map(_.size).orDie
   }

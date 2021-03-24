@@ -21,7 +21,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
            |  arr : "{{ record.content.values.each.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
            |  const : "some content"
            |}
-           |x : "ASDF{{ record.content.foo.asString }}"
+           |x : "{{ record.content.foo.asString }}"
           |""".stripMargin
 
       val Some(response) = underTest(post("config/check", TransformRequest(script, jason, Json.fromString("schlussel")).asJson.noSpaces)).value.value()

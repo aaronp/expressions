@@ -4,6 +4,8 @@ import cats.effect.{ConcurrentEffect, ExitCode, IO, IOApp}
 import org.http4s.client.Client
 import org.http4s.{Header, Headers, Uri}
 
+import scala.concurrent.Future
+
 object RestClient {
 
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -46,47 +48,15 @@ object RestClient {
     * @param request
     * @return
     */
-  def send(request: HttpRequest) = {
-    val io = Inst(request).attempt.map {
+  def send(request: HttpRequest): Future[HttpResponse] = {
+    sendIO(request).unsafeToFuture()
+  }
+
+  def sendIO(request: HttpRequest): IO[HttpResponse] = {
+    Inst(request).attempt.map {
       case Left(err)   => HttpResponse(500, err.toString)
       case Right(body) => HttpResponse(200, body)
     }
-    io.unsafeToFuture()
   }
-//
-//  def asSttpRequest(request: HttpRequest): RequestT[Identity, Either[String, String], Any] = {
-//    import HttpMethod._
-//
-//    val reqUrl = uri"${request.url}"
-//
-//    val r: Request[Either[String, String], Any] = request.method match {
-//      case GET     => basicRequest.get(reqUrl)
-//      case POST    => basicRequest.post(reqUrl)
-//      case PUT     => basicRequest.put(reqUrl)
-//      case DELETE  => basicRequest.delete(reqUrl)
-//      case HEAD    => basicRequest.head(reqUrl)
-//      case OPTIONS => basicRequest.options(reqUrl)
-//    }
-//
-//    val withBody = if (request.body.isEmpty) r else r.body(request.body)
-//
-//    request.headers.foldLeft(withBody) {
-//      case (next, (k, v)) => next.header(k, v)
-//    }
-//  }
-//
-//  def asTry(response: Identity[Response[Either[String, String]]]): Try[Json] = {
-//    if (!response.code.isSuccess) {
-//      Failure(
-//        new Exception(
-//          s"Status code was ${response.code} : ${response.statusText}\n${response.body}"
-//        )
-//      )
-//    } else {
-//      response.body match {
-//        case Left(err)    => Failure(new Exception(s"Error: $err"))
-//        case Right(value) => io.circe.parser.parse(value).toTry
-//      }
-//    }
-//  }
+
 }

@@ -118,12 +118,12 @@ object SupportedType {
       * @return a function which extracts the json from the given record
       */
     def extractJson(config: FranzConfig) = {
-      val jsonKey   = keyToJson(config.keyType)
-      val jsonValue = valueToJson(config.valueType)
+      val jsonKey   = keyToJson(config.keyType())
+      val jsonValue = valueToJson(config.valueType())
       (record: CommittableRecord[_, _]) =>
         {
-          val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType)).get
-          val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType)).get
+          val key   = Try(jsonKey(record)).recover(e => asError(record, e, record.key, config.keyType())).get
+          val value = Try(jsonValue(record)).recover(e => asError(record, e, record.value, config.valueType())).get
           (key, value)
         }
     }

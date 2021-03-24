@@ -1,12 +1,13 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import expressions.JsonTemplate.Expression
+import expressions.CodeTemplate.Expression
 import expressions.client.kafka.ConsumerStats
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.{FranzConfig, KafkaRecord, SupportedType}
-import expressions.rest.server.KafkaSink.{RunningSinkId, SinkInput}
+import expressions.rest.server.kafka.KafkaSink.{RunningSinkId, SinkInput}
+import expressions.rest.server.{Disk, JsonMsg, MappingConfig, Stats, Topic}
 import expressions.template.{Context, Message}
 import expressions.{Cache, DynamicJson}
 import io.circe.syntax.EncoderOps
@@ -30,56 +31,15 @@ object KafkaRecordToHttpRequest extends StrictLogging {
 
   import eie.io._
 
-  sealed trait KafkaErr extends Exception {
-    def fail: Task[Nothing] = {
-      Task.fail(this)
-    }
-    def widen: KafkaErr = {
-      logger.error(s"SINK ERROR: ${this}")
-      this
-    }
-  }
-  object KafkaErr {
-
-    def conversionError(record: CommittableRecord[_, _], exp: Throwable)                                   = ConvertToJsonError(record, exp).widen
-    def compileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exp: Throwable) = CompileExpressionError(record, context, exp).widen
-    def expressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, Seq[HttpRequest]], exp: Throwable) =
-      ExpressionError(record, context, expr, exp).widen
-    def restError(record: CommittableRecord[_, _], failed: Seq[(HttpRequest, HttpResponse)]) =
-      RestError(record, failed).widen
-
-    def coords(r: CommittableRecord[_, _]) = s"{${r.record.topic()}:${r.partition}/${r.offset.offset}@${r.key}}"
-
-    case class ConvertToJsonError(record: CommittableRecord[_, _], exception: Throwable)
-        extends Exception(s"Couldn't do json conversion for ${coords(record)}: ${exception.getMessage}", exception)
-        with KafkaErr
-    case class CompileExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], exception: Throwable)
-        extends Exception(s"Couldn't create an expression for ${coords(record)}: ${exception.getMessage}\nWithContext:\n$context", exception)
-        with KafkaErr
-    case class ExpressionError(record: CommittableRecord[_, _], context: Context[JsonMsg], expr: Expression[JsonMsg, Seq[HttpRequest]], exception: Throwable)
-        extends Exception(s"Couldn't execute expression $expr for ${coords(record)}: ${exception.getMessage}\nWithContext:\n$context", exception)
-        with KafkaErr
-    case class RestError(record: CommittableRecord[_, _], failed: Seq[(HttpRequest, HttpResponse)])
-        extends Exception(s"Not all rest results returned successfully: ${failed}")
-        with KafkaErr
-
-    def validate(record: CommittableRecord[_, _], results: Seq[(HttpRequest, HttpResponse)]): ZIO[Any, Throwable, Unit] = {
-      if (results.map(_._2.statusCode).forall(_ == 200)) {
-        ZIO.unit
-      } else {
-        restError(record, results).fail
-      }
-    }
-  }
-
   /**
+    * Given a SinkInput (an identifier and a configuration),
     * @param input an application ID and configuration pair
     */
   def apply(input: SinkInput,
             templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]],
             statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
             clock: Clock): ZIO[Console, Throwable, CommittableRecord[_, _] => Task[Unit]] = {
-    val (id, config: Config) = input
+    val (jobId, config: Config) = input
 
     /**
       * TODO - set some recovery here - e.g. retry forever w/ exponential backoff
@@ -104,11 +64,11 @@ object KafkaRecordToHttpRequest extends StrictLogging {
       writeToRestEndpoint.either.flatMap { either =>
         clock.get.instant.map(_.toEpochMilli).flatMap { nowEpoch =>
           val update = statsMap.update { byId =>
-            val newStats = byId.get(id) match {
-              case None         => Stats.createStats(id, record, either.toTry, nowEpoch)
+            val newStats = byId.get(jobId) match {
+              case None         => Stats.createStats(jobId, record, either.toTry, nowEpoch)
               case Some(before) => Stats.updateStats(before, record, either.toTry, nowEpoch)
             }
-            byId.updated(id, newStats)
+            byId.updated(jobId, newStats)
           }
           update.unit
         }
@@ -140,8 +100,6 @@ object KafkaRecordToHttpRequest extends StrictLogging {
       } yield requests
     }
   }
-
-  def dataDir(rootConfig: Config): Path = rootConfig.getString("app.data").asPath
 
   /**
     *
@@ -184,4 +142,6 @@ object KafkaRecordToHttpRequest extends StrictLogging {
       _             <- disk.write(pathToMapping, script)
     } yield ()
   }
+
+  def dataDir(rootConfig: Config): Path = rootConfig.getString("app.data").asPath
 }

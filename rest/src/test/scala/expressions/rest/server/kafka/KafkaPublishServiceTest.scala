@@ -1,8 +1,8 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import expressions.client.kafka.PostRecord
 import expressions.franz.{ForEachStream, FranzConfig}
-import io.circe.Json
+import expressions.rest.server.BaseRouteTest
 import io.circe.literal.JsonStringContext
 import org.apache.avro.generic.GenericRecord
 import zio.Ref
@@ -45,7 +45,7 @@ class KafkaPublishServiceTest extends BaseRouteTest {
 
   private def publishRecords(config: FranzConfig) = {
     val recordData = json"""{ "doesnt" : "matter"  }"""
-    val testRecord = PostRecord(recordData, key = json"""{ "testkey" : "theKey" }""", repeat = 10, config = s"app.franz.kafka.topic=${config.topic}")
+    val testRecord = PostRecord(recordData, key = json"""{ "testkey" : "theKey" }""", repeat = 10, topicOverride = Option(config.topic))
 
     val testCase = for {
       posted      <- KafkaPublishService(config)(testRecord)

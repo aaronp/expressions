@@ -22,16 +22,16 @@ class ForEachStreamTest extends BaseFranzTest {
       .setHeaders(new util.HashMap[CharSequence, CharSequence]())
       .build()
 
-  "ForEachStream encoding" ignore {
+  "ForEachStream encoding" should {
 
     "be able to read records sent w/ different encodings" in {
 
       //
       // Publish "mixed" records to the same topic
       //
-      val topic1 = s"foo${UUID.randomUUID()}"
-      val topic2 = s"bar${UUID.randomUUID()}"
-      val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.kafka.topic=${topic1}")
+      val topic1 = s"foreachstreamtest1-${UUID.randomUUID()}"
+      val topic2 = s"foreachstreamtest2-${UUID.randomUUID()}"
+      val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.consumer.topic=$topic1,$topic2")
       val chunk = Chunk(
         new ProducerRecord[String, GenericRecord](topic1, "foo", avroRecord(1)),
         new ProducerRecord[String, GenericRecord](topic2, "bar", avroRecord(2))
@@ -103,15 +103,16 @@ class ForEachStreamTest extends BaseFranzTest {
     "read data from multiple topics" in {
       val topic1 = s"foo${UUID.randomUUID()}"
       val topic2 = s"bar${UUID.randomUUID()}"
-      val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.kafka.topic=${topic1},${topic2}")
+      val config = FranzConfig.stringKeyAvroValueConfig().withOverrides(s"app.franz.consumer.topic=${topic1},${topic2}")
       val chunk = Chunk(
         new ProducerRecord[String, GenericRecord](topic1, "foo", avroRecord(1)),
         new ProducerRecord[String, GenericRecord](topic2, "bar", avroRecord(2))
       )
 
       val testCase = for {
-        counter <- Ref.make(List.empty[CommittableRecord[String, GenericRecord]])
-        _       <- config.producer[String, GenericRecord].use(_.produceChunk(chunk))
+        counter  <- Ref.make(List.empty[CommittableRecord[String, GenericRecord]])
+        producer = config.producer[String, GenericRecord]
+        _        <- producer.use(_.produceChunk(chunk))
         stream: ZStream[zio.ZEnv, Throwable, Any] = ForEachStream[String, GenericRecord](config) { d8a =>
           counter.update(d8a +: _)
         }

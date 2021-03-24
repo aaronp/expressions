@@ -1,14 +1,14 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
-import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory}
-import io.circe.syntax.EncoderOps
-import org.http4s.circe.CirceEntityCodec._
-import zio.interop.catz._
+import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.{Task, UIO}
-import RestRoutes.taskDsl._
-import expressions.client.kafka.{ConsumerStats, StartedConsumer}
+import expressions.rest.server.RestRoutes.taskDsl._
+import zio.interop.catz._
+import org.http4s.circe.CirceEntityCodec._
+import cats.implicits._
+import io.circe.syntax.EncoderOps
 
 object KafkaRoute {
 

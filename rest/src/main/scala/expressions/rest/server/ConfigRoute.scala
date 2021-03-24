@@ -1,6 +1,5 @@
 package expressions.rest.server
 
-import args4c.StringEntry
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.franz.FranzConfig
@@ -51,7 +50,6 @@ object ConfigRoute {
     * @return the default config
     */
   def listEntries(rootConfig: Config): HttpRoutes[Task] = {
-    import args4c.implicits._
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "entries" =>
         for {
@@ -68,7 +66,6 @@ object ConfigRoute {
   }
 
   def formatJson(rootConfig: Config): HttpRoutes[Task] = {
-    import args4c.implicits._
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "format" =>
         for {
@@ -91,7 +88,15 @@ object ConfigRoute {
           config   <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
           mappings = MappingConfig(config).mappings.toMap
           fc       = FranzConfig.fromRootConfig(config)
-          summary  = ConfigSummary(topic = fc.topic, brokers = fc.consumerSettings.bootstrapServers, mappings, fc.keyType.name, fc.valueType.name)
+          summary = ConfigSummary(
+            topic = fc.topic,
+            brokers = fc.consumerSettings.bootstrapServers,
+            mappings,
+            fc.consumerKeyType.name,
+            fc.consumerValueType.name,
+            fc.producerKeyType.name,
+            fc.producerValueType.name
+          )
         } yield Response[Task](Status.Ok).withEntity(summary)
     }
   }

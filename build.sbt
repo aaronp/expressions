@@ -14,12 +14,7 @@ organization := s"com.github.${username}"
 scalaVersion := defaultScalaVersion
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-// see https://github.com/sbt/sbt-ghpages
-// this exposes the 'ghpagesPushSite' task
-enablePlugins(GhpagesPlugin)
 enablePlugins(GitVersioning)
-//enablePlugins(PamfletPlugin)
-enablePlugins(SiteScaladocPlugin)
 
 // see http://scalameta.org/scalafmt/
 scalafmtOnCompile in ThisBuild := true
@@ -30,7 +25,6 @@ val Expressions    = config("expressions")
 val ExpressionsAst = config("expressionsAst")
 
 git.remoteRepo := s"git@github.com:$username/$repo.git"
-ghpagesNoJekyll := true
 
 val circeVersion      = "0.13.0"
 val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-generic-extras", "circe-optics")
@@ -45,21 +39,6 @@ val testDependencies = List(
 val simulacrum: ModuleID = "com.github.mpilquist" %% "simulacrum" % "0.13.0"
 
 val Avro = "org.apache.avro" % "avro" % "1.10.1"
-
-lazy val scaladocSiteProjects = List(
-  (expressions, Expressions),
-  (ExpressionsAst, ExpressionsAst)
-)
-
-lazy val scaladocSiteSettings = scaladocSiteProjects.flatMap {
-  case (project: Project, conf) =>
-    SiteScaladocPlugin.scaladocSettings(
-      conf,
-      mappings in (Compile, packageDoc) in project,
-      s"api/${project.id}"
-    )
-  case _ => Nil // ignore cross-projects
-}
 
 lazy val settings = scalafmtSettings
 
@@ -152,9 +131,6 @@ publishMavenStyle := true
 
 lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
-  .enablePlugins(SiteScaladocPlugin)
-  .enablePlugins(ParadoxPlugin)
-  .enablePlugins(ScalaUnidocPlugin)
   .aggregate(
     expressions,
     expressionsAst,
@@ -163,12 +139,7 @@ lazy val root = (project in file("."))
     rest,
     franz
   )
-  .settings(scaladocSiteSettings)
   .settings(
-    paradoxProperties += ("project.url" -> "https://aaronp.github.io/expressions/docs/current/"),
-    paradoxTheme := Some(builtinParadoxTheme("generic")),
-    siteSourceDirectory := target.value / "paradox" / "site" / "main",
-    siteSubdirName in ScalaUnidoc := "api/latest",
     publish := {},
     publishLocal := {}
   )
@@ -198,7 +169,6 @@ lazy val client = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(commonSettings: _*)
   .jvmSettings(
     name := "client-jvm",
-    siteSubdirName in SiteScaladoc := "api/latest",
     libraryDependencies ++= Build.jvmClient
   )
   .jsSettings(scalaJSUseMainModuleInitializer in Global := true)
@@ -303,7 +273,6 @@ clientBuild := {
 lazy val assembleApp = taskKey[Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
 
 assembleApp := {
-  import eie.io._
   val restAssembly = (assembly in (rest, Compile)).value
 
   // contains the web resources
@@ -313,11 +282,12 @@ assembleApp := {
   def fastOptPath = (fastOptJS in (clientJS, Compile)).value.data.asPath
 
   val jsArtifacts: immutable.Seq[Path] = {
-    val dependencyFiles = fullOptPath.getParent.find(_.fileName.endsWith("-jsdeps.min.js")).toList
-    fullOptPath :: dependencyFiles
+//    val dependencyFiles = fullOptPath.getParent.find(_.getFileName.toString.endsWith("-jsdeps.min.js")).toList
+    fullOptPath :: Nil //dependencyFiles
   }
 
-  val dockerTargetDir: java.nio.file.Path = (baseDirectory.value / "target" / "docker").toPath.mkDirs()
+  val dockerTargetDir: java.nio.file.Path = (baseDirectory.value / "target" / "docker").toPath
+  sbt.io.IO.createDirectory(dockerTargetDir.toFile)
 
   val restResourceDir = (resourceDirectory in (rest, Compile)).value.toPath
 
@@ -338,14 +308,14 @@ assembleApp := {
   IO.copyDirectory(restResourceDir.resolve("www").toFile, wwwDir.toFile)
 
   import java.nio.file.StandardCopyOption._
-  wwwDir.resolve("js").mkDirs()
+  sbt.io.IO.createDirectory(wwwDir.resolve("js").toFile)
 
   val appJar = dockerTargetDir.resolve("app.jar")
   val appJs  = wwwDir.resolve("js/app.js")
   List(appJar, appJs).foreach {
-    case file if file.exists() =>
+    case file if java.nio.file.Files.exists(file) =>
       sLog.value.info(s"Replacing $file")
-      file.delete()
+      java.nio.file.Files.delete(file)
     case file => sLog.value.info(s"Creating $file")
   }
 

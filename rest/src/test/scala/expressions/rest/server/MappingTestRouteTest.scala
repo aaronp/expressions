@@ -1,6 +1,6 @@
 package expressions.rest.server
 
-import expressions.JsonTemplate
+import expressions.CodeTemplate
 import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.Json
 import io.circe.literal.JsonStringContext
@@ -16,7 +16,7 @@ class MappingTestRouteTest extends BaseRouteTest {
         val jason = json"""{ "foo" : "bar" }"""
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
-      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]().map(_.andThen(_.asJson)))
+      val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]().map(_.andThen(_.asJson)))
 
       val Some(response) = underTest(request).value.value()
 
@@ -28,21 +28,21 @@ class MappingTestRouteTest extends BaseRouteTest {
     }
 
     "return an error when misconfigured" in {
-      val script = """this doesn't compile""".stripMargin
+      val script = "this doesn't compile"
 
       val request = {
         val jason = json"""{ "foo" : "bar" }"""
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
-      val underTest = MappingTestRoute(JsonTemplate.newCache[JsonMsg, Json]())
+      val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]())
 
       val Some(response) = underTest(request).value.value()
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {
         val Some(err) = transformResponse.messages
-        response.status.isSuccess shouldBe false
-        err should include("doesn't compile")
+        err should include(script)
+        response.status.isSuccess shouldBe true
       }
     }
   }

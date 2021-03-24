@@ -13,7 +13,13 @@ import expressions.franz.SupportedType
   * @param keyType the key type
   * @param valueType the value type
   */
-case class ConfigSummary(topic: String, brokers: List[String], mappings: Map[String, List[String]], keyType: String, valueType: String) {
+case class ConfigSummary(topic: String,
+                         brokers: List[String],
+                         mappings: Map[String, List[String]],
+                         keyType: String,
+                         valueType: String,
+                         producerKeyType: String,
+                         producerValueType: String) {
 
   /** @return the configsummary as a config
     */
@@ -31,27 +37,27 @@ case class ConfigSummary(topic: String, brokers: List[String], mappings: Map[Str
       case (k, path) => s""" "$k" : ${path.mkString("\"", "/", "\"")} """
     }
 
-    val keySerde = SupportedType
+    val keySerde: (String, String) = SupportedType
       .serdeForName(keyType)
       .fold(keyType -> keyType)(serde =>
         serde.serializer().getClass.getName ->
           serde.deserializer().getClass.getName)
-    val valueSerde = SupportedType
+    val valueSerde: (String, String) = SupportedType
       .serdeForName(valueType)
       .fold(valueType -> valueType)(serde =>
         serde.serializer().getClass.getName ->
           serde.deserializer().getClass.getName)
 
     ConfigFactory.parseString(s"""app.franz : {
-        |  kafka : {
+        |  consumer : {
         |    topic : "${topic}"
-        |    brokers : ${brokers.mkString("\"", ",", "\"")}
+        |    ${if (brokers.nonEmpty) brokers.mkString("bootstrap.servers : \"", ",", "\"") else ""}
         |
         |    key.serializer: "${keySerde._1}"
         |    key.deserializer: "${keySerde._2}"
         |
-        |    value.deserializer: "${valueSerde._1}"
-        |    value.serializer: "${valueSerde._2}"
+        |    value.serializer: "${valueSerde._1}"
+        |    value.deserializer: "${valueSerde._2}"
         |  }
         | $namespaceSetting
         |  mapping {

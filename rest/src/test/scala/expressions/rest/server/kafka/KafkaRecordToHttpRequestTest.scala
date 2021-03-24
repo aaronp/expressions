@@ -1,8 +1,9 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import expressions.client.HttpRequest
+import expressions.rest.server.{BaseRouteTest, Disk, JsonMsg, MappingConfig}
 import expressions.template.Message
-import expressions.{DynamicJson, JsonTemplate}
+import expressions.{CodeTemplate, DynamicJson}
 import io.circe.literal.JsonStringContext
 
 import scala.util.Success
@@ -17,7 +18,7 @@ class KafkaRecordToHttpRequestTest extends BaseRouteTest {
           disk          <- Disk(mappingConfig.rootConfig)
           _             <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "unit-test", s"${value}")
           _             <- KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, "mapping-test", s"${value.abs}".reverse)
-          templateCache = JsonTemplate.newCache[JsonMsg, Seq[HttpRequest]]("import expressions.client._")
+          templateCache = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]]("import expressions.client._")
           svc           <- KafkaRecordToHttpRequest.forRootConfig(mappingConfig.rootConfig, templateCache)
         } yield svc
       }.value()

@@ -15,7 +15,7 @@ case class HttpRequest(method: HttpMethod, url: String, headers: Map[String, Str
         other.method == method &&
           other.url == url &&
           other.headers == headers &&
-          other.body.size == body.size &&
+          other.body.length == body.length &&
           other.bodyAsBase64 == bodyAsBase64
       case _ => false
     }

@@ -1,14 +1,13 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import args4c.implicits._
 import expressions.client.kafka.{ConsumerStats, PostRecord}
+import expressions.rest.server.BaseRouteTest
 import io.circe.Json
 import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
-import org.apache.avro.generic.GenericRecord
-import zio.console.putStrLn
 import zio.kafka.consumer.CommittableRecord
-import zio.{Ref, Task, UIO}
+import zio.{Ref, UIO}
 
 /**
   * This test assumes a running kafka via `make startLocalKafka`
@@ -17,8 +16,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
   "KafkaPublishRoute" should {
     "be able to publish UI messages" in {
 
-      val topic           = rnd("publishroutetest")
-      val testConfig      = Array(s"app.franz.kafka.topic=$topic").asConfig()
+      val topic      = rnd("publishroutetest")
+      val testConfig = Array(s"app.franz.consumer.topic=$topic").asConfig()
 
       val postRecordJson = json"""{
     "data" : {
@@ -81,7 +80,7 @@ class KafkaPublishRouteTest extends BaseRouteTest {
     "be able to push data into a topic read by our reader route" in {
 
       val topic           = rnd("publishroutetest")
-      val testConfig      = Array(s"app.franz.kafka.topic=$topic").asConfig()
+      val testConfig      = Array(s"app.franz.consumer.topic=$topic").asConfig()
       val expectedRecords = 10
       val testCase = for {
         //

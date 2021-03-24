@@ -84,7 +84,7 @@ final class RichKafkaAdmin(val admin: AdminClient) extends AutoCloseable with St
 object RichKafkaAdmin extends StrictLogging {
 
   def apply(rootConfig: Config = ConfigFactory.load()): RichKafkaAdmin = {
-    val props: Properties  = Props.propertiesForConfig(rootConfig.getConfig("app.franz.kafka"))
+    val props: Properties  = Props.propertiesForConfig(rootConfig.getConfig("app.franz.producer"))
     val admin: AdminClient = AdminClient.create(props)
     new RichKafkaAdmin(admin)
   }

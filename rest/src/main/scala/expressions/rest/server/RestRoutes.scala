@@ -5,7 +5,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
-import expressions.{Cache, JsonTemplate, DynamicJson, StringTemplate}
+import expressions.rest.server.kafka.{KafkaPublishRoute, KafkaRoute, KafkaSink}
+import expressions.{Cache, CodeTemplate, DynamicJson, StringTemplate}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.http4s
@@ -34,15 +35,15 @@ object RestRoutes extends StrictLogging {
     for {
       cacheRoute        <- CacheRoute()
       disk              <- DiskRoute(defaultConfig)
-      fsDir             = KafkaRecordToHttpRequest.dataDir(defaultConfig)
-      templateCache     = JsonTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
+      fsDir             = kafka.KafkaRecordToHttpRequest.dataDir(defaultConfig)
+      templateCache     = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
       kafkaSink         <- KafkaSink(templateCache)
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
         StringTemplate.newCache[DynamicJson, DynamicJson]()
 
-      val jsonCache: Cache[JsonTemplate.Expression[JsonMsg, Json]] = templateCache.map(_.andThen(_.asJson))
+      val jsonCache: Cache[CodeTemplate.Expression[JsonMsg, Json]] = templateCache.map(_.andThen(_.asJson))
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(defaultConfig)

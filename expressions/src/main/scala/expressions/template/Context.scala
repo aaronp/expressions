@@ -10,13 +10,16 @@ class FileSystem(val dir: Path) extends AnyVal with Dynamic {
     dir.resolve(fieldName).text
   }
 }
+object FileSystem {
+  def apply(dir: Path = ".".asPath) = new FileSystem(dir)
+}
 case class Env(env: Map[String, String] = sys.env) extends Dynamic {
-  def selectDynamic(fieldName: String): String = env.get(fieldName).getOrElse("")
+  def selectDynamic(fieldName: String): String = env.getOrElse(fieldName, "")
 }
 case class Message[K, V](content: V, key: K, timestamp: Long = 0, headers: Map[String, String] = Map.empty, topic: String = "", offset: Long = 0, partition: Int = 0) {
   def withKey[A](k: A): Message[A, V] =
     Message[A, V](content, k, timestamp, headers, topic, offset, partition)
-  def asContext(dir: Path = ".".asPath): Context[Message[K, V]] = Context(this, dir)
+  def asContext(dir: Path = ".".asPath): Context[Message[K, V]] = Context(this, Env(), FileSystem(dir))
 }
 object Message {
   def of[A](value: A, key: String = "", timestamp: Long = 0, headers: Map[String, String] = Map.empty, topic: String = ""): Message[String, A] = {
@@ -34,5 +37,5 @@ case class Context[A](record: A, env: Env, fs: FileSystem) {
   def replaceEnv(newEnv: Map[String, String]): Context[A]                      = copy(env = Env(newEnv))
 }
 object Context {
-  def apply[A](record: A, dir: Path = ".".asPath): Context[A] = Context(record, Env(), new FileSystem(dir))
+  def apply[A](record: A, fs: FileSystem = FileSystem()): Context[A] = Context(record, Env(), fs)
 }

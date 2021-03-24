@@ -17,7 +17,7 @@ object ForEachStream extends StrictLogging {
     */
   def apply[K, V](config: FranzConfig = FranzConfig())(saveToDatabase: CommittableRecord[K, V] => RIO[ZEnv, Unit]): ZStream[zio.ZEnv, Throwable, Any] = {
     import config._
-    forEach(subscription, consumerSettings, keySerde[K], valueSerde[V], blockOnCommits, concurrency)(saveToDatabase)
+    forEach(subscription, consumerSettings, keySerde[K](), valueSerde[V](), blockOnCommits, concurrency)(saveToDatabase)
   }
 
   /** This is the kafka -> DB pipeline

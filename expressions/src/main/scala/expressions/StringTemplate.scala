@@ -1,8 +1,9 @@
 package expressions
 
-import expressions.JsonTemplate._
+import expressions.CodeTemplate._
 import expressions.template.Message
 
+import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import scala.util.Try
 
@@ -18,7 +19,7 @@ import scala.util.Try
   */
 object StringTemplate {
 
-  type StringExpression[A] = JsonTemplate.Expression[A, String]
+  type StringExpression[A] = CodeTemplate.Expression[A, String]
 
   def newCache[K: ClassTag, V: ClassTag](scriptPrefix: String = ""): Cache[StringExpression[Message[K, V]]] = {
     new Cache[StringExpression[Message[K, V]]](script => Try(apply[K, V](script, scriptPrefix)))
@@ -54,12 +55,15 @@ object StringTemplate {
         val valueType   = className[V]
         val contextType = s"Message[$keyType, $valueType]"
         val script      = stringAsExpression(contextType, scriptPrefix, parts)
-        JsonTemplate.compileAsExpression[Message[K, V], String](contextType, script).get
+        CodeTemplate.compileAsExpression[Message[K, V], String](contextType, script).get
     }
   }
 
   def const[A](value: String): StringExpression[A] = _ => value
 
+  private[expressions] val Moustache = """(.*?)\{\{(.*?)}}(.*)""".r
+
+  @tailrec
   private def resolveExpressionVariables(remainingExpressionStr: String, expressions: List[String]): List[String] = {
     remainingExpressionStr match {
       case Moustache(before, expression, after) =>
@@ -69,10 +73,6 @@ object StringTemplate {
       case literal =>
         (quote(literal) +: expressions).reverse
     }
-  }
-
-  private def stringAsExpression[A: ClassTag](scriptPrefix: String, parts: Seq[String]): String = {
-    stringAsExpression[A](className[A], scriptPrefix, parts)
   }
 
   private def stringAsExpression[A](contextType: String, scriptPrefix: String, parts: Seq[String]): String = {
@@ -102,4 +102,6 @@ object StringTemplate {
     }
     resolved.mkString(scriptHeader, "\n", scriptFooter)
   }
+
+  private def quote(str: String) = "\"" + str + "\""
 }

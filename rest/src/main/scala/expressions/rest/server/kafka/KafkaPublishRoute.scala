@@ -1,17 +1,17 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
-import cats.implicits.toSemigroupKOps
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.client.kafka.PostRecord
 import expressions.franz.FranzConfig
-import expressions.rest.server.RestRoutes.taskDsl._
 import io.circe.Json
-import io.circe.syntax.EncoderOps
-import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
-import zio.interop.catz._
 import zio.{Task, UIO, ZIO}
+import expressions.rest.server.RestRoutes.taskDsl._
+import zio.interop.catz._
+import org.http4s.circe.CirceEntityCodec._
+import cats.implicits._
+import io.circe.syntax.EncoderOps
 
 object KafkaPublishRoute {
 

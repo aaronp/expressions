@@ -1,6 +1,6 @@
 package expressions
 
-import expressions.JsonTemplate.Expression
+import expressions.CodeTemplate.Expression
 import expressions.template.Message
 import io.circe.Json
 
@@ -10,23 +10,24 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.Success
 
-class JsonTemplateTest extends AnyWordSpec with Matchers {
+class CodeTemplateTest extends AnyWordSpec with Matchers {
   type JsonMsg = Message[DynamicJson, DynamicJson]
-  "JsonTemplate" should {
+  "CodeTemplate" should {
     "work" in {
-      val template                                   = JsonTemplate.newCache[JsonMsg, Json]()
+      val template                                   = CodeTemplate.newCache[JsonMsg, Json]()
       val Success(script: Expression[JsonMsg, Json]) = template("""
+          |        import io.circe.syntax._
+          |
           |        val requests = record.content.hello.world.flatMap  { json =>
           |          json.nested.map { i =>
           |            val url = s"${json("name").asString}-$i"
           |            json("name").asString match {
-          |              case "first" => HttpRequest.get(url, Map.empty)
-          |              case other   => HttpRequest.post(url, Map.empty)
+          |              case "first" => io.circe.Json.obj("1st" -> io.circe.Json.Null)
+          |              case other   => io.circe.Json.obj("other" -> other.asJson)
           |            }
           |          }
           |        }
           |
-          |        import io.circe.syntax._
           |        requests.asJson
           |""".stripMargin)
 
@@ -45,6 +46,7 @@ class JsonTemplateTest extends AnyWordSpec with Matchers {
           ]
         }
       }"""
+
       import DynamicJson.implicits._
       val ctxt   = Message.of(data.asDynamic).withKey(data.asDynamic).asContext()
       val result = script(ctxt).asArray.get

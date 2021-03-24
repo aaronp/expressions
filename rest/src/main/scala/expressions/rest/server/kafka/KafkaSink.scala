@@ -1,16 +1,17 @@
-package expressions.rest.server
+package expressions.rest.server.kafka
 
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import com.typesafe.scalalogging.StrictLogging
 import eie.io.AlphaCounter
 import expressions.Cache
-import expressions.JsonTemplate.Expression
+import expressions.CodeTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 import expressions.franz.{ForEachStream, FranzConfig}
 import expressions.rest.Main
+import expressions.rest.server.JsonMsg
 import zio.kafka.consumer.CommittableRecord
-import zio.{Ref, _}
+import zio.{Fiber, Ref, Task, UIO, ZEnv, ZIO}
 
 /**
   * We have (separate to the kafka config) a list of:
@@ -102,7 +103,7 @@ object KafkaSink {
 
     private val counter = AlphaCounter.from(0)
 
-    override def running() = tasksById.get.map { map =>
+    override def running(): UIO[List[StartedConsumer]] = tasksById.get.map { map =>
       map.values.map(_._1).toList.sortBy(_.startedAtEpoch)
     }
 
@@ -122,7 +123,7 @@ object KafkaSink {
       startIO.provide(env)
     }
 
-    def startedConsumerFor(rootConfig: Config, id: RunningSinkId) = {
+    def startedConsumerFor(rootConfig: Config, id: RunningSinkId): StartedConsumer = {
       val configStr = {
         val franz    = rootConfig.withOnlyPath("app.franz")
         val mappings = rootConfig.withOnlyPath("app.mappings")
@@ -140,7 +141,7 @@ object KafkaSink {
           val fiber = map.get(key)
           fiber -> map.removed(key)
         }
-        _ <- ZIO.foreach(fiber)(_._2.interrupt)
+        _ <- ZIO.foreach_(fiber)(_._2.interrupt)
       } yield fiber.isDefined
 
     override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = statsMap.get.map(_.get(taskId))

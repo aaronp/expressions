@@ -3,7 +3,7 @@ package expressions.rest.server
 import expressions.client.kafka.{ConsumerStats, RecordCoords, RecordSummary}
 import expressions.client.{HttpRequest, HttpResponse}
 import expressions.franz.SchemaGen
-import expressions.rest.server.KafkaSink.RunningSinkId
+import expressions.rest.server.kafka.KafkaSink.RunningSinkId
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.apache.avro.generic.IndexedRecord
@@ -34,8 +34,8 @@ object Stats {
       case Failure(_) => summary +: consumerStats.errors
       case _          => consumerStats.errors
     }
-    val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(10)
-    consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors)
+    val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(20)
+    consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
   }
 
   def createStats(id: RunningSinkId, record: CommittableRecord[_, _], result: Try[Seq[(HttpRequest, HttpResponse)]], now: Long) = {

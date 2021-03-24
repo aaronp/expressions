@@ -1,4 +1,3 @@
-import eie.io._
 import sbt._
 
 import java.nio.file.Path
@@ -41,9 +40,9 @@ object Build {
         "com.github.aaronp" %% "eie"                     % "1.0.0",
         "com.github.aaronp" %% "args4c"                  % "0.7.0",
         "com.github.aaronp" %% "dockerenv"               % "0.5.4",
-        "dev.zio"           %% "zio-streams"             % "1.0.3",
-        "dev.zio"           %% "zio-kafka"               % "0.13.0",
-        "io.confluent"      % "kafka-streams-avro-serde" % "6.0.0",
+        "dev.zio"           %% "zio-streams"             % "1.0.5",
+        "dev.zio"           %% "zio-kafka"               % "0.14.0",
+        "io.confluent"      % "kafka-streams-avro-serde" % "6.1.1",
         typesafeConfig,
         scalaTest
       )
@@ -70,44 +69,4 @@ object Build {
         scalaTest
       )
   }
-
-  def docker(deployResourceDir: Path, //
-             scriptDir: Path,         //
-             jsArtifacts: Seq[Path],  //
-             webResourceDir: Path,    //
-             restAssembly: Path,      //
-             targetDir: Path,         //
-             logger: sbt.util.Logger) = {
-
-    logger.info(s""" Building Docker Image with:
-         |
-         |   deployResourceDir = ${deployResourceDir.toAbsolutePath}
-         |   scriptDir         = ${scriptDir.toAbsolutePath}
-         |   jsArtifacts       = ${jsArtifacts.map(_.toAbsolutePath).mkString(",")}
-         |   webResourceDir    = ${webResourceDir.toAbsolutePath}
-         |   restAssembly      = ${restAssembly.toAbsolutePath}
-         |   targetDir         = ${targetDir.toAbsolutePath}
-         |
-       """.stripMargin)
-
-    val pipelinesJsDir = targetDir.resolve("web/js").mkDirs()
-    IO.copyDirectory(deployResourceDir.toFile, targetDir.toFile)
-    if (scriptDir.exists()) {
-      IO.copyDirectory(scriptDir.toFile, targetDir.resolve("scripts").toFile)
-    }
-    IO.copyDirectory(webResourceDir.toFile, targetDir.resolve("web").toFile)
-    IO.copy(List(restAssembly.toFile -> (targetDir.resolve("app.jar").toFile)))
-    //IO.copy(List("target/certificates/cert.p12".asPath.toFile -> (targetDir.resolve("localcert.p12").toFile)))
-    IO.copy(jsArtifacts.map(jsFile => jsFile.toFile -> (pipelinesJsDir.resolve(jsFile.fileName).toFile)))
-
-    execIn(targetDir, "docker", "build", "--tag=expressions", ".")
-  }
-
-  def execIn(inDir: Path, cmd: String*): Unit = {
-    import scala.sys.process._
-    val p: ProcessBuilder = Process(cmd.toSeq, inDir.toFile)
-    val retVal            = p.!
-    require(retVal == 0, cmd.mkString("", " ", s" in dir ${inDir} returned $retVal"))
-  }
-
 }

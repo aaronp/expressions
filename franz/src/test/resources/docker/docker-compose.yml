@@ -34,18 +34,18 @@ services:
     networks:
       - test
 
-  create-topic:
-    image: landoop/fast-data-dev:2.2.0
-    depends_on: [kafka]
-    environment:
-      TOPIC: testtopic
-    command: ['timeout',
-              '60',
-              'bash',
-              '-c',
-              'while [[ ! $$(kafka-topics --zookeeper kafka --create --topic $$TOPIC --replication-factor 1 --partitions 5 --if-not-exists) ]]; do sleep 1; done']
-    networks:
-      - test
+#  create-topic:
+#    image: landoop/fast-data-dev:2.2.0
+#    depends_on: [kafka]
+#    environment:
+#      TOPIC: testtopic
+#    command: ['timeout',
+#              '60',
+#              'bash',
+#              '-c',
+#              'while [[ ! $$(kafka-topics --zookeeper kafka --create --topic $$TOPIC --replication-factor 1 --partitions 5 --if-not-exists) ]]; do sleep 1; done']
+#    networks:
+#      - test
 
 networks:
   test:

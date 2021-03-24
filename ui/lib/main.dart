@@ -21,7 +21,6 @@ class FranzApp extends StatelessWidget {
     initialRoute: RouteNames.config,
     routes: {
       RouteNames.config: (context) => ConfigPage(),
-      // RouteNames.publish: (context) => PublishPage("",""),
       RouteNames.running: (context) => RunningPage(),
     }
     );

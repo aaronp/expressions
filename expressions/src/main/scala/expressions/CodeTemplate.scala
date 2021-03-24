@@ -10,7 +10,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Provides a script-able means to produce some type B for any type A
   */
-object JsonTemplate {
+object CodeTemplate {
 
   type Expression[A, B] = Context[A] => B
 
@@ -58,7 +58,7 @@ object JsonTemplate {
     val script =
       s"""import expressions._
          |import expressions.implicits._
-         |import AvroExpressions._
+         |//import AvroExpressions._
          |import expressions.template.{Context, Message}
          |
          |(context : Context[${contextType}]) => {
@@ -68,8 +68,6 @@ object JsonTemplate {
        """.stripMargin
     compileAsExpression[A, B](contextType, script)
   }
-
-  private[expressions] val Moustache = """(.*?)\{\{(.*?)}}(.*)""".r
 
   private[expressions] def compileAsExpression[A, B](contextType: String, script: String): Try[Expression[A, B]] = {
     try {
@@ -84,11 +82,7 @@ object JsonTemplate {
     }
   }
 
-  def quote(str: String) = {
-    val q = "\""
-    q + str + q
-  }
-  def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {
+  private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {
     case other if other.isPrimitive => other.getName.capitalize
     case other                      => other.getName
   }
