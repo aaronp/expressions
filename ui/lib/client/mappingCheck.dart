@@ -61,29 +61,43 @@ class TransformRequest {
 }
 
 class TransformResponse {
-  TransformResponse(this.result, this.messages);
+  TransformResponse(this.result, this.success, this.messages);
 
-  List<dynamic> result;
-  String messages = null;
-
-  List<HttpRequest> asRequests() => result.map((json) {
-        return HttpRequest.fromJson(json);
-      }).toList();
+  dynamic result;
+  bool success;
+  List<String> messages = [];
 
   Map<String, Object> get asJson {
-    if (result.length == 0) {
-      return {'result': null, 'messages': messages};
-    } else {
-      assert(result.length == 1);
-      return {'result': result.first, 'messages': messages};
-    }
+    return {'result': result, 'success': success, 'messages': messages};
+  }
+
+  List<HttpRequest> asRequests() {
+    final List<dynamic> list = result;
+    return list.map((json) => HttpRequest.fromJson(json)).toList();
   }
 
   static TransformResponse fromJson(Map<String, dynamic> json) {
-    List<dynamic> list = [];
-    if (json['result'] is List<dynamic>) {
-      list = json['result'];
-    }
-    return TransformResponse(list, json['messages']);
+    List<dynamic> msgs = json['messages'];
+    return TransformResponse(json['result'], json['success'], msgs.map((m) => m.toString()).toList());
+  }
+}
+
+class Output {
+  Output(this.stdOut, this.stdErr);
+
+  @override String toString() => asJson.toString();
+
+  List<String> stdOut = [];
+  List<String> stdErr = [];
+
+  Map<String, Object> get asJson {
+    return {'stdOut': stdOut, 'stdErr': stdErr};
+  }
+
+  static Output fromJson(Map<String, dynamic> json) {
+    final List<dynamic> stdOut = json['stdOut'];
+    final List<dynamic> stdErr = json['stdErr'];
+    return Output(stdOut.map((j) => j.toString()).toList(),
+        stdErr.map((j) => j.toString()).toList());
   }
 }

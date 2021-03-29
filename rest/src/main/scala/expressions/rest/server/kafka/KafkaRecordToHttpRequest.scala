@@ -6,7 +6,6 @@ import expressions.CodeTemplate.Expression
 import expressions.client.kafka.ConsumerStats
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.{FranzConfig, KafkaRecord, SupportedType}
-import expressions.rest.server.kafka.KafkaSink.{RunningSinkId, SinkInput}
 import expressions.rest.server.{Disk, JsonMsg, MappingConfig, Stats, Topic}
 import expressions.template.{Context, Message}
 import expressions.{Cache, DynamicJson}
@@ -92,10 +91,10 @@ object KafkaRecordToHttpRequest extends StrictLogging {
           case transformError => KafkaErr.conversionError(record, transformError)
         }
         contextAsRequests: Expression[JsonMsg, Seq[HttpRequest]] <- Task.fromTry(restSink.transformForTopic(record.record.topic)).refineOrDie {
-          case compileError => KafkaErr.compileExpressionError(record, context, compileError)
+          case compileError => KafkaErr.compileExpressionError(record, compileError)
         }
         requests <- Task(contextAsRequests(context)).refineOrDie {
-          case expressionError => KafkaErr.expressionError(record, context, contextAsRequests, expressionError)
+          case expressionError => KafkaErr.expressionError(record, contextAsRequests, expressionError)
         }
       } yield requests
     }
@@ -124,22 +123,14 @@ object KafkaRecordToHttpRequest extends StrictLogging {
     } yield transform
   }
 
-  def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = {
-    Message(
-      DynamicJson(record.value.asJson),
-      DynamicJson(record.key.asJson),
-      record.timestamp,
-      KafkaRecord.headerAsStrings(record),
-      record.record.topic(),
-      record.offset.offset,
-      record.partition
-    )
-  }
+  def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = Batch.asMessage[K, V](record)
 
   def writeScriptForTopic(mappingConfig: MappingConfig, disk: Disk.Service, topic: String, script: String): ZIO[Any, Serializable, Unit] = {
     for {
-      pathToMapping <- ZIO.fromOption(mappingConfig.lookup(topic))
-      _             <- disk.write(pathToMapping, script)
+      pathToMapping <- ZIO.fromOption(mappingConfig.lookup(topic)).catchSome {
+        case None => ZIO.fail(new Exception(s"No mapping found for topic '$topic' in $mappingConfig"))
+      }
+      _ <- disk.write(pathToMapping, script)
     } yield ()
   }
 

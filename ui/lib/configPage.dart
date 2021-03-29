@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:ui/consumeWidget.dart';
+import 'package:ui/client/kafkaClient.dart';
 import 'package:ui/editConfigWidget.dart';
 import 'package:ui/editTopicMapping.dart';
 import 'package:ui/publishWidget.dart';
 import 'package:ui/runningConsumersWidget.dart';
 
+import 'client/batchClient.dart';
 import 'client/configClient.dart';
 import 'client/configSummary.dart';
 import 'client/diskClient.dart';
@@ -36,7 +37,6 @@ class LoadedConfig {
 }
 
 class _ConfigPageState extends State<ConfigPage> {
-
   LoadedConfig _currentConfig = LoadedConfig("", "", ConfigSummary.empty());
 
   Future<LoadedConfig> defaultConfig() async {
@@ -119,7 +119,6 @@ class _ConfigPageState extends State<ConfigPage> {
 
   Widget configColumn(BuildContext ctxt) {
     return Container(
-      // decoration: BoxDecoration(color: Colors.red),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,14 +161,12 @@ class _ConfigPageState extends State<ConfigPage> {
         iconSize: 32,
         tooltip: 'Open',
         icon: Icon(Icons.folder_open),
-        color: Colors.red,
         onPressed: () {});
 
     final editButton = IconButton(
         iconSize: 32,
         tooltip: 'Config',
         icon: Icon(Icons.settings),
-        color: Colors.red,
         onPressed: () => onEditConfig(ctxt));
 
     return Scaffold(
@@ -268,11 +265,16 @@ class _ConfigPageState extends State<ConfigPage> {
   void onListRunning(BuildContext ctxt) =>
       _push(ctxt, RunningConsumersWidget());
 
-  void onPublish(BuildContext ctxt) => _push(ctxt, PublishWidget(_currentConfig.fileName, _currentConfig.summary.topic, _currentConfig.loadedContent));
+  void onPublish(BuildContext ctxt) => _push(
+      ctxt,
+      PublishWidget(_currentConfig.fileName, _currentConfig.summary.topic,
+          _currentConfig.loadedContent));
 
   void onEditConfig(BuildContext ctxt) async {
-    final editedConfig =
-        await _push(ctxt, EditConfigWidget(_currentConfig.fileName, _currentConfig.loadedContent));
+    final editedConfig = await _push(
+        ctxt,
+        EditConfigWidget(
+            _currentConfig.fileName, _currentConfig.loadedContent));
     final newSummary =
         await summaryFor(_currentConfig.fileName, editedConfig.toString());
     setState(() {
@@ -280,7 +282,14 @@ class _ConfigPageState extends State<ConfigPage> {
     });
   }
 
-  void onConsume(BuildContext ctxt) => _push(ctxt, ConsumeWidget());
+  void onConsume(BuildContext ctxt) async {
+    final kStart = await KafkaClient.start(_currentConfig.loadedContent);
+    final bStart = await BatchClient.start(_currentConfig.loadedContent);
+    ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(
+        content:
+            Text("Started http client '$kStart' and batch client '$bStart'")));
+    _push(ctxt, RunningConsumersWidget());
+  }
 
   void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
       _push(ctxt, EditTopicMappingWidget(entry));

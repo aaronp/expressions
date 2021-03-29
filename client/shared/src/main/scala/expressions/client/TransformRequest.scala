@@ -1,6 +1,8 @@
 package expressions.client
 
-import io.circe.Json
+import io.circe.{Decoder, Json}
+
+import scala.util.Try
 
 case class TransformRequest(script : String, input : Json,
                             key: Json = Json.fromString(""),
@@ -14,7 +16,9 @@ object TransformRequest {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[TransformRequest]
 }
 
-case class TransformResponse(result : Json, messages : Option[String])
+case class TransformResponse(result : Json, success : Boolean = true, messages : List[String] = Nil) {
+  def as[A:Decoder]: Try[A] = result.as[A].toTry
+}
 
 object TransformResponse {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[TransformResponse]

@@ -14,7 +14,8 @@ case class BatchedStream[K, V](topic: Subscription,
                                keyDeserializer: Deserializer[Any, K],
                                valueDeserializer: Deserializer[Any, V],
                                blockOnCommit: Boolean) {
-  def run(persist: Array[CommittableRecord[K, V]] => RIO[ZEnv, Unit]): ZStream[zio.ZEnv, Throwable, Int] = {
+
+  def run(persist: Array[CommittableRecord[_, _]] => RIO[ZEnv, Unit]): ZStream[zio.ZEnv, Throwable, Int] = {
 
     def persistBatch(batch: Chunk[CommittableRecord[K, V]]): ZIO[zio.ZEnv, Throwable, Int] = {
       val offsets = batch.map(_.offset).foldLeft(OffsetBatch.empty)(_ merge _)
@@ -53,6 +54,6 @@ object BatchedStream extends StrictLogging {
     */
   def apply[K, V](config: FranzConfig = FranzConfig()): BatchedStream[K, V] = {
     import config._
-    BatchedStream(subscription, consumerSettings, batchSize, batchWindow, keySerde[K](), valueSerde[V](), blockOnCommits)
+    BatchedStream(subscription, consumerSettings, batchSize, batchWindow, consumerKeySerde[K], consumerValueSerde[V], blockOnCommits)
   }
 }

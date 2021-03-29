@@ -50,7 +50,7 @@ class RestRoutesTest extends BaseRouteTest {
 
       val Some(response)   = underTest(post("/mapping/check", req.asJson.noSpaces)).value.value()
       val Success(content) = io.circe.parser.decode[TransformResponse](response.bodyAsString).toTry
-      content.messages shouldBe None
+      content.messages should be(empty)
       withClue(content.result.spaces4) {
         content.result.noSpaces should not be (empty)
       }

@@ -24,6 +24,38 @@ class ScratchPad extends AnyWordSpec with Matchers {
       println(s"make deleteTopic topic=${listed}")
     }
 
+    "batch" in {
+
+      import expressions.implicits._
+      import expressions.DynamicJson
+      import expressions.template.Message
+      import expressions.rest.server.kafka.BatchContext
+      import zio._
+      import zio.console._
+      import io.circe.syntax._
+
+      (_batchInput: expressions.rest.server.kafka.BatchInput) =>
+        {
+          import _batchInput._
+          import context._
+          // The mapping code transforms a context into a collection of HttpRequests
+          val RestServer = "http://localhost:8080/rest/disk/store"
+          batch.foreach { msg =>
+            val value = msg.content.value
+
+            for {
+              _            <- putStr(s"publishing to ${msg.topic}")
+              r            <- msg.key.id.asString.withValue(value).publishTo(msg.topic)
+              url          = s"$RestServer/${msg.partition}/${msg.offset}"
+              postResponse <- post(url, msg.key.deepMerge(msg.content.value))
+              _            <- putStr(s"published ${msg.key}")
+              _            <- putStrErr(s"posted ${postResponse}")
+            } yield r
+          }.orDie
+
+        }
+
+    }
     "example" in {
       import expressions._
       import expressions.template.{Context, Message}

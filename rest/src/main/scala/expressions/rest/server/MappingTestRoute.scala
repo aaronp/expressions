@@ -46,18 +46,17 @@ object MappingTestRoute extends StrictLogging {
           case Left(err: Throwable) =>
             logger.error(s"Error parsing\n$script\n$err")
             val errMsg = s"computer says no:\n${err.getMessage}"
-            Response(status = Status.Ok).withEntity(TransformResponse(errMsg.asJson, Some(errMsg)))
+            Response(status = Status.Ok).withEntity(TransformResponse(errMsg.asJson, false, List(errMsg)))
           case Right(mapper: Expression[JsonMsg, Json]) =>
             try {
               val context = asContext(inputAsMessage)
               val mapped  = mapper(context)
-              Response(Status.Ok).withEntity(TransformResponse(mapped, None))
+              Response(Status.Ok).withEntity(TransformResponse(mapped))
             } catch {
               case NonFatal(e) =>
                 logger.error(s"Error executing\n$script\n$e")
-//                Response(status = Status.InternalServerError)
                 Response(status = Status.Ok)
-                  .withEntity(TransformResponse(s"didn't work w/ input: ${e.getMessage}".asJson, Some(s"didn't work w/ input: ${e.getMessage}")))
+                  .withEntity(TransformResponse(s"didn't work w/ input: ${e.getMessage}".asJson, false, List(s"didn't work w/ input: ${e.getMessage}")))
             }
         }
     }

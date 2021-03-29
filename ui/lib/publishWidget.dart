@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -126,76 +127,84 @@ class _PublishWidgetState extends State<PublishWidget> {
   }
 
   Widget publishFormWidget() {
-    return Container(
-      // constraints: BoxConstraints(maxHeight: 200),
-      margin: EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Flexible(
-                child: FieldWidget(
-                    "Repeat:",
-                    "The number of records to submit",
-                    "1",
-                    (value) => _repeat = int.parse(value),
-                    validateNumber)),
-            Flexible(
-                child: FieldWidget(
-                    "Topic:", "The topic to publish to", _topicOverride,
-                    (value) {
-              _topicOverride = value;
-            }, textOk)),
-            Flexible(
-                child: FieldWidget(
-                    "Partition:",
-                    "A specific partition to publish to, if specified",
-                    "",
-                    (value) => isNumber(value)
-                        ? _partitionOverride = value
-                        : _partitionOverride = "",
-                    textOk)),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
-                  child: Text("Key:"),
-                ),
-                Container(
-                  // decoration: BoxDecoration(color: Colors.blueGrey),
-                  padding: const EdgeInsets.all(8),
-                  constraints: BoxConstraints(maxWidth: 400, maxHeight: 200),
-                  child: TextField(
-                    controller: _keyTextController,
-                    maxLines: 4,
+    return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
+      final heightAvailableForCode = constraints.maxHeight - 400;
+      final suggestedRows = 4 + (heightAvailableForCode ~/ 20);
+      final numRows = max(4, min(40, suggestedRows));
+      final valueHeight = max(100, constraints.maxHeight - 315);
+      return Container(
+        // constraints: BoxConstraints(maxHeight: 200),
+        margin: EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text("w:${constraints.maxWidth}"),
+              Text("h:${constraints.maxHeight}"),
+              Flexible(
+                  child: FieldWidget(
+                      "Repeat:",
+                      "The number of records to submit",
+                      "1",
+                          (value) => _repeat = int.parse(value),
+                      validateNumber)),
+              Flexible(
+                  child: FieldWidget(
+                      "Topic:", "The topic to publish to", _topicOverride,
+                          (value) {
+                        _topicOverride = value;
+                      }, textOk)),
+              Flexible(
+                  child: FieldWidget(
+                      "Partition:",
+                      "A specific partition to publish to, if specified",
+                      "",
+                          (value) => isNumber(value)
+                          ? _partitionOverride = value
+                          : _partitionOverride = "",
+                      textOk)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
+                    child: Text("Key:"),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
-                  child: Text("Value:"),
-                ),
-                Container(
-                  // decoration: BoxDecoration(color: Colors.blueGrey),
-                  padding: const EdgeInsets.all(8),
-                  constraints: BoxConstraints(maxWidth: 400, maxHeight: 200),
-                  child: TextField(
-                    controller: _valueTextController,
-                    maxLines: 20,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    constraints: BoxConstraints(maxWidth: 400, maxHeight: 200),
+                    child: TextField(
+                      controller: _keyTextController,
+                      maxLines: 4,
+                    ),
                   ),
-                ),
-              ],
-            )
-          ],
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
+                    child: Text("Value:"),
+                  ),
+                  Container(
+                    // decoration: BoxDecoration(color: Colors.blueGrey),
+                    padding: const EdgeInsets.all(8),
+                    constraints: BoxConstraints(maxWidth: 400, maxHeight: valueHeight),
+                    child: TextField(
+                      controller: _valueTextController,
+                      maxLines: numRows,
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
-      ),
-    );
+      );
+
+    });
   }
 }

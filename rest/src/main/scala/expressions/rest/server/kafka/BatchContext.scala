@@ -7,13 +7,15 @@ import expressions.franz.SupportedType._
 import expressions.franz.{FranzConfig, SupportedType}
 import expressions.rest.server.kafka.BatchContext.HttpClient
 import expressions.template.{Env, FileSystem}
-import io.circe.Json
+import io.circe.{Encoder, Json}
 import io.circe.syntax._
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import zio.blocking.Blocking
 import zio.kafka.producer.Producer
 import zio.{Ref, Task, ZIO, ZManaged}
+
+import java.nio.charset.StandardCharsets
 
 /**
   * This context is meant to be provided to some kind of 'black box' which should be executed with each batch of
@@ -32,9 +34,10 @@ trait BatchContext {
   type Key
   type Value
 
+  def config: FranzConfig
   def env: Env
   def fs: FileSystem
-  def client: HttpClient
+  def restClient: HttpClient
   def blocking: Blocking
   def cache: Ref[Map[String, Any]]
 
@@ -71,7 +74,11 @@ trait BatchContext {
   def valueType: SupportedType[Value]
   def producer: Producer.Service[Any, Key, Value]
 
-  final def send(request: HttpRequest): Task[HttpResponse] = client(request)
+  final def send(request: HttpRequest): Task[HttpResponse] = restClient(request)
+  final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty): Task[HttpResponse] = {
+
+    send(HttpRequest.post(url, headers).withBody(body))
+  }
 }
 
 object BatchContext {
@@ -91,11 +98,11 @@ object BatchContext {
     }
   }
 
-  private def withKey[K](franzConfig: FranzConfig,  //
+  private def withKey[K](franzConfig: FranzConfig, //
                          keyType: SupportedType[K], //
-                         fs: FileSystem,            //
-                         env: Env,                  //
-                         client: HttpClient         //
+                         fs: FileSystem, //
+                         env: Env, //
+                         client: HttpClient //
   ): ZManaged[Blocking, Throwable, BatchContext] = {
     franzConfig.producerValueType match {
       case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t, fs, env, client)
@@ -105,11 +112,11 @@ object BatchContext {
     }
   }
 
-  private def managed[K, V](franzConfig: FranzConfig,      //
-                            keyTypeIn: SupportedType[K],   //
+  private def managed[K, V](franzConfig: FranzConfig, //
+                            keyTypeIn: SupportedType[K], //
                             valueTypeIn: SupportedType[V], //
-                            fileSystem: FileSystem,        //
-                            envIn: Env,                    //
+                            fileSystem: FileSystem, //
+                            envIn: Env, //
                             clientIn: HttpClient): ZManaged[Blocking, Throwable, BatchContext] = {
     for {
       b        <- ZIO.environment[Blocking].toManaged_
@@ -118,10 +125,11 @@ object BatchContext {
         new BatchContext {
           type Key   = K
           type Value = V
+          override val config: FranzConfig                         = franzConfig
           override val env: Env                                    = envIn
           override val fs: FileSystem                              = fileSystem
           override val cache: Ref[Map[String, Any]]                = cacheRef
-          override val client: HttpClient                          = clientIn
+          override val restClient: HttpClient                      = clientIn
           override val blocking: Blocking                          = b
           override val keyType: SupportedType[Key]                 = keyTypeIn
           override val valueType: SupportedType[Value]             = valueTypeIn

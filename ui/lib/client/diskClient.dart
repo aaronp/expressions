@@ -20,13 +20,11 @@ class DiskClient {
 
   static Future<String> get(String path) async {
     try {
-      print("Client.get('$path')");
       var response = await Rest.client.execute(
         request: rc.Request(
             method: RequestMethod.get, url: '${Rest.HostPort}/rest/store/get/$path', headers: Rest.HttpHeaders),
       );
-      // return jsonEncode();
-      print("Client.get('$path') returning >${response.body}<, isNull=${response.body == null}");
+
       if (response.body == null) {
         return "";
       }

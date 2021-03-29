@@ -3,7 +3,8 @@ package expressions.rest.server
 import expressions.client.kafka.{ConsumerStats, RecordCoords, RecordSummary}
 import expressions.client.{HttpRequest, HttpResponse}
 import expressions.franz.SchemaGen
-import expressions.rest.server.kafka.KafkaSink.RunningSinkId
+import expressions.rest.server.kafka.{Batch, RunningSinkId}
+import expressions.template.Message
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.apache.avro.generic.IndexedRecord
@@ -37,6 +38,22 @@ object Stats {
     val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(20)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
   }
+  def updateStats(consumerStats: ConsumerStats, batch: Batch, result: Try[Unit], now: Long): ConsumerStats = {
+    val summary = batch.messages.map { record =>
+      RecordSummary(
+        recordCoords(record),
+        s"${batch.topic} ${record.partition}:${record.offset}",
+        record.content.value,
+        now
+      )
+    }
+    val errors = result match {
+      case Failure(_) => summary ++: consumerStats.errors
+      case _          => consumerStats.errors
+    }
+    val newRecords: Seq[RecordSummary] = summary ++: consumerStats.recentRecords.take(20)
+    consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
+  }
 
   def createStats(id: RunningSinkId, record: CommittableRecord[_, _], result: Try[Seq[(HttpRequest, HttpResponse)]], now: Long) = {
     val summary = RecordSummary(
@@ -51,8 +68,25 @@ object Stats {
     }
     ConsumerStats(id, 1, List(summary), errors)
   }
+  def createStats(id: RunningSinkId, records: Batch, result: Try[Unit], now: Long): ConsumerStats = {
+    val summary =
+      records.messages.map { record =>
+        RecordSummary(
+          recordCoords(record),
+          s"${records.topic} ${record.partition}:${record.offset}",
+          record.content.value,
+          now
+        )
+      }
+    val errors = result match {
+      case Failure(_) => summary
+      case _          => Nil
+    }
+    ConsumerStats(id, 1, summary, errors)
+  }
 
   private def recordCoords(record: CommittableRecord[_, _]): RecordCoords = RecordCoords(record.record.topic(), record.offset.offset, record.partition, asString(record.key))
+  private def recordCoords(record: Message[_, _]): RecordCoords           = RecordCoords(record.topic, record.offset, record.partition, asString(record.key))
 
   private def asMessage(request: HttpRequest, response: HttpResponse): String = {
     s"${request.url} yields ${response.statusCode}"

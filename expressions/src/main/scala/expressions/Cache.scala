@@ -29,7 +29,7 @@ class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new Illega
   }
 
   def apply(expression: String): Try[V] = {
-    if (Option(expression).map(_.trim).filter(_.nonEmpty).isDefined) {
+    if (Option(expression).map(_.trim).exists(_.nonEmpty)) {
       Lock.synchronized {
         thunkByCode.get(expression) match {
           case None         => createUnsafe(expression)

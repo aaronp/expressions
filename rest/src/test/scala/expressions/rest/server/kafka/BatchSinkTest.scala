@@ -1,15 +1,26 @@
 package expressions.rest.server.kafka
 
-import expressions.CodeTemplate
-import expressions.client.HttpRequest
-import expressions.rest.server.{BaseRouteTest, JsonMsg}
+import expressions.rest.server.{BaseRouteTest, Disk, MappingConfig}
+import zio.ZIO
 
-class KafkaSinkTest extends BaseRouteTest {
-  "KafkaSink" should {
-    "be able to start, stop and list sinks" in {
-      val compiler = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]]("import expressions.client._")
+class BatchSinkTest extends BaseRouteTest {
+  "BatchSink" should {
+    "be able to start, stop and listen to sinks" in {
+      val mappingConfig = MappingConfig()
+      val zioScript     = """ZIO.foreach(batch) { msg =>
+                          val bar   = msg.key.foo.bar.asString
+                          val value = msg.content.value
+                          bar.withValue(value).publishTo(msg.topic)
+                      }.unit
+                      """
+
       val underTest = for {
-        sink                    <- KafkaSink(compiler)
+        disk <- Disk(mappingConfig.rootConfig)
+        _ <- ZIO.foreach(mappingConfig.mappings) {
+          case (topic, _) =>
+            KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, topic, zioScript)
+        }
+        sink                    <- BatchSink.make
         started1: RunningSinkId <- sink.start(testConfig())
         started2: RunningSinkId <- sink.start(testConfig())
         twoRunning              <- sink.running()

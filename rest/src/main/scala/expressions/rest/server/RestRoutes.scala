@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
-import expressions.rest.server.kafka.{KafkaPublishRoute, KafkaRoute, KafkaSink}
+import expressions.rest.server.kafka.{BatchSink, KafkaPublishRoute, KafkaRoute, KafkaSink, BatchRoute}
 import expressions.{Cache, CodeTemplate, DynamicJson, StringTemplate}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -33,11 +33,13 @@ object RestRoutes extends StrictLogging {
 
   def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
     for {
+      env               <- ZIO.environment[ZEnv]
       cacheRoute        <- CacheRoute()
       disk              <- DiskRoute(defaultConfig)
       fsDir             = kafka.KafkaRecordToHttpRequest.dataDir(defaultConfig)
       templateCache     = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
       kafkaSink         <- KafkaSink(templateCache)
+      batchSink         <- BatchSink.make
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
@@ -47,10 +49,11 @@ object RestRoutes extends StrictLogging {
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(defaultConfig)
+      val batchRoute                                               = BatchRoute(defaultConfig, batchSink, env)
       val kafkaRoute                                               = KafkaRoute(defaultConfig, kafkaSink)
       val proxyRoute                                               = ProxyRoute()
 
-      kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk <+> proxyRoute
+      batchRoute <+> kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> disk <+> proxyRoute
     }
   }
 }

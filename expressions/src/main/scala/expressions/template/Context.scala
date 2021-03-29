@@ -1,6 +1,7 @@
 package expressions.template
 
 import eie.io._
+import io.circe.{Decoder, Encoder, Json}
 
 import java.nio.file.Path
 import scala.language.dynamics
@@ -25,6 +26,32 @@ object Message {
   def of[A](value: A, key: String = "", timestamp: Long = 0, headers: Map[String, String] = Map.empty, topic: String = ""): Message[String, A] = {
     new Message[String, A](value, key, timestamp, headers, topic)
   }
+
+  implicit def msgEncoder[K: Encoder, V: Encoder]: Encoder[Message[K, V]] = Encoder[Message[K, V]] { msg =>
+    import io.circe.syntax._
+    import msg._
+    Json.obj(
+      "content"   -> Encoder[V].apply(content),
+      "key"       -> Encoder[K].apply(key),
+      "timestamp" -> timestamp.asJson,
+      "headers"   -> headers.asJson,
+      "topic"     -> topic.asJson,
+      "offset"    -> offset.asJson,
+      "partition" -> partition.asJson
+    )
+  }
+  implicit def msgDecoder[K: Decoder, V: Decoder]: Decoder[Message[K, V]] = Decoder[Message[K, V]] { cursor =>
+    for {
+      content   <- cursor.downField("content").as[V]
+      key       <- cursor.downField("key").as[K]
+      timestamp <- cursor.downField("timestamp").as[Long]
+      headers   <- cursor.downField("headers").as[Map[String, String]]
+      topic     <- cursor.downField("topic").as[String]
+      offset    <- cursor.downField("offset").as[Long]
+      partition <- cursor.downField("partition").as[Int]
+    } yield Message(content, key, timestamp, headers, topic, offset, partition)
+  }
+
 }
 
 /**

@@ -14,6 +14,11 @@ object CodeTemplate {
 
   type Expression[A, B] = Context[A] => B
 
+  case class Compiled[A, B](code: String, inputType: String, thunk: A => B) extends (A => B) {
+    override def apply(input: A): B = thunk(input)
+    override def toString(): String = s"COMPILED [$inputType] => B:\n${code}\n"
+  }
+
   case class CompiledExpression[A, B](contextType: String, code: String, thunk: Expression[A, B]) extends Expression[A, B] {
     override def apply(input: Context[A]): B = thunk(input)
     override def toString(): String          = s"COMPILED Context[$contextType] => B:\n${code}\n"
@@ -69,13 +74,22 @@ object CodeTemplate {
     compileAsExpression[A, B](contextType, script)
   }
 
-  private[expressions] def compileAsExpression[A, B](contextType: String, script: String): Try[Expression[A, B]] = {
+  def compileAsExpression[A, B](contextType: String, script: String): Try[Expression[A, B]] = {
+    compile[Context[A], B](contextType, script).map {
+      case Compiled(expr, script, thunk: Expression[A, B]) => CompiledExpression(expr, script, thunk)
+    }
+  }
+
+  def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
+
+  def compile[A, B](inputType: String, script: String): Try[Compiled[A, B]] = {
+    type Thunk = A => B
     try {
       val tree   = compiler.parse(script)
       val result = compiler.eval(tree)
       result match {
-        case expr: Expression[A, B] => Success(CompiledExpression(contextType, script, expr))
-        case other                  => Failure(new Exception(s"'$script' isn't an Expression[$className] : $other"))
+        case expr: Thunk => Success(Compiled(script, inputType, expr))
+        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
       }
     } catch {
       case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))

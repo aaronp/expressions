@@ -7,11 +7,14 @@ class ConfigSummary {
       this.mappings,
       this.brokers,
       this.keyType,
-      this.valueType);
+      this.valueType,
+      this.producerKeyType,
+      this.producerValueType,
+      );
 
   static empty() {
     Map<String, List<String>> empty = {};
-    return ConfigSummary("", empty, [], "", "");
+    return ConfigSummary("", empty, [], "", "", "", "");
   }
 
   bool isEmpty() {
@@ -25,6 +28,8 @@ class ConfigSummary {
   Map<String, List<String>> mappings = {};
   String keyType;
   String valueType;
+  String producerKeyType;
+  String producerValueType;
 
   String brokersAsString() {
     if (brokers.length == 1) {
@@ -40,14 +45,15 @@ class ConfigSummary {
     return asJson.toString();
   }
 
-  //Map<String, Object>
   Object get asJson {
     return {
       'topic': topic,
       'brokers': brokers,
       'mappings': jsonEncode(mappings),
       'keyType': keyType,
-      'valueType': valueType
+      'valueType': valueType,
+      'producerKeyType' : producerKeyType,
+      'producerValueType' : producerValueType
     };
   }
 
@@ -66,6 +72,9 @@ class ConfigSummary {
         mappings,
         brokers.map((e) => e.toString()).toList(),
         json['keyType'],
-        json['valueType']);
+        json['valueType'],
+        json['producerKeyType'],
+        json['producerValueType'],
+    );
   }
 }

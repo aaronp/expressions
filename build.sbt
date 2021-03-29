@@ -47,11 +47,9 @@ def additionalScalcSettings = List(
   "-encoding",
   "utf-8", // Specify character encoding used by source files.
   "-unchecked",
-  //  "-explaintypes", // Explain type errors in more detail.
   "-unchecked", // Enable additional warnings where generated code depends on assumptions.
   "-Xcheckinit", // Wrap field accessors to throw an exception on uninitialized access.
   "-Xfatal-warnings", // Fail the compilation if there are any warnings.
-  "-Xfuture", // Turn on future language features.
   "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
   "-Xlint:by-name-right-associative", // By-name parameter of right associative operator.
   "-Xlint:delayedinit-select", // Selecting member of DelayedInit.

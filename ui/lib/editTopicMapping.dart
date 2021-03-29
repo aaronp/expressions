@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:html';
 
 import 'package:flutter/material.dart';
 import 'package:ui/client/httpRequest.dart';
@@ -268,7 +267,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
             child: OutlinedButton.icon(
                 icon: Icon(Icons.bug_report),
                 label: _testInFlight
-                    ? CircularProgressIndicator()
+                    ? progressIndicator()
                     : Text("Test Mapping"),
                 onPressed: () => _onTestMapping(context))),
         if (_testResult != null) _resultsTitle(_testResult.result.length),
@@ -276,6 +275,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
       ],
     );
   }
+
+  Widget progressIndicator() => SizedBox(width: 30, height:30,child : CircularProgressIndicator());
 
   Widget testResults(TransformResponse response) {
     if (response.messages != null && response.messages.isNotEmpty) {
@@ -298,7 +299,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
 
   Widget httpResponseWidget(int index, HttpResponse response) {
     if (_executingRequestByIndex[index] == true) {
-      return CircularProgressIndicator();
+      return progressIndicator();
     }
     final body = (response.body != null && response.body.isNotEmpty)
         ? ": ${response.body}"

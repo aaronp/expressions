@@ -3,8 +3,9 @@ package expressions.rest.server
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.Unquote
 import zio.ZIO
-import zio.console.{Console, putStrLn}
+import zio.console.Console
 
+import java.io.FileNotFoundException
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -62,7 +63,8 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
     * @param topic the topic to look up
     * @return the path (e.g. path/to/script.sc is [path, to, script.sc]) for the mapping
     */
-  def lookup(topic: String): Option[List[String]] = {
+  def lookup(topicIn: String): Option[List[String]] = {
+    val topic = MappingConfig.unquote(topicIn)
     pathsByName.get(topic).orElse {
       pathsByRegex.collectFirst {
         case (regex, value) if regex.matches(topic) => value
@@ -75,7 +77,7 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
       scriptByPathSeq <- ZIO.foreach(mappings) {
         case (topic, path) =>
           disk.read(path).flatMap {
-            case None         => ZIO.fail(new Exception(s"Couldn't read $path as specified by topic '${topic}'"))
+            case None         => ZIO.fail(new FileNotFoundException(s"Couldn't read ${path.mkString("/")} as specified by topic '${topic}'"))
             case Some(script) => ZIO.succeed(path -> script)
           }
       }
@@ -92,4 +94,11 @@ case class MappingConfig(rootConfig: Config = ConfigFactory.load()) {
 object MappingConfig {
   import args4c.implicits._
   def apply(config: String, theRest: String*): MappingConfig = MappingConfig((config +: theRest).toArray.asConfig())
+
+  private def unquote(s: String): String = {
+    s.trim match {
+      case s""""${str}"""" => unquote(str)
+      case str             => s
+    }
+  }
 }

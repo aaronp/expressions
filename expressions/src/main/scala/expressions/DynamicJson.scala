@@ -1,6 +1,7 @@
 package expressions
 
-import io.circe.Json
+import io.circe.{Decoder, Encoder, Json}
+
 import scala.language.dynamics
 
 /**
@@ -48,6 +49,9 @@ object DynamicJson {
     implicit def asVector(json: Json): Vector[DynamicJson]           = asDynamic(json).each
     implicit def asVector(dynamic: DynamicJson): Vector[DynamicJson] = dynamic.value.asArray.map(_.map(DynamicJson.apply)).getOrElse(Vector(dynamic))
   }
+
+  implicit val encoder: Encoder[DynamicJson] = Encoder[DynamicJson](_.value)
+  implicit val decoder: Decoder[DynamicJson] = Decoder.decodeJson.map(DynamicJson.apply)
 
   object implicits extends LowPriority {
     implicit class Syntax(val json: Json) extends AnyVal {

@@ -46,12 +46,12 @@ object ConfigTestRoute extends StrictLogging {
           val errorMessage = s"didn't work w/ input: ${e.getMessage}"
           logger.error(errorMessage, e)
           Response(status = Status.InternalServerError)
-            .withEntity(TransformResponse(errorMessage.asJson, Some(s"didn't work w/ input: ${e.getMessage}")))
+            .withEntity(TransformResponse(errorMessage.asJson, false, List(s"didn't work w/ input: ${e.getMessage}")))
         case Right(keyValues) =>
           val mapped = Json.obj(keyValues.map {
             case (key, value) => (key, value.asJson)
           }: _*)
-          Response(Status.Ok).withEntity(TransformResponse(mapped, None))
+          Response(Status.Ok).withEntity(TransformResponse(mapped, true, Nil))
       }
     }
   }

@@ -10,8 +10,7 @@ object ToDart {
   def main(a: Array[String]) = {
 
     Seq(
-      """
-        |case class HttpResponse(statusCode: Int, body: String)
+      """case class Output(stdOut: Seq[String], stdErr: Seq[String])
         |""".stripMargin
     ).map(asDart).foreach(println)
   }

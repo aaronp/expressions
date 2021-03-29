@@ -43,9 +43,7 @@ object KafkaSink {
   /**
     * A task which, when run, produces a 'sink' -- a function which persists the given record (and returns back that record)
     */
-  type SinkIO        = UIO[CommittableRecord[_, _] => Task[Unit]]
-  type RunningSinkId = String
-  type SinkInput     = (RunningSinkId, Config)
+  type SinkIO = UIO[CommittableRecord[_, _] => Task[Unit]]
 
   trait Service {
     def start(config: Config): Task[RunningSinkId]
@@ -90,9 +88,6 @@ object KafkaSink {
 
   /**
     * An instance which uses 'makeSink' to construct a [[CommittableRecord[K,V]]] sink which can be started/stopped
-    * @param tasksById
-    * @param makeSink
-    * @param env
     */
   case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, (StartedConsumer, Fiber[_, _])]],
                               statsMap: Ref[Map[RunningSinkId, ConsumerStats]],

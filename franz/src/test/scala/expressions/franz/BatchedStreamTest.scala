@@ -22,11 +22,11 @@ class BatchedStreamTest extends BaseFranzTest {
       })
 
       val testCase = for {
-        counter  <- Ref.make(List.empty[Array[CommittableRecord[String, GenericRecord]]])
+        counter  <- Ref.make(List.empty[Array[CommittableRecord[_, _]]])
         producer = config.producer[String, GenericRecord]
         _        <- producer.use(_.produceChunk(chunk))
         batched  = BatchedStream[String, GenericRecord](config)
-        stream: ZStream[zio.ZEnv, Throwable, Any] = batched.copy(batchSize = 3).run { d8a =>
+        stream: ZStream[zio.ZEnv, Throwable, Any] = batched.copy(batchSize = 3).run { d8a: Array[CommittableRecord[_, _]] =>
           counter.update(d8a +: _)
         }
         reader <- stream.take(chunk.size).runCollect.fork

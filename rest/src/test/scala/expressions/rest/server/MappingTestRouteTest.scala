@@ -40,7 +40,8 @@ class MappingTestRouteTest extends BaseRouteTest {
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {
-        val Some(err) = transformResponse.messages
+        transformResponse.success shouldBe false
+        val List(err) = transformResponse.messages
         err should include(script)
         response.status.isSuccess shouldBe true
       }

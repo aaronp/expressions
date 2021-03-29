@@ -50,7 +50,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
 
       val transformResponse = response.bodyAs[TransformResponse]
       withClue(transformResponse.result.spaces2) {
-        val Some(msg) = transformResponse.messages
+        val List(msg) = transformResponse.messages
         msg should startWith("didn't work w/ input: Couldn't parse ")
         response.status.isSuccess shouldBe false
       }
