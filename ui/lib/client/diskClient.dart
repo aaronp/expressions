@@ -1,7 +1,6 @@
 import 'package:rest_client/rest_client.dart' as rc;
 import 'package:rest_client/rest_client.dart';
-import 'dart:convert';
-import 'configSummary.dart';
+import 'package:http/http.dart' as http;
 import 'http.dart';
 
 class DiskClient {
@@ -20,15 +19,15 @@ class DiskClient {
 
   static Future<String> get(String path) async {
     try {
-      var response = await Rest.client.execute(
-        request: rc.Request(
-            method: RequestMethod.get, url: '${Rest.HostPort}/rest/store/get/$path', headers: Rest.HttpHeaders),
-      );
-
-      if (response.body == null) {
+      final getHeaders = Map<String, String>.of(Rest.HttpHeaders);
+      getHeaders["accept"] = "text/plain";
+      getHeaders["content-type"] = "text/plain";
+      final url = '${Rest.HostPort}/rest/store/get/$path';
+      final got = await http.get(url, headers: getHeaders);
+      if (got.body == null) {
         return "";
       }
-      return response.body.toString();
+      return got.body.toString();
     } catch (e) {
       print("Error getting '$path': >>$e<<");
       return "";
@@ -40,7 +39,7 @@ class DiskClient {
       print("Client.store('$path', '$content')");
       var response = await Rest.client.execute(
         request: rc.Request(
-            method: RequestMethod.post, url: '${Rest.HostPort}/rest/store/$path', headers: Rest.HttpHeaders),
+            method: RequestMethod.post, url: '${Rest.HostPort}/rest/store/$path', headers: Rest.HttpHeaders, body: content),
       );
       assert(response.statusCode == 200, "Store returned ${response.statusCode}");
     } catch (e) {

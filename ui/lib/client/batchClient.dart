@@ -25,7 +25,8 @@ class BatchClient {
         url: '${Rest.HostPort}/rest/batch/stop/$id',
         headers: Rest.HttpHeaders);
     var response = await Rest.client.execute(request: request);
-    return response.toString().toLowerCase() == "true";
+    print("stop $id -> ${response.body}");
+    return response.body.toString().toLowerCase() == "true";
   }
 
   static Future<TransformResponse> check(BatchCheckRequest request) async {
@@ -57,6 +58,7 @@ class BatchClient {
         headers: Rest.HttpHeaders);
     var response = await Rest.client.execute(request: request);
     final dynamic stats = response.body;
+    print("STATUS RESP: >>>${response.body}<<<");
     return stats == null ? null : ConsumerStats.fromJson(stats);
   }
 }

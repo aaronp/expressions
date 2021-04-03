@@ -40,7 +40,11 @@ object Disk {
     def apply(dataDir: java.nio.file.Path) = new Service {
       import eie.io._
 
-      private def fileFor(path: Seq[String]) = dataDir.resolve(path.mkString("/"))
+      private def fileFor(path: Seq[String]) = {
+        val full = dataDir.resolve(path.mkString("/"))
+        println(s"Resolved ${full.toAbsolutePath}")
+        full
+      }
 
       override def write(path: Seq[String], body: String): Task[Boolean] = {
         Task {
@@ -54,6 +58,7 @@ object Disk {
       override def read(path: Seq[String]): Task[Option[String]] = Task {
         val file = fileFor(path)
         if (file.exists()) {
+          println(s"Returning for ${file} >${file.text}<")
           Some(file.text)
         } else None
       }

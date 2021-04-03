@@ -160,10 +160,12 @@ batch.foreach { msg =>
   }
 
   void _saveMapping(BuildContext context) async {
-    await DiskClient.store(entry.filePath, _codeTextController.text);
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
-    // Navigator.of(context).pop();
+    if (_formKey.currentState.validate()) {
+      _formKey.currentState.save();
+      await DiskClient.store(entry.filePath, _codeTextController.text);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
+    }
   }
 
   void _resetCode() {
@@ -223,11 +225,11 @@ batch.foreach { msg =>
 
   Widget sizedColumn(ScrollController sc, List<Widget> contents) {
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
-      final all = <Widget>[
-        Text("w:${constraints.maxWidth}"),
-        Text("h:${constraints.maxHeight}"),
-        ...contents
-      ];
+      // final all = <Widget>[
+      //   Text("w:${constraints.maxWidth}"),
+      //   Text("h:${constraints.maxHeight}"),
+      //   ...contents
+      // ];
       return SizedBox(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
@@ -238,7 +240,7 @@ batch.foreach { msg =>
                   child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: all))));
+                      children: contents))));
     });
   }
 
@@ -304,23 +306,28 @@ batch.foreach { msg =>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(0,0,0,16.0),
-            child: SelectableText(response.messages.join("\n"),
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 16.0),
+            child:
+                SelectableText(response.messages.join("\n"), style: errStyle),
           ),
           if (output.stdOut.isNotEmpty && output.stdErr.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(0,8.0,0,8.0),
-              child: Text("Standard Output:", style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.normal, fontFamily: "Lato")),
+              padding: const EdgeInsets.fromLTRB(0, 8.0, 0, 8.0),
+              child: Text("Standard Output:",
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: "Lato")),
             ),
           ...output.stdOut.map((o) => _stdOut(o)).toList(),
           if (output.stdOut.isNotEmpty && output.stdErr.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(0,8.0,0,8.0),
-              child: Text("Error Output:", style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.normal, fontFamily: "Lato")),
+              padding: const EdgeInsets.fromLTRB(0, 8.0, 0, 8.0),
+              child: Text("Error Output:",
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: "Lato")),
             ),
           ...output.stdErr.map((o) => _stdErr(o)).toList()
         ],
@@ -331,20 +338,18 @@ batch.foreach { msg =>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(0,0,0,16.0),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 16.0),
             child: SelectableText(response.messages.join("\n"),
-                style:
-                const TextStyle(
+                style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
                     fontFamily: "Lato")),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(0,0,0,16.0),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 16.0),
             child: SelectableText("JSON response: ${response.result}",
-                style:
-                const TextStyle(
+                style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.normal,
                     // color: Colors.bl,
@@ -369,11 +374,11 @@ batch.foreach { msg =>
       fontWeight: FontWeight.bold,
       color: Colors.red,
       fontFamily: "Lato");
+
   Widget _stdErr(String text) {
     return Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 0, 0, 0),
-        child: Text(text,
-            style: errStyle));
+        child: Text(text, style: errStyle));
   }
 
   @override

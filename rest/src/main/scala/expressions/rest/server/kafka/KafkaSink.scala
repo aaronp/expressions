@@ -106,6 +106,7 @@ object KafkaSink {
       val startIO = for {
         id        <- ZIO(counter.next())
         _         = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
+        _         <- statsMap.update(_.updated(id, ConsumerStats(id)))
         sink      <- makeSink(id, rootConfig)
         kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
@@ -139,7 +140,9 @@ object KafkaSink {
         _ <- ZIO.foreach_(fiber)(_._2.interrupt)
       } yield fiber.isDefined
 
-    override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = statsMap.get.map(_.get(taskId))
+    override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = {
+      statsMap.get.map(_.get(taskId))
+    }
   }
 
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ui/client/kafkaClient.dart';
 import 'package:ui/editConfigWidget.dart';
 import 'package:ui/editTopicMapping.dart';
+import 'package:ui/editZIOMapping.dart';
 import 'package:ui/publishWidget.dart';
 import 'package:ui/runningConsumersWidget.dart';
 
@@ -86,13 +87,22 @@ class _ConfigPageState extends State<ConfigPage> {
             label: Text('Running'),
             onPressed: () => onListRunning(context)));
 
-    final consumeButton = Padding(
+    final startBatchButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
         child: TextButton.icon(
           icon: Icon(Icons.read_more_outlined, color: Colors.white),
-          label: Text('Consume'),
+          label: Text('Start Batch Consumer'),
           onPressed: () {
-            onConsume(context);
+            onStartBatchConsumer(context);
+          },
+        ));
+    final startRestButton = Padding(
+        padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
+        child: TextButton.icon(
+          icon: Icon(Icons.read_more_outlined, color: Colors.white),
+          label: Text('Start REST Consumer'),
+          onPressed: () {
+            onStartRestConsumer(context);
           },
         ));
     final publishButton = Padding(
@@ -110,8 +120,8 @@ class _ConfigPageState extends State<ConfigPage> {
             appBar: AppBar(
                 title: Align(
                     alignment: Alignment.topLeft,
-                    child: Text('Configuration', textAlign: TextAlign.start)),
-                actions: [publishButton, consumeButton, runningButton]),
+                    child: Text('Franz', textAlign: TextAlign.start)),
+                actions: [publishButton, startRestButton, startBatchButton, runningButton]),
             body: configSummaryWidget(
                 context) // This trailing comma makes auto-formatting nicer for build methods.
             ));
@@ -135,24 +145,6 @@ class _ConfigPageState extends State<ConfigPage> {
           )
         ],
       ),
-    );
-  }
-
-  Widget workingColumn(BuildContext ctxt) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        configEntry("Brokers", _currentConfig.summary.brokersAsString()),
-        configEntry("Topic", _currentConfig.summary.topic),
-        configEntry("Key Type", _currentConfig.summary.keyType),
-        configEntry("Value Type", _currentConfig.summary.valueType),
-        Container(
-          height: 420.0,
-          alignment: Alignment.topLeft,
-          child: mappingsWidget(ctxt),
-        ),
-      ],
     );
   }
 
@@ -282,20 +274,30 @@ class _ConfigPageState extends State<ConfigPage> {
     });
   }
 
-  void onConsume(BuildContext ctxt) async {
-    final kStart = await KafkaClient.start(_currentConfig.loadedContent);
+  void onStartBatchConsumer(BuildContext ctxt) async {
     final bStart = await BatchClient.start(_currentConfig.loadedContent);
     ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(
         content:
-            Text("Started http client '$kStart' and batch client '$bStart'")));
+            Text("Started batch client '$bStart'")));
+    _push(ctxt, RunningConsumersWidget());
+  }
+
+ void onStartRestConsumer(BuildContext ctxt) async {
+    final kStart = await KafkaClient.start(_currentConfig.loadedContent);
+    ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(
+        content:
+            Text("Started REST client '$kStart'")));
     _push(ctxt, RunningConsumersWidget());
   }
 
   void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
+      _push(ctxt, EditZIOMappingWidget(entry, _currentConfig.loadedContent));
+
+  void onEditHttpMapping(BuildContext ctxt, MappingEntry entry) =>
       _push(ctxt, EditTopicMappingWidget(entry));
 
   void onAddMapping(BuildContext ctxt) =>
-      _push(ctxt, EditTopicMappingWidget(MappingEntry("", "")));
+      _push(ctxt, EditZIOMappingWidget(MappingEntry("new topic name", ""), _currentConfig.loadedContent));
 
   void onRemoveMapping(BuildContext ctxt, String key) {
     setState(() {
@@ -314,19 +316,22 @@ class _ConfigPageState extends State<ConfigPage> {
       final key = _unquote(quotedKey);
       final path = value.join("/");
 
-      final editButton = IconButton(
-          onPressed: () => onEditMapping(ctxt, MappingEntry(key, path)),
-          icon: Icon(Icons.edit, color: Colors.white));
+      final editHttpButton = OutlinedButton.icon(
+          onPressed: () => onEditHttpMapping(ctxt, MappingEntry(key, path)),
+          label: Text("(old http edit)"),
+          icon: Icon(Icons.edit));
 
       final deleteButton = IconButton(
           onPressed: () => onRemoveMapping(ctxt, quotedKey),
-          icon: Icon(
-            Icons.delete,
-            color: Colors.white,
-          ));
+          icon: Icon(Icons.delete_forever));
+
+      final link = InkWell(
+          child:
+              Text('$key ($path)', style: const TextStyle(color: Colors.blue)),
+          onTap: () => onEditMapping(ctxt, MappingEntry(key, path)));
 
       final mappingButtons =
-          Row(children: [editButton, Text('$key ($path)'), deleteButton]);
+          Row(children: [link, deleteButton, editHttpButton]);
 
       final entry = ListTile(
         dense: true,

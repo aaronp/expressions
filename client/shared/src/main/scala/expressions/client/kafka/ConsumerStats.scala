@@ -12,7 +12,7 @@ object RecordSummary {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[RecordSummary]
 }
 
-case class ConsumerStats(id : String, totalRecords : Long, recentRecords : Seq[RecordSummary], errors : Seq[RecordSummary])
+case class ConsumerStats(id : String, totalRecords : Long = 0L, recentRecords : Seq[RecordSummary] = Nil, errors : Seq[RecordSummary] = Nil)
 object ConsumerStats {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[ConsumerStats]
 }

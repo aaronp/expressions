@@ -36,7 +36,6 @@ class EditTopicMappingWidget extends StatefulWidget {
 class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   final _formKey = GlobalKey<FormState>();
   MappingEntry entry = MappingEntry("", "");
-  final _fileNameController = TextEditingController();
 
   final _codeFocusNode = FocusNode();
   final _codeTextController = TextEditingController();
@@ -89,7 +88,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     _codeTextController.text = "Loading ${entry.filePath} ...";
 
     _testInputController.text = TestInput;
-    _fileNameController.text = entry.filePath;
+
     DiskClient.get(entry.filePath).then((content) {
       setState(() {
         if (content.isEmpty) {
@@ -126,9 +125,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         });
       } catch (e) {
         ScaffoldMessenger.of(ctxt)
-            .showSnackBar(SnackBar(content: Text("Invalid json: ${e}")));
+            .showSnackBar(SnackBar(content: Text("Invalid json: $e")));
       }
-
     }
   }
 
@@ -137,27 +135,35 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     // final MappingEntry args = ModalRoute.of(context).settings.arguments;
     return SafeArea(
         child: Scaffold(
-      appBar: AppBar(
-          title: Align(
-              alignment: Alignment.topLeft, child: Text("Edit Topic Mapping")),
-          backgroundColor: Theme.of(context).colorScheme.background,
-          actions: [
-            IconButton(onPressed: _resetCode, icon: Icon(Icons.refresh_sharp)),
-            IconButton(
-                onPressed: () => _saveMapping(context), icon: Icon(Icons.save))
-          ]),
-      body: VerticalSplitView(
-          key: Key("split"),
-          left: codeEditor(context),
-          right: testingWidget(context)),
-    ));
+            appBar: AppBar(
+                title: Align(
+                    alignment: Alignment.topLeft,
+                    child: Text("Edit Topic Mapping")),
+                backgroundColor: Theme.of(context).colorScheme.background,
+                actions: [
+                  IconButton(
+                      onPressed: _resetCode, icon: Icon(Icons.refresh_sharp)),
+                  IconButton(
+                      onPressed: () => _saveMapping(context),
+                      icon: Icon(Icons.save))
+                ]),
+            body: Form(
+              key: _formKey,
+              child: VerticalSplitView(
+                  key: Key("split"),
+                  left: codeEditor(context),
+                  right: testingWidget(context)),
+            )));
   }
 
   void _saveMapping(BuildContext context) async {
-    await DiskClient.store(entry.filePath, _codeTextController.text);
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
-    // Navigator.of(context).pop();
+    if (_formKey.currentState.validate()) {
+      _formKey.currentState.save();
+      final script = _codeTextController.text;
+      await DiskClient.store(entry.filePath, script);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
+    }
   }
 
   void _resetCode() {
@@ -196,26 +202,23 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   Widget testInputsForm() {
     return Container(
       constraints: BoxConstraints(maxHeight: 200),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Flexible(
-                child: FieldWidget("Topic:", "The Kafka Topic", "some-topic",
-                    (value) => _topic = value, textOk)),
-            Flexible(
-                child: FieldWidget("Offset:", "The Kafka Offset", "1",
-                    (value) => _offset = int.parse(value), validateNumber)),
-            Flexible(
-                child: FieldWidget("Partition:", "The Kafka Partition", "2",
-                    (value) => _partition = int.parse(value), validateNumber)),
-            Flexible(
-                child: FieldWidget("Key:", "The Message Key", "some-key",
-                    (value) => _key = value, textOk))
-          ],
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Flexible(
+              child: FieldWidget("Topic:", "The Kafka Topic", "some-topic",
+                  (value) => _topic = value, textOk)),
+          Flexible(
+              child: FieldWidget("Offset:", "The Kafka Offset", "1",
+                  (value) => _offset = int.parse(value), validateNumber)),
+          Flexible(
+              child: FieldWidget("Partition:", "The Kafka Partition", "2",
+                  (value) => _partition = int.parse(value), validateNumber)),
+          Flexible(
+              child: FieldWidget("Key:", "The Message Key", "some-key",
+                  (value) => _key = value, textOk))
+        ],
       ),
     );
   }
@@ -266,9 +269,8 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
         Flexible(
             child: OutlinedButton.icon(
                 icon: Icon(Icons.bug_report),
-                label: _testInFlight
-                    ? progressIndicator()
-                    : Text("Test Mapping"),
+                label:
+                    _testInFlight ? progressIndicator() : Text("Test Mapping"),
                 onPressed: () => _onTestMapping(context))),
         if (_testResult != null) _resultsTitle(_testResult.result.length),
         if (_testResult != null) testResults(_testResult)
@@ -276,7 +278,12 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     );
   }
 
-  Widget progressIndicator() => SizedBox(width: 30, height:30,child : CircularProgressIndicator());
+  Widget progressIndicator() =>
+      SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator());
+
 
   Widget testResults(TransformResponse response) {
     if (response.messages != null && response.messages.isNotEmpty) {
@@ -347,7 +354,6 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
   @override
   void dispose() {
     super.dispose();
-    _fileNameController.dispose();
     _codeTextController.dispose();
     _testInputController.dispose();
     _editorScrollController.dispose();
@@ -382,4 +388,3 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
     });
   }
 }
-

@@ -61,15 +61,13 @@ class _EditConfigWidgetState extends State<EditConfigWidget> {
                           controller: _configTextController,
                           maxLines: 180,
                           decoration: InputDecoration.collapsed(
-                              hintText: "Configuration"),
+                              hintText: "Franz"),
                         ),
                       ))));
             })));
   }
 
   void onSave(BuildContext ctxt) {
-    print("Popping");
-    print(_configTextController.text);
     Navigator.pop(ctxt, _configTextController.text);
   }
 

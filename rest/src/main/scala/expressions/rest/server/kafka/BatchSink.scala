@@ -65,6 +65,7 @@ object BatchSink {
       val startIO = for {
         id                     <- ZIO(counter.next())
         _                      = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
+        _                      <- statsMap.update(_.updated(id, ConsumerStats(id)))
         sink                   <- makeSink(id, rootConfig)
         franzConfig            = FranzConfig.fromRootConfig(rootConfig)
         batcher: Batch.ByTopic = Batch.ByTopic(franzConfig)
@@ -100,6 +101,10 @@ object BatchSink {
         _ <- ZIO.foreach_(fiber)(_._2.interrupt)
       } yield fiber.isDefined
 
-    override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = statsMap.get.map(_.get(taskId))
+    override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = {
+      statsMap.get.map { byId =>
+        byId.get(taskId)
+      }
+    }
   }
 }

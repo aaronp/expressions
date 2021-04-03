@@ -11,6 +11,8 @@ class ConsumerStats {
   List<RecordSummary> recentRecords = [];
   List<RecordSummary> errors = [];
 
+  @override String toString() => asJson.toString();
+
   Map<String, Object> get asJson {
     return {
       'id': id,
