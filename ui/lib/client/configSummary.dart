@@ -45,11 +45,11 @@ class ConfigSummary {
     return asJson.toString();
   }
 
-  Object get asJson {
+  Map<String, dynamic> get asJson {
     return {
       'topic': topic,
       'brokers': brokers,
-      'mappings': jsonEncode(mappings),
+      'mappings': mappings,
       'keyType': keyType,
       'valueType': valueType,
       'producerKeyType' : producerKeyType,
@@ -66,7 +66,6 @@ class ConfigSummary {
       mappings[key] = pathToFile.map((e) => e.toString()).toList();
     });
 
-    print("Mappings is: $mappings");
     return ConfigSummary(
         json['topic'],
         mappings,

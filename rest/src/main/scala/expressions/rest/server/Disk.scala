@@ -20,8 +20,8 @@ object Disk {
 
   trait Service {
 
-    /** @param path
-      * @param body
+    /** @param path the path to the file to save
+      * @param body the content to save
       * @return true if created
       */
     def write(path: Seq[String], body: String): Task[Boolean]
@@ -68,7 +68,9 @@ object Disk {
         if (subDir.exists()) {
           if (subDir.isDir) {
             val entries: Array[Either[FullPathToEntry, SubDir]] = subDir.children.collect {
-              case child if child.isFile => Left(path :+ child.fileName)
+              case child if child.isFile =>
+//                Left(path :+ child.fileName)
+                Left(List(child.fileName))
               case child if child.isDir  => Right(child.fileName)
             }
             entries.toList
@@ -91,7 +93,7 @@ object Disk {
       override def list(path: Seq[String]): Task[List[ListEntry]] = {
         dataDir.get.map { map =>
           val eithers = map.keys.collect {
-            case fullPath if fullPath == path          => Left(fullPath)
+            case fullPath if fullPath == path          => Left(fullPath.lastOption.toList)
             case fullPath if fullPath.startsWith(path) => Right(fullPath.drop(path.size).head)
           }
           eithers.toList

@@ -11,14 +11,8 @@ import 'client/configClient.dart';
 import 'client/configSummary.dart';
 import 'client/diskClient.dart';
 import 'client/mappingEntry.dart';
-
-class ConfigPage extends StatefulWidget {
-  ConfigPage({Key key, this.title}) : super(key: key);
-  final String title;
-
-  @override
-  _ConfigPageState createState() => _ConfigPageState();
-}
+import 'fieldWidget.dart';
+import 'openFileWidget.dart';
 
 class LoadedConfig {
   LoadedConfig(this.fileName, this.loadedContent, this.summary);
@@ -28,7 +22,7 @@ class LoadedConfig {
   ConfigSummary summary;
 
   bool isEmpty() {
-    return summary.isEmpty();
+    return summary.topic == "";
   }
 
   @override
@@ -37,18 +31,40 @@ class LoadedConfig {
   }
 }
 
+class ConfigPage extends StatefulWidget {
+  ConfigPage({Key key, this.title}) : super(key: key);
+  final String title;
+
+  @override
+  _ConfigPageState createState() => _ConfigPageState();
+}
+
 class _ConfigPageState extends State<ConfigPage> {
   LoadedConfig _currentConfig = LoadedConfig("", "", ConfigSummary.empty());
+  String _lastLoadedFileName = "";
+  final _formKey = GlobalKey<FormState>();
+
+  Future<LoadedConfig> loadConfig(String fileName) async {
+    if (fileName == "") {
+      final content = await ConfigClient.defaultConfig();
+      return summaryFor("application.conf", content).then((value) {
+        setState(() {
+          _lastLoadedFileName = "application.conf";
+        });
+        return value;
+      });
+    } else {
+      // final content = await DiskClient.get(lastSavedFileName);
+      final summary = await ConfigClient.get(fileName);
+      // return summaryFor(lastSavedFileName, content);
+      return LoadedConfig(fileName, "", summary);
+    }
+  }
 
   Future<LoadedConfig> defaultConfig() async {
     var lastSavedFileName = await DiskClient.getLastSaved();
-    if (lastSavedFileName == "") {
-      final content = await ConfigClient.defaultConfig();
-      return summaryFor("application.conf", content);
-    } else {
-      final content = await DiskClient.get(lastSavedFileName);
-      return summaryFor(lastSavedFileName, content);
-    }
+    final loaded = await loadConfig(lastSavedFileName);
+    return loaded;
   }
 
   Future<LoadedConfig> summaryFor(String fileName, String content) async {
@@ -63,22 +79,31 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    // _reload();
   }
 
   void _reload() {
-    defaultConfig().then((value) {
-      setState(() {
-        _currentConfig = value;
+    print("reload checking ${_lastLoadedFileName} != ${_currentConfig.fileName} = ${_lastLoadedFileName != _currentConfig.fileName}");
+
+    if (_lastLoadedFileName.isEmpty || _lastLoadedFileName != _currentConfig.fileName) {
+      defaultConfig().then((value) {
+        print("defaultConfig() returned (${!value.isEmpty()}) :  $value");
+        _updateLoadedConfig(value);
       });
-    });
+    }
   }
 
+  void _updateLoadedConfig(LoadedConfig value) {
+    if (!value.isEmpty()) {
+      setState(() {
+        _currentConfig = value;
+        _lastLoadedFileName = value.fileName;
+      });
+    }
+  }
   @override
   Widget build(BuildContext context) {
-    if (_currentConfig.isEmpty()) {
-      _reload();
-    }
+    _reload();
 
     final runningButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
@@ -121,7 +146,12 @@ class _ConfigPageState extends State<ConfigPage> {
                 title: Align(
                     alignment: Alignment.topLeft,
                     child: Text('Franz', textAlign: TextAlign.start)),
-                actions: [publishButton, startRestButton, startBatchButton, runningButton]),
+                actions: [
+                  publishButton,
+                  startRestButton,
+                  startBatchButton,
+                  runningButton
+                ]),
             body: configSummaryWidget(
                 context) // This trailing comma makes auto-formatting nicer for build methods.
             ));
@@ -134,10 +164,14 @@ class _ConfigPageState extends State<ConfigPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
         children: [
-          configEntry("Brokers", _currentConfig.summary.brokersAsString()),
-          configEntry("Topic", _currentConfig.summary.topic),
-          configEntry("Key Type", _currentConfig.summary.keyType),
-          configEntry("Value Type", _currentConfig.summary.valueType),
+          configEntry("Brokers", _currentConfig.summary.brokersAsString(),
+              (newValue) => _currentConfig.summary.brokers = [newValue]),
+          configEntry("Topic", _currentConfig.summary.topic,
+              (newValue) => _currentConfig.summary.topic = newValue),
+          configEntry("Key Type", _currentConfig.summary.keyType,
+              (newValue) => _currentConfig.summary.keyType = newValue),
+          configEntry("Value Type", _currentConfig.summary.valueType,
+              (newValue) => _currentConfig.summary.valueType = newValue),
           Container(
             height: 400.0,
             alignment: Alignment.topLeft,
@@ -153,7 +187,14 @@ class _ConfigPageState extends State<ConfigPage> {
         iconSize: 32,
         tooltip: 'Open',
         icon: Icon(Icons.folder_open),
-        onPressed: () {});
+        onPressed: () => onOpenConfig(ctxt));
+
+    final saveButton = IconButton(
+        iconSize: 32,
+        tooltip: 'Save',
+        icon: Icon(Icons.save),
+        onPressed:
+            _currentConfig.fileName.isEmpty ? null : () => onSaveConfig(ctxt));
 
     final editButton = IconButton(
         iconSize: 32,
@@ -161,25 +202,36 @@ class _ConfigPageState extends State<ConfigPage> {
         icon: Icon(Icons.settings),
         onPressed: () => onEditConfig(ctxt));
 
-    return Scaffold(
-        appBar: AppBar(
-            title: Text(_currentConfig.fileName),
-            backgroundColor: Colors.grey[800],
-            actions: [
-              openButton,
-              editButton,
-            ],
-            primary: false,
-            automaticallyImplyLeading: false),
-        body: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints viewportConstraints) {
-            return SingleChildScrollView(
-                child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        minHeight: viewportConstraints.maxHeight),
-                    child: IntrinsicHeight(child: configColumn(ctxt))));
-          },
-        ));
+    return Form(
+        key: _formKey,
+        child: Scaffold(
+            appBar: AppBar(
+                // title: Text(_currentConfig.fileName),
+                title: FieldWidget(
+                    "Config File : ",
+                    "the configuration file",
+                    _currentConfig.fileName,
+                    (newPath) => _currentConfig.fileName = newPath,
+                    (String path) =>
+                        path.isEmpty ? "Path cannot be empty" : null),
+                backgroundColor: Colors.grey[800],
+                actions: [
+                  openButton,
+                  saveButton,
+                  editButton,
+                ],
+                primary: false,
+                automaticallyImplyLeading: false),
+            body: LayoutBuilder(
+              builder:
+                  (BuildContext context, BoxConstraints viewportConstraints) {
+                return SingleChildScrollView(
+                    child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            minHeight: viewportConstraints.maxHeight),
+                        child: IntrinsicHeight(child: configColumn(ctxt))));
+              },
+            )));
   }
 
   static const labelStyle = TextStyle(
@@ -193,21 +245,13 @@ class _ConfigPageState extends State<ConfigPage> {
     color: Colors.white,
   );
 
-  Widget configEntry(String label, String value) {
+  Widget configEntry(String label, String value, OnUpdate onUpdate) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
           width: 800,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Container(
-                  width: 100,
-                  child: Text("$label :", style: labelStyle),
-                  alignment: AlignmentDirectional.topEnd),
-              Text(value),
-            ],
-          )),
+          child: FieldWidget(
+              label, "$label config", value, onUpdate, (newValue) => null)),
     );
   }
 
@@ -274,35 +318,56 @@ class _ConfigPageState extends State<ConfigPage> {
     });
   }
 
+  Future<bool> onSaveConfig(BuildContext ctxt) async {
+    if (_formKey.currentState.validate()) {
+      _formKey.currentState.save();
+
+      DiskClient.setLastSaved(_currentConfig.fileName);
+      final result = await ConfigClient.save(
+          _currentConfig.fileName, _currentConfig.summary);
+
+      setState(() {
+        _currentConfig.fileName = _currentConfig.fileName;
+      });
+
+      return result;
+    }
+  }
+
   void onStartBatchConsumer(BuildContext ctxt) async {
     final bStart = await BatchClient.start(_currentConfig.loadedContent);
-    ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(
-        content:
-            Text("Started batch client '$bStart'")));
+    ScaffoldMessenger.of(ctxt).showSnackBar(
+        SnackBar(content: Text("Started batch client '$bStart'")));
     _push(ctxt, RunningConsumersWidget());
   }
 
- void onStartRestConsumer(BuildContext ctxt) async {
+  void onStartRestConsumer(BuildContext ctxt) async {
     final kStart = await KafkaClient.start(_currentConfig.loadedContent);
-    ScaffoldMessenger.of(ctxt).showSnackBar(SnackBar(
-        content:
-            Text("Started REST client '$kStart'")));
+    ScaffoldMessenger.of(ctxt)
+        .showSnackBar(SnackBar(content: Text("Started REST client '$kStart'")));
     _push(ctxt, RunningConsumersWidget());
   }
 
   void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
-      _push(ctxt, EditZIOMappingWidget(entry, _currentConfig.loadedContent));
+      _push(ctxt, EditZIOMappingWidget(_currentConfig.fileName, entry, _currentConfig.summary));
 
   void onEditHttpMapping(BuildContext ctxt, MappingEntry entry) =>
       _push(ctxt, EditTopicMappingWidget(entry));
 
-  void onAddMapping(BuildContext ctxt) =>
-      _push(ctxt, EditZIOMappingWidget(MappingEntry("new topic name", ""), _currentConfig.loadedContent));
+  void onAddMapping(BuildContext ctxt) async {
+    final returnValue = await _push(
+        ctxt,
+        EditZIOMappingWidget(_currentConfig.fileName,
+            MappingEntry("new topic name", ""), _currentConfig.summary));
 
-  void onRemoveMapping(BuildContext ctxt, String key) {
-    setState(() {
-      _currentConfig.summary.mappings.remove(key);
-    });
+    print("returnValue is $returnValue");
+    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
+  }
+
+  void onRemoveMapping(BuildContext ctxt, String key) async {
+    _currentConfig.summary.mappings.remove(key);
+    await ConfigClient.save(_currentConfig.fileName, _currentConfig.summary);
+    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
   }
 
   Future<Object> _push(BuildContext ctxt, Widget page) async {
@@ -371,5 +436,18 @@ class _ConfigPageState extends State<ConfigPage> {
         ),
       ),
     );
+  }
+
+  Future<String> onOpenConfig(BuildContext ctxt) async {
+    final chosen = await showDialog(
+        context: ctxt,
+        builder: (newCtxt) {
+          return OpenFileWidget();
+        });
+    final fileName = chosen.toString();
+    if (fileName.isNotEmpty) {
+      loadConfig(fileName).then((value) => _updateLoadedConfig(value));
+    }
+    return fileName;
   }
 }

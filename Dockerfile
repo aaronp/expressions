@@ -26,8 +26,9 @@ ADD build/application.conf /app/config/application.conf
 ADD build/logback.xml /app/config/logback.xml
 
 RUN echo " +------------------------------------------------------------------------" > /build.txt && \
-    echo " + Built at $TIMESTAMP " >> /build.txt && \
-    echo " + Version: $VERSION " >> /build.txt && \
+    echo " + Built at: $TIMESTAMP " >> /build.txt && \
+    echo " +  Version: $VERSION " >> /build.txt && \
+    echo " +   Commit: $GITSHA " >> /build.txt && \
     echo " +------------------------------------------------------------------------" >> /build.txt
 
 RUN mkdir /app/logs && \

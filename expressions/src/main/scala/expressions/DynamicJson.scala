@@ -3,6 +3,7 @@ package expressions
 import io.circe.{Decoder, Encoder, Json}
 
 import scala.language.dynamics
+import scala.util.Try
 
 /**
   * [[RichJsonPath]] sucks because it needs an implicit Json content.
@@ -19,6 +20,8 @@ case class DynamicJson(value: Json) extends Dynamic {
 
   def asDoubleOpt: Option[Double]   = value.asNumber.map(_.toDouble)
   def asDouble(default: Double = 0) = asDoubleOpt.getOrElse(default)
+
+  def as[A: Decoder]: Try[A] = value.as[A].toTry
 
   final def each: Vector[DynamicJson] = {
     value.asArray.getOrElse(Vector.empty).map(DynamicJson.apply)

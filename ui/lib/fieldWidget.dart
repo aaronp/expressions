@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
 
 typedef OnUpdate = void Function(String value);
-
 
 bool isNumber(String x) {
   try {
@@ -38,23 +36,31 @@ class FieldWidget extends StatefulWidget {
 
 class _FieldWidgetState extends State<FieldWidget> {
   final _focusNode = FocusNode();
+  final TextEditingController controller = new TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    widget.onUpdate(widget.initialValue);
+    controller.text = widget.initialValue;
+
+    controller.addListener(() {
+      widget.onUpdate(controller.text);
+    });
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    controller.text = widget.initialValue;
     return TextFormField(
-      initialValue: widget.initialValue,
+      // initialValue: widget.initialValue,
+      controller: controller,
       focusNode: _focusNode,
       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.normal),
       cursorWidth: 1,
@@ -63,11 +69,11 @@ class _FieldWidgetState extends State<FieldWidget> {
           hintText: widget.hintText,
           labelText: widget.labelText,
           labelStyle:
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
           hintStyle:
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
           errorStyle:
-          const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           errorMaxLines: 2),
       onSaved: widget.onUpdate,
       validator: widget.validator,

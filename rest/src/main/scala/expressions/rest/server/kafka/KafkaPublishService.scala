@@ -23,7 +23,7 @@ object KafkaPublishService extends StrictLogging {
   def execPost(post: PostRecord, config: FranzConfig): URIO[Any with Blocking, Int] = {
     val newConfig: FranzConfig = config.withOverrides(ConfigFactory.parseString(post.config))
     import args4c.implicits._
-    logger.info(s"Exec w/ namespace '${newConfig.namespace}': \n${newConfig.franzConfig.summary()}\n")
+    logger.info(s"Exec: \n${newConfig.franzConfig.summary()}\n")
 
     val kt           = newConfig.consumerKeyType
     val vt           = newConfig.consumerValueType

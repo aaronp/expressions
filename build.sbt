@@ -17,8 +17,8 @@ resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repos
 enablePlugins(GitVersioning)
 
 // see http://scalameta.org/scalafmt/
-scalafmtOnCompile in ThisBuild := true
-scalafmtVersion in ThisBuild := "1.4.0"
+ThisBuild / scalafmtOnCompile := true
+ThisBuild / scalafmtVersion := "1.4.0"
 
 // Define a `Configuration` for each project, as per http://www.scala-sbt.org/sbt-site/api-documentation.html
 val Expressions    = config("expressions")
@@ -88,8 +88,6 @@ val baseScalacSettings = List(
   "-language:reflectiveCalls", // Allow reflective calls
   "-language:higherKinds",         // Allow higher-kinded types
   "-language:implicitConversions", // Allow definition of implicit functions called views
-  //"-Xlog-implicits",
-  "-Xfuture" // Turn on future language features.
 )
 
 val scalacSettings = baseScalacSettings
@@ -107,20 +105,20 @@ val commonSettings: Seq[Def.Setting[_]] = Seq(
   scalacOptions ++= scalacSettings,
   buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
   buildInfoPackage := s"${repo}.build",
-  test in assembly := {},
-  assemblyMergeStrategy in assembly := {
+  assembly / test := {},
+  assembly / assemblyMergeStrategy := {
     case str if str.contains("simulacrum")        => MergeStrategy.first
     case str if str.contains("application.conf")  => MergeStrategy.discard
     case str if str.endsWith("module-info.class") => MergeStrategy.discard
     case x =>
-      val oldStrategy = (assemblyMergeStrategy in assembly).value
+      val oldStrategy = (assembly / assemblyMergeStrategy).value
       oldStrategy(x)
   }
   // see http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   //(testOptions in Test) += (Tests.Argument(TestFrameworks.ScalaTest, "-h", s"target/scalatest-reports-${name.value}", "-oN"))
 )
 
-test in assembly := {}
+assembly / test := {}
 
 // don't publish the root artifact
 publishArtifact := false
@@ -147,6 +145,7 @@ lazy val franz = project
   .dependsOn(avroRecords % "test->compile")
   .settings(name := "franz")
   .settings(commonSettings: _*)
+  .settings(parallelExecution  := false)
   .settings(libraryDependencies ++= Build.franz)
 
 lazy val client = crossProject(JSPlatform, JVMPlatform)
@@ -191,6 +190,7 @@ lazy val rest = (project in file("rest"))
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(commonSettings: _*)
+  .settings(parallelExecution  := false)
   .dependsOn(expressions % "compile->compile;test->test")
   .dependsOn(clientJVM % "compile->compile;test->test")
   .dependsOn(franz % "compile->compile;test->test")

@@ -3,7 +3,6 @@ package expressions.rest.server
 import cats.implicits._
 import com.typesafe.config.Config
 import expressions.rest.server.Disk.ListEntry
-import io.circe.Json
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
 import zio.{Task, ZIO}

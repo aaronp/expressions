@@ -4,8 +4,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:ui/client/batchCheckRequest.dart';
 import 'package:ui/verticalSplitView.dart';
-
+import 'client/configClient.dart';
 import 'client/batchClient.dart';
+import 'client/configSummary.dart';
 import 'client/diskClient.dart';
 import 'client/mappingCheck.dart';
 import 'client/mappingEntry.dart';
@@ -22,14 +23,15 @@ void main() {
       darkTheme: ThemeData(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
-      home: EditZIOMappingWidget(MappingEntry("foo", "bar.sc"), "")));
+      home: EditZIOMappingWidget("test.conf", MappingEntry("foo", "bar.sc"), ConfigSummary.empty())));
 }
 
 class EditZIOMappingWidget extends StatefulWidget {
-  EditZIOMappingWidget(this.entry, this.rootConfig);
+  EditZIOMappingWidget(this.configFileName, this.entry, this.config);
 
+  String configFileName;
   MappingEntry entry;
-  String rootConfig;
+  ConfigSummary config;
 
   @override
   _EditZIOMappingWidgetState createState() => _EditZIOMappingWidgetState();
@@ -113,8 +115,12 @@ batch.foreach { msg =>
         final List<dynamic> messagesList =
             jsonDecode(_testInputController.text);
         final messages = messagesList.map((j) => Message.fromJson(j)).toList();
+
+        // TODO - add ConfigSummary to BatchCheck Request this.widget.rootConfig
         final BatchCheckRequest request = BatchCheckRequest(
-            this.widget.rootConfig, messages, _codeTextController.text);
+            "",
+            messages,
+            _codeTextController.text);
 
         setState(() {
           _testInFlight = true;
@@ -138,6 +144,49 @@ batch.foreach { msg =>
 
   @override
   Widget build(BuildContext context) {
+    return new WillPopScope(
+        onWillPop: () => onBack(context), child: buildInner(context));
+  }
+
+  Future<bool> onBack(BuildContext context) async {
+
+    return (await showDialog(
+          context: context,
+          builder: (context) => new AlertDialog(
+            title: new Text('Add Mapping?'),
+            content: new Text("You may have unsaved worked - "),
+            actions: <Widget>[
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(false),
+                icon: Icon(Icons.cancel, color: Colors.red),
+                label: new Text('Cancel'),
+              ),              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(true),
+                icon: Icon(Icons.cancel_outlined),
+                label: new Text("Don't Save"),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (_formKey.currentState.validate()) {
+                    _formKey.currentState.save();
+                    await _saveScript();
+                    widget.config.mappings[entry.topic] = [entry.filePath];
+                    await ConfigClient.save(widget.configFileName, widget.config);
+                    // new AddedMapping(
+                    //     entry.topic, entry.filePath, _codeTextController.text)
+                    Navigator.of(context).pop(true);
+                  }
+                },
+                icon: Icon(Icons.check, color: Colors.green),
+                label: new Text('Add Mapping'),
+              ),
+            ],
+          ),
+        )) ??
+        false;
+  }
+
+  Widget buildInner(BuildContext context) {
     // final MappingEntry args = ModalRoute.of(context).settings.arguments;
     return SafeArea(
         child: Scaffold(
@@ -162,11 +211,14 @@ batch.foreach { msg =>
   void _saveMapping(BuildContext context) async {
     if (_formKey.currentState.validate()) {
       _formKey.currentState.save();
-      await DiskClient.store(entry.filePath, _codeTextController.text);
+      await _saveScript();
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Saved mapping code to ${entry.filePath}")));
     }
   }
+
+  Future<void> _saveScript() =>
+      DiskClient.store(entry.filePath, _codeTextController.text);
 
   void _resetCode() {
     _codeTextController.text = DefaultCode;
@@ -176,7 +228,7 @@ batch.foreach { msg =>
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
       // just worked out an empirical finger-in-the-air estimate of the rows
       final heightAvailableForCode = constraints.maxHeight - 300;
-      final suggestedRows = 4 + (heightAvailableForCode ~/ 20);
+      final suggestedRows = 8 + (heightAvailableForCode ~/ 20);
       final numRows = max(4, min(40, suggestedRows));
       return SizedBox(
           width: constraints.maxWidth,
@@ -259,7 +311,6 @@ batch.foreach { msg =>
         Padding(
             padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Container(
-              // constraints: BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(color: Colors.deepPurple),
               child: Scrollbar(
                   isAlwaysShown: true,
@@ -295,10 +346,6 @@ batch.foreach { msg =>
   }
 
   Widget testResultsContent(TransformResponse response) {
-    // if (response.messages != null && response.messages.isNotEmpty) {
-    //
-    // }
-
     try {
       final output = Output.fromJson(response.result);
       return Column(

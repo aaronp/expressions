@@ -13,6 +13,10 @@ object Build {
     "dev.zio" %% "zio-test-sbt"     % zioVersion % "test"
   )
 
+  val prometheus = List(
+    "io.prometheus" % "simpleclient_pushgateway" % "0.10.0"
+  )
+
   val circeVersion          = "0.13.0"
   val circeGenExtrasVersion = "0.13.0"
   val circe = {
@@ -35,7 +39,7 @@ object Build {
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.6" % "test"
 
   def franz: List[ModuleID] = {
-    zio ++ logging ++ circe ++
+    zio ++ logging ++ circe ++ prometheus ++
       Seq(
         "com.github.aaronp" %% "eie"                     % "1.0.0",
         "com.github.aaronp" %% "args4c"                  % "0.7.0",

@@ -9,8 +9,8 @@ import io.circe.literal.JsonStringContext
 import scala.util.Success
 
 class KafkaRecordToHttpRequestTest extends BaseRouteTest {
-  "KafkaRecordToHttpRequest" should {
-    "work" in {
+  "KafkaRecordToHttpRequest.transformForTopic" should {
+    "run the script against some json input" in {
       val value = System.currentTimeMillis().toInt
       val services: KafkaRecordToHttpRequest[Seq[HttpRequest]] = {
         val mappingConfig = MappingConfig()

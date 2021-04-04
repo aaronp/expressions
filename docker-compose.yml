@@ -1,0 +1,62 @@
+version: '2'
+
+volumes:
+  certs:
+services:
+  kafka:
+    image: landoop/fast-data-dev:2.2.0
+    hostname: kafka
+    volumes:
+      - certs:/tmp/certs
+    environment:
+      ADV_HOST: kafka
+      KAFKA_LISTENERS: PLAINTEXT://:9092,DOCKER://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,DOCKER://kafka:19092
+      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      ENABLE_SSL: 0
+      FORWARDLOGS: 0
+      SAMPLEDATA: 0
+      RUNNING_SAMPLEDATA: 0
+      RUNTESTS: 0
+      REST_PORT: 8082
+      CONNECT_PORT: 0
+    ports:
+      - 2181:2181
+      - 3030:3030
+      - 3031:3031
+      - 9092:9092
+      - 8081:8081
+      - 8082:8082
+      - 8083:8083
+      - 19092:19092
+    networks:
+      - test
+      -
+  franz:
+    image: landoop/fast-data-dev:2.2.0
+    hostname: franz
+    environment:
+      BROKERS : kafka:9092
+    ports:
+      - 8080:8080
+    networks:
+      - test
+
+#  create-topic:
+#    image: landoop/fast-data-dev:2.2.0
+#    depends_on: [kafka]
+#    environment:
+#      TOPIC: testtopic
+#    command: ['timeout',
+#              '60',
+#              'bash',
+#              '-c',
+#              'while [[ ! $$(kafka-topics --zookeeper kafka --create --topic $$TOPIC --replication-factor 1 --partitions 5 --if-not-exists) ]]; do sleep 1; done']
+#    networks:
+#      - test
+
+networks:
+  test:
+    name: test

@@ -28,11 +28,13 @@ object FranzConfig {
       .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer]())
       .withFallback(rootFallbackConfig)
   }
+
   def stringKeyStringValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
     keyConf[StringDeserializer, StringSerializer]()
       .withFallback(valueConf[StringDeserializer, StringSerializer]())
       .withFallback(rootFallbackConfig)
   }
+
   def avroKeyValueConfig(rootFallbackConfig: Config = ConfigFactory.load()): FranzConfig = FranzConfig.fromRootConfig {
     keyConf[KafkaAvroDeserializer, KafkaAvroSerializer]()
       .withFallback(valueConf[KafkaAvroDeserializer, KafkaAvroSerializer]())
@@ -46,6 +48,7 @@ object FranzConfig {
   def valueConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag]() = {
     serdeConf[D, S](s"value")
   }
+
   private def serdeConf[D <: Deserializer[_]: ClassTag, S <: Serializer[_]: ClassTag](`type`: String) = {
     ConfigFactory.parseString(
       s"""app.franz {
@@ -63,7 +66,8 @@ object FranzConfig {
     (conf +: theRest).toArray.asConfig().getConfig("app.franz")
   }
 
-  private val counter    = AlphaCounter.from(System.currentTimeMillis())
+  private val counter = AlphaCounter.from(System.currentTimeMillis())
+
   private def nextRand() = counter.next()
 }
 
@@ -77,6 +81,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
       }
       .mkString("\n")
   }
+
   def withOverrides(conf: String, theRest: String*): FranzConfig = withOverrides(FranzConfig.asConfig(conf, theRest: _*))
 
   def withOverrides(newConfig: Config): FranzConfig = {
@@ -88,6 +93,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     val updated = newFranzConfig.withFallback(franzConfig).resolve()
     copy(franzConfig = updated)
   }
+
   def withOverrides(newFranzConfig: FranzConfig): FranzConfig = {
     copy(franzConfig = newFranzConfig.franzConfig.withFallback(franzConfig).resolve())
   }
@@ -143,22 +149,28 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
       .withProperties(asJavaMap(producerConfig).asScala.toSeq: _*)
   }
 
-  def consumerKeyType: SupportedType[_]  = keyType(consumerConfig.getConfig("key"))
+  def consumerKeyType: SupportedType[_] = keyType(consumerConfig.getConfig("key"))
+
   def consumerKeySerde[K]: Serde[Any, K] = keySerde[K]()
 
-  def consumerValueType: SupportedType[_]  = valueType(consumerConfig.getConfig("value"))
+  def consumerValueType: SupportedType[_] = valueType(consumerConfig.getConfig("value"))
+
   def consumerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
 
-  def producerKeyType: SupportedType[_]  = keyType(producerConfig.getConfig("key"))
+  def producerKeyType: SupportedType[_] = typeOf(producerConfig.getConfig("key"), producerNamespace)
+
   def producerKeySerde[K]: Serde[Any, K] = keySerde[K]()
 
-  def producerValueType: SupportedType[_]  = valueType(producerConfig.getConfig("value"))
+  def producerValueType: SupportedType[_] = typeOf(producerConfig.getConfig("value"), producerNamespace)
+
   def producerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
 
-  def keyType(keyConfig: Config = consumerConfig.getConfig("key")): SupportedType[_]  = typeOf(keyConfig)
+  def keyType(keyConfig: Config = consumerConfig.getConfig("key")): SupportedType[_] = typeOf(keyConfig, consumerNamespace)
+
   def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Serde[Any, K] = serdeFor[K](keyConfig)
 
-  def valueType(valueConfig: Config = consumerConfig.getConfig("value")): SupportedType[_]  = typeOf(valueConfig)
+  def valueType(valueConfig: Config = consumerConfig.getConfig("value")): SupportedType[_] = typeOf(valueConfig, consumerNamespace)
+
   def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Serde[Any, V] = serdeFor[V](valueConfig)
 
   def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
@@ -179,6 +191,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   /**
     * The keys and values will have a 'serializer' and 'deserializer'
+    *
     * @param serdeConfig
     * @tparam A
     * @return
@@ -197,18 +210,23 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     }
   }
 
-  def namespace = franzConfig.getString("namespace") match {
+  def consumerNamespace = franzConfig.getString("consumer.namespace") match {
     case "<random>" => randomValue
     case name       => name
   }
-  def typeOf(serdeConfig: Config): SupportedType[_] = {
+  def producerNamespace = franzConfig.getString("producer.namespace") match {
+    case "<random>" => randomValue
+    case name       => name
+  }
+
+  def typeOf(serdeConfig: Config, defaultAvroNamespace: => String): SupportedType[_] = {
     val serializerName = serdeConfig.getString("serializer")
     serializerName.toLowerCase match {
-      case "string" | "strings" => SupportedType.STRING
-      case "long" | "longs"     => SupportedType.LONG
-      case "bytes"              => SupportedType.BYTE_ARRAY
-      case "avro"               => SupportedType.RECORD(namespace)
-      case s"avro:$ns"          => SupportedType.RECORD(ns)
+      case "string" | "strings"   => SupportedType.STRING
+      case "long" | "longs"       => SupportedType.LONG
+      case "bytes" | "byte array" => SupportedType.BYTE_ARRAY
+      case "avro"                 => SupportedType.RECORD(defaultAvroNamespace)
+      case s"avro:$ns"            => SupportedType.RECORD(ns)
       case _ =>
         instantiate[Any](serializerName) match {
           case _: StringSerializer                                             => SupportedType.STRING
@@ -216,8 +234,8 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
           case _: ByteBufferSerializer                                         => SupportedType.BYTE_ARRAY
           case _: LongSerializer                                               => SupportedType.LONG
           case _: ByteArraySerializer                                          => SupportedType.BYTE_ARRAY
-          case _: io.confluent.kafka.serializers.KafkaAvroSerializer           => SupportedType.RECORD(namespace)
-          case _: io.confluent.kafka.streams.serdes.avro.GenericAvroSerializer => SupportedType.RECORD(namespace)
+          case _: io.confluent.kafka.serializers.KafkaAvroSerializer           => SupportedType.RECORD(defaultAvroNamespace)
+          case _: io.confluent.kafka.streams.serdes.avro.GenericAvroSerializer => SupportedType.RECORD(defaultAvroNamespace)
           case other                                                           => sys.error(s"Couldn't determine supported type from serializer '$other'")
         }
     }
@@ -244,10 +262,12 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     jMap
   }
 
-  private def rand()   = FranzConfig.nextRand()
+  private def rand() = FranzConfig.nextRand()
+
   private val UnquoteR = """ *"(.*)" *""".r
 
   private lazy val randomValue = rand().toLowerCase()
+
   @tailrec
   private def valueOf(key: String, value: String): String = value match {
     case UnquoteR(x) => valueOf(key, x)

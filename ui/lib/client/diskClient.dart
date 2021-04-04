@@ -5,17 +5,19 @@ import 'http.dart';
 
 class DiskClient {
 
-  static Future<List<dynamic>> listFiles(String path) async {
+  static Future<List<String>> listFiles(String path) async {
     var response = await Rest.client.execute(
         request: rc.Request(method: RequestMethod.get, url: '${Rest.HostPort}/rest/store/list/$path', headers: Rest.HttpHeaders));
     List<dynamic> body = response.body;
+    return body.map((v) => v.toString()).toList();
+  }
 
-    return body;
-  }
   static Future<String> getLastSaved() {
-    // return get("metadata/lastSaved");
-    return Future.value("");
+    return get("metadata/lastSaved");
+    // return Future.value("");
   }
+
+  static Future<void> setLastSaved(String fileName) => store("metadata/lastSaved", fileName);
 
   static Future<String> get(String path) async {
     try {
