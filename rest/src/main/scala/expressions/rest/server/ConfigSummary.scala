@@ -104,8 +104,8 @@ object ConfigSummary {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
 
   def empty = ConfigSummary("", Nil, Map.empty, "", "", "", "")
-  def fromRootConfig(rootConfig : Config): ConfigSummary = {
-    val fc = FranzConfig.fromRootConfig(rootConfig)
+  def fromRootConfig(rootConfig: Config): ConfigSummary = {
+    val fc       = FranzConfig.fromRootConfig(rootConfig)
     val mappings = MappingConfig(rootConfig).mappings.toMap
     ConfigSummary(
       topic = fc.topic,

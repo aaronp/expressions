@@ -71,7 +71,7 @@ object Disk {
               case child if child.isFile =>
 //                Left(path :+ child.fileName)
                 Left(List(child.fileName))
-              case child if child.isDir  => Right(child.fileName)
+              case child if child.isDir => Right(child.fileName)
             }
             entries.toList
           } else if (subDir.isFile) {

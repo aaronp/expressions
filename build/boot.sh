@@ -18,10 +18,16 @@ JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.authenticate=false"
 JVM_ARGS="$JVM_ARGS -Dcom.sun.management.jmxremote.ssl=false"
 JVM_ARGS="$JVM_ARGS -Djava.security.egd=file:/dev/./urandom"
 JVM_ARGS="$JVM_ARGS -Dlogback.configurationFile=$LOGBACK_LOCATION"
-#JVM_ARGS="$JVM_ARGS -javaagent:/jmx/jmx_prometheus_javaagent-0.15.0.jar=9090:/app/jmx/jmx_config.yaml"
 
-cat /build.txt
-echo "Starting w/ JVM_ARGS=$JVM_ARGS with $# args $@ (first is '$1')"
+if [[ -n "${CLASSPATH}" ]]; then
+  echo "CP is set to ${CLASSPATH}"
+  CLASSPATH="/app/config:/app/lib/app.jar:${CLASSPATH}"
+else
+  echo "CP is not set: >${CLASSPATH}<"
+  CLASSPATH="/app/config:/app/lib/app.jar"
+fi
+
+echo "Starting w/ JVM_ARGS=$JVM_ARGS CLASSPATH=${CLASSPATH} with $# args $@" && cat /build.txt
 
 # userConf.conf is set up empty, but is there for convenience if run with /app/data/ as a mapped drive
-java ${JVM_ARGS} -cp /app/config:/app/lib/app.jar expressions.rest.Main  /app/data/userConf.conf $@
+java ${JVM_ARGS} -cp ${CLASSPATH} expressions.rest.Main  /app/data/userConf.conf $@
