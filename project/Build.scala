@@ -4,9 +4,9 @@ import java.nio.file.Path
 
 object Build {
 
-  val zioVersion = "1.0.5"
+  val zioVersion = "1.0.7"
   val zio = List(
-    "dev.zio" %% "zio-interop-cats" % "2.2.0.0",
+    "dev.zio" %% "zio-interop-cats" % "3.0.2.0",
     "dev.zio" %% "zio"              % zioVersion,
     "dev.zio" %% "zio-streams"      % zioVersion,
     "dev.zio" %% "zio-test"         % zioVersion % "test",
@@ -28,15 +28,15 @@ object Build {
     )
   }
 
-  val Http4sVersion = "0.21.20"
+  val Http4sVersion = "0.21.22"
 
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.1"
 
-  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.3"
   val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
   val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.30")
 
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.6" % "test"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.8" % "test"
 
   def franz: List[ModuleID] = {
     zio ++ logging ++ circe ++ prometheus ++
@@ -44,7 +44,7 @@ object Build {
         "com.github.aaronp" %% "eie"                     % "1.0.0",
         "com.github.aaronp" %% "args4c"                  % "0.7.0",
         "com.github.aaronp" %% "dockerenv"               % "0.5.4",
-        "dev.zio"           %% "zio-streams"             % "1.0.5",
+        "dev.zio"           %% "zio-streams"             % zioVersion,
         "dev.zio"           %% "zio-kafka"               % "0.14.0",
         "io.confluent"      % "kafka-streams-avro-serde" % "6.1.1",
         typesafeConfig,

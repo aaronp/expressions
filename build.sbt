@@ -5,7 +5,7 @@ val repo = "expressions"
 name := repo
 
 val username            = "aaronp"
-val scalaThirteen       = "2.13.4"
+val scalaThirteen       = "2.13.5"
 val defaultScalaVersion = scalaThirteen
 val scalaVersions       = Seq(defaultScalaVersion) //, scalaThirteen)
 
@@ -30,7 +30,7 @@ val circeVersion      = "0.13.0"
 val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-generic-extras", "circe-optics")
 
 val testDependencies = List(
-  "junit"                  % "junit"      % "4.12"  % "test",
+  "junit"                  % "junit"      % "4.13.2"  % "test",
   "org.scalatest"          %% "scalatest" % "3.2.6" % "test",
   "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
   "org.pegdown"            % "pegdown"    % "1.6.0" % "test"
@@ -222,8 +222,8 @@ lazy val expressions = project
   .settings(libraryDependencies += "com.github.aaronp" %% "eie" % "1.0.0")
   .settings(libraryDependencies ++= List(
     "org.apache.avro" % "avro"           % "1.10.0",
-    "org.scala-lang"  % "scala-reflect"  % "2.13.4",
-    "org.scala-lang"  % "scala-compiler" % "2.13.4",
+    "org.scala-lang"  % "scala-reflect"  % scalaThirteen,
+    "org.scala-lang"  % "scala-compiler" % scalaThirteen,
     "io.circe"        %% "circe-literal" % circeVersion % "test"
   ))
 
