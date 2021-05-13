@@ -24,7 +24,7 @@ class DiskClient {
       final getHeaders = Map<String, String>.of(Rest.HttpHeaders);
       getHeaders["accept"] = "text/plain";
       getHeaders["content-type"] = "text/plain";
-      final url = '${Rest.HostPort}/rest/store/get/$path';
+      final url = Uri.https(Rest.Authority, '/rest/store/get/$path');
       final got = await http.get(url, headers: getHeaders);
       if (got.body == null) {
         return "";

@@ -170,7 +170,7 @@ object ConfigRoute {
           case path =>
             disk.read("config" +: path).flatMap {
               case None if asSummary => Task(ok(ConfigSummary.empty.asJson))
-              case None              => Task(Response[Task](Status.Ok).withEntity("{}"))
+              case None              => Task(Response[Task](Status.Ok).withEntity(Json.obj()))
               case Some(found)       =>
                 // try and read as a config summary first
                 val parsed: Try[ConfigSummary] = io.circe.parser.parse(found).toTry.flatMap(_.as[ConfigSummary].toTry)

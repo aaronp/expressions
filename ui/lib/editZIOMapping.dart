@@ -169,11 +169,10 @@ batch.foreach { msg =>
                 onPressed: () async {
                   if (_formKey.currentState.validate()) {
                     _formKey.currentState.save();
+                    // write the config script down against the file path
                     await _saveScript();
                     widget.config.mappings[entry.topic] = [entry.filePath];
-                    await ConfigClient.save(widget.configFileName, widget.config);
-                    // new AddedMapping(
-                    //     entry.topic, entry.filePath, _codeTextController.text)
+
                     Navigator.of(context).pop(true);
                   }
                 },
@@ -217,8 +216,15 @@ batch.foreach { msg =>
     }
   }
 
-  Future<void> _saveScript() =>
-      DiskClient.store(entry.filePath, _codeTextController.text);
+  Future<void> _saveScript() async {
+    final String filePath = _fileNameController.text;
+    print("_fileNameController.text is ${filePath}");
+    print("entry.filePath is ${entry.filePath}");
+    print("widget.configFileName is ${widget.configFileName}");
+    await DiskClient.store(filePath, _codeTextController.text);
+    // save the config against the given name
+    await ConfigClient.save(filePath, widget.config);
+  }
 
   void _resetCode() {
     _codeTextController.text = DefaultCode;

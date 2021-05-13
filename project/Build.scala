@@ -6,7 +6,7 @@ object Build {
 
   val zioVersion = "1.0.7"
   val zio = List(
-    "dev.zio" %% "zio-interop-cats" % "3.0.2.0",
+    "dev.zio" %% "zio-interop-cats" % "2.4.1.0",
     "dev.zio" %% "zio"              % zioVersion,
     "dev.zio" %% "zio-streams"      % zioVersion,
     "dev.zio" %% "zio-test"         % zioVersion % "test",

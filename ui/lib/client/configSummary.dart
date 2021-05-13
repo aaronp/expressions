@@ -24,7 +24,7 @@ class ConfigSummary {
   String topic;
   List<String> brokers = [];
 
-  // Map<String, dynamic> mappings = {};
+  // association of a config topic to its filepath
   Map<String, List<String>> mappings = {};
   String keyType;
   String valueType;
