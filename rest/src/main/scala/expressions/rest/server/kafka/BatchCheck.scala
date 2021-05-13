@@ -6,7 +6,8 @@ import expressions.rest.server.RestRoutes.Resp
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{Response, Status}
-import zio.console.Console
+import zio.console.{Console, putStrLn}
+import zio.duration.durationInt
 import zio.{Cause, Has, Task, UIO, ZEnv, ZIO}
 
 import scala.util.{Failure, Success}
@@ -23,7 +24,8 @@ object BatchCheck {
           response <- BatchContext(config)
             .use { batchContext =>
               compiler(dto.script) match {
-                case Success(handler) => executeBatchScript(buffer, testEnv, dto, batchContext, handler)
+                case Success(handler) =>
+                  executeBatchScript(buffer, testEnv, dto, batchContext, handler)
                 case Failure(err) =>
                   val body = TransformResponse(s"didn't work w/ input: ${dto}".asJson, success = false, List(s"didn't work w/ input: ${err.getMessage}"))
                   UIO(Response[Task](status = Status.Ok).withEntity(body))

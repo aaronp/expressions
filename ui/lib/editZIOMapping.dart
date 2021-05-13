@@ -217,13 +217,11 @@ batch.foreach { msg =>
   }
 
   Future<void> _saveScript() async {
-    final String filePath = _fileNameController.text;
-    print("_fileNameController.text is ${filePath}");
-    print("entry.filePath is ${entry.filePath}");
-    print("widget.configFileName is ${widget.configFileName}");
-    await DiskClient.store(filePath, _codeTextController.text);
+    final String mappingFilePath = _fileNameController.text;
+    print("_fileNameController.text is ${mappingFilePath}");
+    // await ConfigClient.save(filePath, widget.config);
+    await DiskClient.store(mappingFilePath, _codeTextController.text);
     // save the config against the given name
-    await ConfigClient.save(filePath, widget.config);
   }
 
   void _resetCode() {

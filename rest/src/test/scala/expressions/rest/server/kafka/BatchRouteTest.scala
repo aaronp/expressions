@@ -13,7 +13,7 @@ class BatchRouteTest extends BaseRouteTest {
                      |    val value = msg.content.value
                      |    for {
                      |      _ <- putStr(s"publishing to ${msg.topic}")
-                     |      r <- msg.key.id.asString.withValue(value).publishTo(msg.topic)
+                     |      r <- msg.key.id.asString.withValue(value).publishTo(msg.topic).timeout(3.seconds)
                      |      _ <- putStr(s"published ${msg.key}")
                      |    } yield r
                      |}.orDie""".stripMargin

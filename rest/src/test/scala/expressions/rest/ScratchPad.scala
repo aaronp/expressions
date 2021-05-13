@@ -26,62 +26,29 @@ class ScratchPad extends AnyWordSpec with Matchers {
 
     "batch" in {
 
+
       import expressions.implicits._
       import expressions.DynamicJson
       import expressions.template.Message
       import expressions.rest.server.kafka.BatchContext
       import zio._
       import zio.console._
+      import zio.duration.durationInt
       import io.circe.syntax._
 
-      (_batchInput: expressions.rest.server.kafka.BatchInput) =>
-        {
-          import _batchInput._
-          import context._
-          // The mapping code transforms a context into a collection of HttpRequests
-          val RestServer = "http://localhost:8080/rest/disk/store"
-          batch.foreach { msg =>
-            val value = msg.content.value
+      (_batchInput: expressions.rest.server.kafka.BatchInput) => {
+        import _batchInput._
+        import context._
+        batch.foreach { msg =>
+          val value = msg.content.value
+          for {
+            _ <- putStr(s"publishing to ${msg.topic}")
+            r <- msg.key.id.asString.withValue(value).publishTo(msg.topic).timeout(10.seconds)
+            _ <- putStr(s"published ${msg.key}")
+          } yield r
+        }.orDie
+      }
 
-            for {
-              _            <- putStr(s"publishing to ${msg.topic}")
-              r            <- msg.key.id.asString.withValue(value).publishTo(msg.topic)
-              url          = s"$RestServer/${msg.partition}/${msg.offset}"
-              postResponse <- post(url, msg.key.deepMerge(msg.content.value))
-              _            <- putStr(s"published ${msg.key}")
-              _            <- putStrErr(s"posted ${postResponse}")
-            } yield r
-          }.orDie
-
-        }
-
-    }
-    "example" in {
-      import expressions._
-      import expressions.template.{Context, Message}
-
-      (context: Context[Message[DynamicJson, DynamicJson]]) =>
-        val result = {
-          import context._
-          import expressions.client._
-          import io.circe.Json
-          import io.circe.syntax._
-
-          val StoreURL = s"http://localhost:8080/rest/store"
-          val url      = s"$StoreURL/${record.topic}/${record.partition}/${record.offset}"
-          val body = {
-            val enrichment = Json.obj(
-              "timestamp" -> System.currentTimeMillis().asJson,
-              "kafka-key" -> record.key.value
-            )
-            record.content.value.deepMerge(enrichment)
-          }
-
-          val request = HttpRequest.post(url).withBody(body.noSpaces)
-          List(request)
-        }
-
-        result.foreach(println)
     }
   }
 }
