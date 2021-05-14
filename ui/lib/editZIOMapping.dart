@@ -42,7 +42,6 @@ class _EditZIOMappingWidgetState extends State<EditZIOMappingWidget> {
   MappingEntry entry = MappingEntry("", "");
 
   final _codeFocusNode = FocusNode();
-  final _fileNameController = TextEditingController();
   final _codeTextController = TextEditingController();
   final _testInputController = TextEditingController();
   final _editorScrollController = ScrollController();
@@ -96,7 +95,6 @@ batch.foreach { msg =>
     _codeTextController.text = "Loading ${entry.filePath} ...";
 
     _testInputController.text = TestInput;
-    _fileNameController.text = entry.filePath;
     DiskClient.get(entry.filePath).then((content) {
       setState(() {
         if (content.isEmpty) {
@@ -160,8 +158,9 @@ batch.foreach { msg =>
                 onPressed: () => Navigator.of(context).pop(false),
                 icon: Icon(Icons.cancel, color: Colors.red),
                 label: new Text('Cancel'),
-              ),              ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(true),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(false),
                 icon: Icon(Icons.cancel_outlined),
                 label: new Text("Don't Save"),
               ),
@@ -217,9 +216,8 @@ batch.foreach { msg =>
   }
 
   Future<void> _saveScript() async {
-    final String mappingFilePath = _fileNameController.text;
-    print("_fileNameController.text is ${mappingFilePath}");
-    // await ConfigClient.save(filePath, widget.config);
+    final String mappingFilePath = entry.filePath;
+    await ConfigClient.save(mappingFilePath, widget.config);
     await DiskClient.store(mappingFilePath, _codeTextController.text);
     // save the config against the given name
   }
@@ -435,7 +433,6 @@ batch.foreach { msg =>
   @override
   void dispose() {
     super.dispose();
-    _fileNameController.dispose();
     _codeTextController.dispose();
     _testInputController.dispose();
     _editorScrollController.dispose();

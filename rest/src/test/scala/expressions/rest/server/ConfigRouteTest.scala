@@ -5,10 +5,19 @@ import io.circe.syntax._
 
 class ConfigRouteTest extends BaseRouteTest {
   "POST /config/save" should {
+    "merge a ConfigSummary with an existing config" in {
+      ???
+    }
+    "save a new ConfigSummary when there isn't an existing one" in {
+      ???
+    }
+    "save a full config as-is" in {
+      ???
+    }
     "delete all your data. Just Kidding. Gosh - can you imagine?!? It just saves ConfigSummaries " in {
 
-      val cfgName   = rnd(getClass.getSimpleName)
-      val disk      = Disk.Service().value()
+      val cfgName = rnd(getClass.getSimpleName)
+      val disk = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
       //      val underTest = ConfigRoute(disk)
 
@@ -36,7 +45,7 @@ class ConfigRouteTest extends BaseRouteTest {
   "GET /config" should {
     "get the default config" in {
 
-      val cfgName   = rnd(getClass.getSimpleName)
+      val cfgName = rnd(getClass.getSimpleName)
       val underTest = ConfigRoute(Disk.Service().value())
       val Some(response) = underTest(
         post(
