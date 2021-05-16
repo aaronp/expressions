@@ -58,7 +58,6 @@ object Disk {
       override def read(path: Seq[String]): Task[Option[String]] = Task {
         val file = fileFor(path)
         if (file.exists()) {
-          println(s"Returning for ${file} >${file.text}<")
           Some(file.text)
         } else None
       }
@@ -68,9 +67,7 @@ object Disk {
         if (subDir.exists()) {
           if (subDir.isDir) {
             val entries: Array[Either[FullPathToEntry, SubDir]] = subDir.children.collect {
-              case child if child.isFile =>
-//                Left(path :+ child.fileName)
-                Left(List(child.fileName))
+              case child if child.isFile => Left(List(child.fileName))
               case child if child.isDir => Right(child.fileName)
             }
             entries.toList

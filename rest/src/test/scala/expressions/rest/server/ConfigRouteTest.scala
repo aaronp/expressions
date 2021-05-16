@@ -6,6 +6,20 @@ import io.circe.Json
 import io.circe.syntax._
 
 class ConfigRouteTest extends BaseRouteTest {
+  "Get /config/application.conf" should {
+    "always return the default config" in {
+      Given("A config route under test")
+
+      val disk = Disk.Service().value()
+      val underTest = ConfigRoute(disk, ConfigFactory.load())
+      val Some(readBackFull) = underTest(get(s"config/application.conf")).value.value()
+      val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
+
+      val Some(readBackSummary) = underTest(get(s"config/application.conf?summary=true")).value.value()
+      readBackSummary.bodyAs[ConfigSummary].brokers shouldBe List("localhost:9092")
+      readBackSummary.bodyAs[ConfigSummary].topic should not be ("")
+    }
+  }
   "POST /config/save" should {
     "merge a ConfigSummary with an existing config" in {
       Given("A config route under test")
@@ -84,8 +98,8 @@ class ConfigRouteTest extends BaseRouteTest {
       Then("It should be merged!")
       val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
 
-      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only ("12", "34")
-      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only ("12", "34")
+      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only("12", "34")
+      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only("12", "34")
 
       val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
       val asSummary = readBackSummary.bodyAs[ConfigSummary]

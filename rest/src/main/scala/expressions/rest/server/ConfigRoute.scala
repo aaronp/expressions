@@ -118,7 +118,9 @@ object ConfigRoute {
     }
   }
 
-  private def withoutPaths(config: Config, paths: String*): Config = paths.foldLeft(config) { _ withoutPath _ }
+  private def withoutPaths(config: Config, paths: String*): Config = paths.foldLeft(config) {
+    _ withoutPath _
+  }
 
   private def merge(previousConfig: Option[String], config: Config): ZIO[Any, Exception, Config] = {
     previousConfig match {
@@ -241,17 +243,11 @@ object ConfigRoute {
           case Nil => loadCfg(rootConfig, asSummary)
           case path =>
             disk.read("config" +: path).flatMap {
+              case None | Some("") if path == List("application.conf") => loadCfg(rootConfig, asSummary)
               case None if asSummary => Task(ok(ConfigSummary.empty.asJson))
               case None => Task(Response[Task](Status.Ok).withEntity(Json.obj()))
               case Some(found) =>
-                // try and read as a config summary first
-                //                val parsed: Try[ConfigSummary] = io.circe.parser.parse(found).toTry.flatMap(_.as[ConfigSummary].toTry)
-                //
-                //                parsed match {
-                //                  case Success(summary) if asSummary => Task(ok(summary.asJson))
-                //                  case Success(summary) => loadCfg(summary.asConfig(), asSummary)
-                //                  case Failure(_) => loadCfg(ConfigFactory.parseString(found), asSummary)
-                //                }
+                println(found)
                 loadCfg(ConfigFactory.parseString(found), asSummary)
             }
         }
