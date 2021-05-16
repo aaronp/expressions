@@ -3,6 +3,7 @@ package expressions.rest.server
 import args4c.StringEntry
 import args4c.implicits.configAsRichConfig
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
+import expressions.Unquote
 import expressions.franz.{FranzConfig, SupportedType}
 import io.circe.Json
 import zio.ZIO
@@ -43,7 +44,7 @@ case class ConfigSummary(topic: String,
   /** @return the config summary as a config
     */
   def asConfig(): Config = {
-    val consNS: String = {
+    val consNamespace: String = {
       SupportedType
         .avroNamespaceForName(keyType)
         .orElse(SupportedType.avroNamespaceForName(valueType))
@@ -51,7 +52,7 @@ case class ConfigSummary(topic: String,
           s"""namespace : "$ns" """
         }
     }
-    val prodNS: String = {
+    val prodNamespace: String = {
       SupportedType
         .avroNamespaceForName(producerKeyType)
         .orElse(SupportedType.avroNamespaceForName(producerValueType))
@@ -61,7 +62,7 @@ case class ConfigSummary(topic: String,
     }
 
     val mappingsEntries = mappings.map {
-      case (k, path) => s""" "$k" : ${path.mkString("\"", "/", "\"")} """
+      case (k, path) => s""" "${Unquote(k)}" : ${path.mkString("\"", "/", "\"")} """
     }
 
     val (keySer, keyDe)     = keySerde(keyType)
@@ -87,7 +88,7 @@ case class ConfigSummary(topic: String,
          |    value.serializer: "${valueSer}"
          |    value.deserializer: "${valueDe}"
          |
-         |    $consNS
+         |    $consNamespace
          |  }
          |  producer : {
          |    topic : "${topic}"
@@ -98,7 +99,7 @@ case class ConfigSummary(topic: String,
          |    value.serializer: "${prodValueSer}"
          |    value.deserializer: "${prodValueDe}"
          |
-         |    $prodNS
+         |    $prodNamespace
          |  }
          |}""".stripMargin)
   }

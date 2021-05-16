@@ -57,7 +57,7 @@ object Disk {
 
       override def read(path: Seq[String]): Task[Option[String]] = Task {
         val file = fileFor(path)
-        if (file.exists()) {
+        if (file.isFile) {
           Some(file.text)
         } else None
       }

@@ -27,11 +27,16 @@ void main() {
 }
 
 class EditZIOMappingWidget extends StatefulWidget {
-  EditZIOMappingWidget(this.configFileName, this.entry, this.config);
+  EditZIOMappingWidget(this.configFileName, this.entry, this.config) {
+    // we have to keep track of our mappings coming in as the user can change
+    // the topic within the widget
+    this.originalMappings = new Map<String, List<String>>.from(this.config.mappings);
+  }
 
   String configFileName;
   MappingEntry entry;
   ConfigSummary config;
+  Map<String, List<String>> originalMappings;
 
   @override
   _EditZIOMappingWidgetState createState() => _EditZIOMappingWidgetState();
@@ -217,9 +222,15 @@ batch.foreach { msg =>
 
   Future<void> _saveScript() async {
     final String mappingFilePath = entry.filePath;
-    await ConfigClient.save(mappingFilePath, widget.config);
-    await DiskClient.store(mappingFilePath, _codeTextController.text);
+
+    // update the configuration w/ our new mapping
+    final configWithMapping = widget.config;
+    configWithMapping.mappings = new Map<String, List<String>>.from(widget.originalMappings);
+    configWithMapping.mappings.addAll({entry.topic : [entry.filePath]});
+    await ConfigClient.save(widget.configFileName, configWithMapping);
+
     // save the config against the given name
+    await DiskClient.store(mappingFilePath, _codeTextController.text);
   }
 
   void _resetCode() {
