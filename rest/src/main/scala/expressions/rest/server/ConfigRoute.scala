@@ -122,6 +122,11 @@ object ConfigRoute {
     _ withoutPath _
   }
 
+  def withoutLists(config: Config) = withoutPaths(config,
+    "app.franz.consumer.bootstrap.servers",
+    "app.franz.consumer.producer.servers",
+    "app.mapping")
+
   private def merge(previousConfig: Option[String], config: Config): ZIO[Any, Exception, Config] = {
     previousConfig match {
       case None => ZIO.succeed(config)
@@ -131,12 +136,7 @@ object ConfigRoute {
         }
 
         parsedZIO.map { previous =>
-          val previousCfgSansArrays = withoutPaths(previous,
-            "app.franz.consumer.bootstrap.servers",
-            "app.franz.consumer.producer.servers",
-            "app.mapping",
-          )
-          config.withFallback(previousCfgSansArrays)
+          config.withFallback(withoutLists(previous))
         }
     }
   }
@@ -156,13 +156,13 @@ object ConfigRoute {
         // we have a raw config - just save it
         val path = List("config", fileName)
         disk.write(path, ConfigSummary.asJson(rawConfig).noSpaces).unit
-      case (fileName, Left(summary: ConfigSummary)) =>
+      case (fileName, Left(summary)) =>
         // we have a summary - merge it
         val path = List("config", fileName)
         for {
           previousConfigStrOpt <- disk.read(path)
           config <- merge(previousConfigStrOpt, summary.asConfig())
-          jason = ConfigSummary.asJson(config.withFallback(rootConfig))
+          jason = ConfigSummary.asJson(config.withFallback(withoutLists(rootConfig)))
           _ <- disk.write(path, jason.noSpaces)
         } yield ()
     }
@@ -196,10 +196,8 @@ object ConfigRoute {
 
     def saveAsRawConfig(body: Json, name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
       Try(ConfigFactory.parseString(body.noSpaces)) match {
-        case Failure(err) =>
-          ZIO.succeed(asResponse(Left(err)))
-        case Success(config) =>
-          saveConfig(name, Right(config)).either.map(asResponse)
+        case Failure(err) => ZIO.succeed(asResponse(Left(err)))
+        case Success(config) => saveConfig(name, Right(config)).either.map(asResponse)
       }
     }
 
@@ -246,9 +244,7 @@ object ConfigRoute {
               case None | Some("") if path == List("application.conf") => loadCfg(rootConfig, asSummary)
               case None if asSummary => Task(ok(ConfigSummary.empty.asJson))
               case None => Task(Response[Task](Status.Ok).withEntity(Json.obj()))
-              case Some(found) =>
-                println(found)
-                loadCfg(ConfigFactory.parseString(found), asSummary)
+              case Some(found) => loadCfg(ConfigFactory.parseString(found), asSummary)
             }
         }
     }

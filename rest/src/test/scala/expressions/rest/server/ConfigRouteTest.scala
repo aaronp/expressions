@@ -68,7 +68,38 @@ class ConfigRouteTest extends BaseRouteTest {
       val asSummary = readBackSummary.bodyAs[ConfigSummary]
       asSummary shouldBe updated
     }
+    "be able to remove mappings" in {
+      Given("A config route under test")
+      val cfgName = newName()
+      val disk = Disk.Service().value()
+      val underTest = ConfigRoute(disk, ConfigFactory.load())
 
+      And("And initially saved configuration w/ 2 mappings")
+      val initial = ConfigSummary(
+        topic = "test",
+        brokers = List("12", "34"),
+        mappings = Map("first" -> List("bar"), "second" -> List("bar")),
+        keyType = "long",
+        valueType = "avro:ex.ample",
+        producerKeyType = "byte array",
+        producerValueType = "string"
+      )
+
+      val Some(response) = underTest(post(s"config/save/${cfgName}", initial.asJson.noSpaces)).value.value()
+      response.status.code shouldBe 200
+
+      When("We save an updated config w/ fewer mappings")
+      val fewerMappings = initial.copy(mappings = initial.mappings - "first")
+      underTest(post(s"config/save/${cfgName}", fewerMappings.asJson.noSpaces)).value.value()
+
+      val Some(onDisk) = disk.read(List("config", cfgName)).value()
+      onDisk should not be (empty)
+
+      Then("It have the updated, single mapping")
+      val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
+      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      asSummary shouldBe fewerMappings
+    }
     "save a new ConfigSummary when there isn't an existing one" in {
       Given("A config route under test")
       val cfgName = newName()
