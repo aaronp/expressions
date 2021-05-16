@@ -51,7 +51,7 @@ object RestRoutes extends StrictLogging {
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(diskService, defaultConfig)
       val batchRoute                                               = BatchRoute(defaultConfig, batchSink, env)
-      val kafkaRoute                                               = KafkaRoute(defaultConfig, kafkaSink)
+      val kafkaRoute                                               = KafkaRoute(LoadConfig(diskService, defaultConfig), kafkaSink)
       val proxyRoute                                               = ProxyRoute()
 
       batchRoute <+> kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute

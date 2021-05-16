@@ -1,14 +1,11 @@
 package expressions.rest.server
 
-import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
-import io.circe.Json
-import io.circe.parser.parse
-import org.http4s.{Response, Status}
+import com.typesafe.config.{Config, ConfigFactory}
 import zio.Task
 
-case class LoadConfig(disk  :Disk.Service) {
+case class LoadConfig(disk  :Disk.Service, rootConfig : Config) {
 
-  def apply(rootConfig : Config, path : List[String]) = {
+  def at(path : List[String]) = {
     path match {
       case Nil => loadCfg(rootConfig)
       case path =>
@@ -20,9 +17,7 @@ case class LoadConfig(disk  :Disk.Service) {
     }
   }
   def loadCfg(cfg: Config) = Task {
-    val franzConf = cfg.withOnlyPath("app.franz")
-    val mappingConf = cfg.withOnlyPath("app.mapping")
-    mappingConf.withFallback(franzConf)
+    cfg.withOnlyPath("app")
   }
 
 }

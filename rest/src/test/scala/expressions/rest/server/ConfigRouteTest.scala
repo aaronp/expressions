@@ -13,7 +13,6 @@ class ConfigRouteTest extends BaseRouteTest {
       val disk = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load())
       val Some(readBackFull) = underTest(get(s"config/application.conf")).value.value()
-      val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
 
       val Some(readBackSummary) = underTest(get(s"config/application.conf?summary=true")).value.value()
       readBackSummary.bodyAs[ConfigSummary].brokers shouldBe List("localhost:9092")

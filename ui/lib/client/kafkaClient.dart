@@ -8,8 +8,7 @@ class KafkaClient {
   static Future<String> start(String config) async {
     var request = rc.Request(
         method: rc.RequestMethod.post,
-        url: '${Rest.HostPort}/rest/kafka/start',
-        body: config,
+        url: '${Rest.HostPort}/rest/kafka/start/$config',
         headers: Rest.HttpHeaders);
     var response = await Rest.client.execute(request: request);
     return response.body.toString();

@@ -223,29 +223,14 @@ object ConfigRoute {
   def getConfig(rootConfig: Config, disk: Disk.Service): HttpRoutes[Task] = {
     def ok(jason: Json) = Response[Task](Status.Ok).withEntity(jason)
 
-    def loadCfg(cfg: Config, asSummary: Boolean) = Task {
-      if (asSummary) {
-        ok(ConfigSummary.fromRootConfig(cfg).asJson)
-      } else {
-        val franzConf = cfg.withOnlyPath("app.franz")
-        val mappingConf = cfg.withOnlyPath("app.mapping")
-        val jsonStr = mappingConf.withFallback(franzConf).root.render(ConfigRenderOptions.concise())
-        ok(parse(jsonStr).toTry.get)
-      }
-    }
-
     HttpRoutes.of[Task] {
       case (GET -> "config" /: theRest) :? AsSummaryFormat(asSummaryOpt) =>
         val asSummary = asSummaryOpt.getOrElse(false)
-        theRest.toList match {
-          case Nil => loadCfg(rootConfig, asSummary)
-          case path =>
-            disk.read("config" +: path).flatMap {
-              case None | Some("") if path == List("application.conf") => loadCfg(rootConfig, asSummary)
-              case None if asSummary => Task(ok(ConfigSummary.empty.asJson))
-              case None => Task(Response[Task](Status.Ok).withEntity(Json.obj()))
-              case Some(found) => loadCfg(ConfigFactory.parseString(found), asSummary)
-            }
+        LoadConfig(disk, rootConfig).at(theRest.toList).map {
+          case cfg if asSummary => ok(ConfigSummary.fromRootConfig(cfg).asJson)
+          case cfg =>
+            val jsonStr = cfg.root.render(ConfigRenderOptions.concise())
+            ok(parse(jsonStr).toTry.get)
         }
     }
   }

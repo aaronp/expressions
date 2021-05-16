@@ -345,9 +345,9 @@ class _ConfigPageState extends State<ConfigPage> {
 
   void onStartRestConsumer(BuildContext ctxt) async {
     if (_lastLoadedFileName.isNotEmpty) {
-      final config = await ConfigClient.getConfig(_lastLoadedFileName);
+      // final config = await ConfigClient.getConfig(_lastLoadedFileName);
 
-      final kStart = await KafkaClient.start(config);
+      final kStart = await KafkaClient.start(_lastLoadedFileName);
       ScaffoldMessenger.of(ctxt).showSnackBar(
           SnackBar(content: Text("Started REST client '$kStart'")));
       _push(ctxt, RunningConsumersWidget());
