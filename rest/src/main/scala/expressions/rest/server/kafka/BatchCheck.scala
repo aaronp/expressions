@@ -21,15 +21,28 @@ object BatchCheck {
         for {
           buffer  <- BufferConsole.make
           testEnv = defaultEnv ++ Has[Console.Service](buffer) // <-- see BufferConsoleTest
-          response <- BatchContext(config)
-            .use { batchContext =>
-              compiler(dto.script) match {
-                case Success(handler) =>
-                  executeBatchScript(buffer, testEnv, dto, batchContext, handler)
-                case Failure(err) =>
-                  val body = TransformResponse(s"didn't work w/ input: ${dto}".asJson, success = false, List(s"didn't work w/ input: ${err.getMessage}"))
-                  UIO(Response[Task](status = Status.Ok).withEntity(body))
-              }
+          response <- BatchContext(config).either
+            .use {
+              case Left(errorCreatingContext) =>
+                val body = TransformResponse(s"Error creating batch context: $errorCreatingContext".asJson,
+                                             success = false,
+                                             List(s"Couldn't create context: ${errorCreatingContext.getMessage}"))
+                UIO(Response[Task](status = Status.Ok).withEntity(body))
+              case Right(batchContext) =>
+                compiler(dto.script) match {
+                  case Success(handler: OnBatch) =>
+                    def wrapped(batch: BatchInput): BatchResult = {
+                      for {
+                        _   <- ZIO(println(s"DEBUG: STARTING BATCH ${batch}"))
+                        res <- handler(batch).either
+                        _   <- ZIO(println(s"DEBUG: DONE WITH BATCH ${batch}"))
+                      } yield res
+                    }
+                    executeBatchScript(buffer, testEnv, dto, batchContext, wrapped)
+                  case Failure(err) =>
+                    val body = TransformResponse(s"didn't work w/ input: ${dto}".asJson, success = false, List(s"didn't work w/ input: ${err.getMessage}"))
+                    UIO(Response[Task](status = Status.Ok).withEntity(body))
+                }
             }
             .provide(testEnv)
         } yield response

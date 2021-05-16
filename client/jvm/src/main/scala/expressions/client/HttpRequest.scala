@@ -29,7 +29,7 @@ case class HttpRequest(method: HttpMethod, url: String, headers: Map[String, Str
       |}""".stripMargin
   }
   def withHeader(key: String, value: String): HttpRequest = copy(headers = headers.updated(key, value))
-  def withBody[A:Encoder](newBody: A): HttpRequest              = {
+  def withBody[A: Encoder](newBody: A): HttpRequest = {
     copy(body = newBody.asJson.noSpaces.getBytes("UTF-8"), headers = headers.updated("Content-Type", "application/json"))
   }
 

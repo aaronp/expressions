@@ -11,7 +11,7 @@ import zio.kafka.consumer.CommittableRecord
 
 import scala.collection.immutable.VectorBuilder
 
-final case class Batch private (topic: Topic, messages: Vector[Message[DynamicJson, DynamicJson]]) extends Iterable[Message[DynamicJson, DynamicJson]] {
+final case class Batch(topic: Topic, messages: Vector[Message[DynamicJson, DynamicJson]]) extends Iterable[Message[DynamicJson, DynamicJson]] {
   require(messages.forall(_.topic == topic))
 
   /**

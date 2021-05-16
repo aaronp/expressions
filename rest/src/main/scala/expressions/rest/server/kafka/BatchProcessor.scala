@@ -1,7 +1,6 @@
 package expressions.rest.server.kafka
 
 import com.typesafe.config.{Config, ConfigFactory}
-import com.typesafe.scalalogging.StrictLogging
 import eie.io._
 import expressions.client.HttpRequest
 import expressions.client.kafka.ConsumerStats
@@ -30,8 +29,9 @@ final case class BatchProcessor(transformForTopic: Topic => Try[OnBatch], mappin
   *
   * The whole point is just to be able to process batches based on a topic
   */
-object BatchProcessor extends StrictLogging {
+object BatchProcessor {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   type Handler = Batch => ZIO[ZEnv, Throwable, Unit]
 
   val make: URIO[ZEnv, SinkInput => SinkIO] = {
@@ -50,7 +50,7 @@ object BatchProcessor extends StrictLogging {
     for {
       handler <- createOnBatchHandler(config, templateCache)
       env     <- ZIO.environment[ZEnv]
-    } yield { batch: Batch =>
+    } yield { batch => //: Batch =>
       handler(batch).either.flatMap { either =>
         env.get[Clock.Service].instant.map(_.toEpochMilli).flatMap { nowEpoch =>
           val update = statsMap.update { byId =>

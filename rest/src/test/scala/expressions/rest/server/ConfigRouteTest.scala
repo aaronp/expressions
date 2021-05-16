@@ -10,10 +10,9 @@ class ConfigRouteTest extends BaseRouteTest {
     "always return the default config" in {
       Given("A config route under test")
 
-      val disk = Disk.Service().value()
-      val underTest = ConfigRoute(disk, ConfigFactory.load())
+      val disk               = Disk.Service().value()
+      val underTest          = ConfigRoute(disk, ConfigFactory.load())
       val Some(readBackFull) = underTest(get(s"config/application.conf")).value.value()
-      val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
 
       val Some(readBackSummary) = underTest(get(s"config/application.conf?summary=true")).value.value()
       readBackSummary.bodyAs[ConfigSummary].brokers shouldBe List("localhost:9092")
@@ -23,8 +22,8 @@ class ConfigRouteTest extends BaseRouteTest {
   "POST /config/save" should {
     "merge a ConfigSummary with an existing config" in {
       Given("A config route under test")
-      val cfgName = newName()
-      val disk = Disk.Service().value()
+      val cfgName   = newName()
+      val disk      = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
 
       And("And initially saved configuration")
@@ -40,7 +39,7 @@ class ConfigRouteTest extends BaseRouteTest {
 
       When("We save the initial configuration")
       val Some(response) = {
-        val baseConfig = ConfigSummary.asJson(initial.asConfig.withFallback(ConfigFactory.load()))
+        val baseConfig = ConfigSummary.asJson(initial.asConfig().withFallback(ConfigFactory.load()))
         underTest(post(s"config/save/${cfgName}?fallback=true", baseConfig.noSpaces)).value.value()
       }
 
@@ -49,7 +48,7 @@ class ConfigRouteTest extends BaseRouteTest {
       response.bodyAsString shouldBe "{\"success\":true}"
 
       When("We try and save a ConfigSummary update")
-      val updated = initial.copy(topic = "changed", brokers = List("updated"))
+      val updated               = initial.copy(topic = "changed", brokers = List("updated"))
       val Some(updatedResponse) = underTest(post(s"config/save/${cfgName}", updated.asJson.noSpaces)).value.value()
 
       Then("that should obs work")
@@ -65,13 +64,13 @@ class ConfigRouteTest extends BaseRouteTest {
       readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only ("updated")
 
       val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
-      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      val asSummary             = readBackSummary.bodyAs[ConfigSummary]
       asSummary shouldBe updated
     }
     "be able to remove mappings" in {
       Given("A config route under test")
-      val cfgName = newName()
-      val disk = Disk.Service().value()
+      val cfgName   = newName()
+      val disk      = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load())
 
       And("And initially saved configuration w/ 2 mappings")
@@ -97,13 +96,13 @@ class ConfigRouteTest extends BaseRouteTest {
 
       Then("It have the updated, single mapping")
       val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
-      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      val asSummary             = readBackSummary.bodyAs[ConfigSummary]
       asSummary shouldBe fewerMappings
     }
     "save a new ConfigSummary when there isn't an existing one" in {
       Given("A config route under test")
-      val cfgName = newName()
-      val disk = Disk.Service().value()
+      val cfgName   = newName()
+      val disk      = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
 
       And("And initial summary")
@@ -129,17 +128,17 @@ class ConfigRouteTest extends BaseRouteTest {
       Then("It should be merged!")
       val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
 
-      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only("12", "34")
-      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only("12", "34")
+      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only ("12", "34")
+      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only ("12", "34")
 
       val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
-      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      val asSummary             = readBackSummary.bodyAs[ConfigSummary]
       asSummary shouldBe initial
     }
     "save a full config as-is" in {
       Given("A config route under test")
-      val cfgName = newName()
-      val disk = Disk.Service().value()
+      val cfgName   = newName()
+      val disk      = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
 
       And("And initial config")
@@ -162,13 +161,13 @@ class ConfigRouteTest extends BaseRouteTest {
 
       And("when we read it back - either as a full config or a summary")
       val Some(readBackFull) = underTest(get(s"config/${cfgName}")).value.value()
-      val readBackJson = readBackFull.bodyAs[Json]
+      val readBackJson       = readBackFull.bodyAs[Json]
       readBackJson shouldBe initial
     }
 
     "delete all your data. Just Kidding. Gosh - can you imagine?!? It just saves ConfigSummaries " in {
-      val cfgName = newName()
-      val disk = Disk.Service().value()
+      val cfgName   = newName()
+      val disk      = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
 
       val expected = testSummary()
@@ -187,7 +186,7 @@ class ConfigRouteTest extends BaseRouteTest {
   "GET /config" should {
     "get the default config" in {
 
-      val cfgName = rnd(getClass.getSimpleName)
+      val cfgName   = rnd(getClass.getSimpleName)
       val underTest = ConfigRoute(Disk.Service().value())
       val Some(response) = underTest(
         post(

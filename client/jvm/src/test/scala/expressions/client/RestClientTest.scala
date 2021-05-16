@@ -27,7 +27,7 @@ class RestClientTest extends AnyWordSpec with Matchers with ScalaFutures {
           .withBody("abc123")
 
         // call the method under test
-        val actual = RestClient.send(request).futureValue.body
+        val actual = RestClient.sendSync(request).body
         actual shouldBe """headers:{Hello=[world]} body="abc123""""
       } finally {
         // the 'stop' can hang, so we kill it in another fiber

@@ -1,9 +1,8 @@
 package expressions.franz
 
-import com.typesafe.scalalogging.StrictLogging
-import zio._
+import zio.*
 import zio.duration.Duration
-import zio.kafka.consumer._
+import zio.kafka.consumer.*
 import zio.kafka.serde.Deserializer
 import zio.stream.ZStream
 
@@ -45,15 +44,19 @@ case class BatchedStream[K, V](topic: Subscription,
 /** A Kafka stream which will batch up records by the least of either a time-window or max-size,
   * and then use the provided 'persist' function on each batch
   */
-object BatchedStream extends StrictLogging {
-
+object BatchedStream {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   type JsonString = String
 
   /** @param config our parsed typesafe config
     * @return a managed resource which will return the running stream
     */
-  def apply[K, V](config: FranzConfig = FranzConfig()): BatchedStream[K, V] = {
+  def apply[K, V](config: FranzConfig = FranzConfig()): Task[BatchedStream[K, V]] = {
     import config._
-    BatchedStream(subscription, consumerSettings, batchSize, batchWindow, consumerKeySerde[K], consumerValueSerde[V], blockOnCommits)
+    for {
+      keys   <- consumerKeySerde[K]
+      values <- consumerValueSerde[V]
+    } yield BatchedStream(subscription, consumerSettings, batchSize, batchWindow, keys, values, blockOnCommits)
+
   }
 }

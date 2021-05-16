@@ -1,5 +1,7 @@
 package expressions.client.kafka
 
+import io.circe.Codec
+
 /**
   * Keep track of our running consumers
   * @param id
@@ -9,5 +11,5 @@ package expressions.client.kafka
 case class StartedConsumer(id: String, config: String, startedAtEpoch: Long)
 
 object StartedConsumer {
-  implicit val codec = io.circe.generic.semiauto.deriveCodec[StartedConsumer]
+  given codec : Codec[StartedConsumer] = io.circe.generic.semiauto.deriveCodec[StartedConsumer]
 }

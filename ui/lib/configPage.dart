@@ -45,26 +45,22 @@ class _ConfigPageState extends State<ConfigPage> {
   final _formKey = GlobalKey<FormState>();
 
   Future<LoadedConfig> loadConfig(String fileName) async {
-    if (fileName == "") {
-      final content = await ConfigClient.defaultConfig();
-      return summaryFor("application.conf", content).then((value) {
-        setState(() {
-          _lastLoadedFileName = "application.conf";
-        });
-        return value;
-      });
-    } else {
-      // final content = await DiskClient.get(lastSavedFileName);
-      final summary = await ConfigClient.get(fileName);
-      // return summaryFor(lastSavedFileName, content);
-      return LoadedConfig(fileName, "", summary);
+    var file = fileName;
+    if (file == "") {
+      file = "application.conf";
     }
+    final summary = await ConfigClient.getSummary(file);
+    final loaded = LoadedConfig(file, "", summary);
+    // setState(() {
+    //   _lastLoadedFileName = "application.conf";
+    // });
+    return loaded;
+
   }
 
   Future<LoadedConfig> defaultConfig() async {
-    var lastSavedFileName = await DiskClient.getLastSaved();
-    final loaded = await loadConfig(lastSavedFileName);
-    return loaded;
+    final lastSavedFileName = await DiskClient.getLastSaved();
+    return await loadConfig(lastSavedFileName);
   }
 
   Future<LoadedConfig> summaryFor(String fileName, String content) async {
@@ -79,13 +75,16 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
-    // _reload();
+    print('configPage::initState!');
+    _reload();
   }
 
   void _reload() {
-    print("reload checking ${_lastLoadedFileName} != ${_currentConfig.fileName} = ${_lastLoadedFileName != _currentConfig.fileName}");
+    print(
+        "reload checking _lastLoadedFileName '${_lastLoadedFileName}' != _currentConfig.fileName '${_currentConfig.fileName}' = ${_lastLoadedFileName != _currentConfig.fileName}");
 
-    if (_lastLoadedFileName.isEmpty || _lastLoadedFileName != _currentConfig.fileName) {
+    if (_lastLoadedFileName.isEmpty ||
+        _lastLoadedFileName != _currentConfig.fileName) {
       defaultConfig().then((value) {
         print("defaultConfig() returned (${!value.isEmpty()}) :  $value");
         _updateLoadedConfig(value);
@@ -93,17 +92,19 @@ class _ConfigPageState extends State<ConfigPage> {
     }
   }
 
-  void _updateLoadedConfig(LoadedConfig value) {
+  void _updateLoadedConfig(LoadedConfig value) async {
     if (!value.isEmpty()) {
+      await DiskClient.setLastSaved(value.fileName);
       setState(() {
         _currentConfig = value;
         _lastLoadedFileName = value.fileName;
       });
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    _reload();
+    // _reload();
 
     final runningButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
@@ -335,21 +336,30 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   void onStartBatchConsumer(BuildContext ctxt) async {
-    final bStart = await BatchClient.start(_currentConfig.loadedContent);
+    final bStart = await BatchClient.start(_lastLoadedFileName);
     ScaffoldMessenger.of(ctxt).showSnackBar(
         SnackBar(content: Text("Started batch client '$bStart'")));
     _push(ctxt, RunningConsumersWidget());
   }
 
   void onStartRestConsumer(BuildContext ctxt) async {
-    final kStart = await KafkaClient.start(_currentConfig.loadedContent);
-    ScaffoldMessenger.of(ctxt)
-        .showSnackBar(SnackBar(content: Text("Started REST client '$kStart'")));
-    _push(ctxt, RunningConsumersWidget());
+    if (_lastLoadedFileName.isNotEmpty) {
+      // final config = await ConfigClient.getConfig(_lastLoadedFileName);
+
+      final kStart = await KafkaClient.start(_lastLoadedFileName);
+      ScaffoldMessenger.of(ctxt).showSnackBar(
+          SnackBar(content: Text("Started REST client '$kStart'")));
+      _push(ctxt, RunningConsumersWidget());
+    } else {
+      ScaffoldMessenger.of(ctxt)
+          .showSnackBar(SnackBar(content: Text("Config was empty")));
+    }
   }
 
-  void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
-      _push(ctxt, EditZIOMappingWidget(_currentConfig.fileName, entry, _currentConfig.summary));
+  void onEditMapping(BuildContext ctxt, MappingEntry entry) => _push(
+      ctxt,
+      EditZIOMappingWidget(
+          _currentConfig.fileName, entry, _currentConfig.summary));
 
   void onEditHttpMapping(BuildContext ctxt, MappingEntry entry) =>
       _push(ctxt, EditTopicMappingWidget(entry));
@@ -361,18 +371,24 @@ class _ConfigPageState extends State<ConfigPage> {
             MappingEntry("new topic name", ""), _currentConfig.summary));
 
     print("returnValue is $returnValue");
-    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
+    await loadConfig(_currentConfig.fileName)
+        .then((value) => _updateLoadedConfig(value));
   }
 
   void onRemoveMapping(BuildContext ctxt, String key) async {
     _currentConfig.summary.mappings.remove(key);
     await ConfigClient.save(_currentConfig.fileName, _currentConfig.summary);
-    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
+    await loadConfig(_currentConfig.fileName)
+        .then((value) => _updateLoadedConfig(value));
   }
 
   Future<Object> _push(BuildContext ctxt, Widget page) async {
-    return await Navigator.push(
+    final result = await Navigator.push(
         ctxt, MaterialPageRoute(builder: (context) => page));
+
+    // refresh
+    setState(() {});
+    return result;
   }
 
   Widget mappingsList(BuildContext ctxt) {
@@ -381,22 +397,22 @@ class _ConfigPageState extends State<ConfigPage> {
       final key = _unquote(quotedKey);
       final path = value.join("/");
 
-      final editHttpButton = OutlinedButton.icon(
-          onPressed: () => onEditHttpMapping(ctxt, MappingEntry(key, path)),
-          label: Text("(old http edit)"),
-          icon: Icon(Icons.edit));
+      // final editHttpButton = OutlinedButton.icon(
+      //     onPressed: () => onEditHttpMapping(ctxt, MappingEntry(key, path)),
+      //     label: Text("(old http edit)"),
+      //     icon: Icon(Icons.edit));
 
       final deleteButton = IconButton(
           onPressed: () => onRemoveMapping(ctxt, quotedKey),
-          icon: Icon(Icons.delete_forever));
+          icon: Icon(Icons.highlight_remove, color : Colors.red));
 
       final link = InkWell(
           child:
               Text('$key ($path)', style: const TextStyle(color: Colors.blue)),
           onTap: () => onEditMapping(ctxt, MappingEntry(key, path)));
 
-      final mappingButtons =
-          Row(children: [link, deleteButton, editHttpButton]);
+      final mappingButtons = Row(children: [deleteButton, link]);
+      // final mappingButtons = Row(children: [link, deleteButton, editHttpButton]);
 
       final entry = ListTile(
         dense: true,
@@ -446,7 +462,7 @@ class _ConfigPageState extends State<ConfigPage> {
         });
     final fileName = chosen.toString();
     if (fileName.isNotEmpty) {
-      loadConfig(fileName).then((value) => _updateLoadedConfig(value));
+      loadConfig(fileName).then((value) async => _updateLoadedConfig(value));
     }
     return fileName;
   }

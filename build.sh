@@ -8,4 +8,4 @@ echo "Building $IMAGE:$TAG w/ "
 echo "  GITSHA: ${GITSHA}"
 echo "  TIMESTAMP: ${TIMESTAMP}"
 
-sbt assembleApp && docker build . --build-arg GITSHA="$GITSHA" --build-arg TIMESTAMP="$TIMESTAMP" -t "$IMAGE:$TAG"
+sbt assembleApp && VERSION=`cat ./target/docker/version.txt` && docker build . --build-arg GITSHA="$GITSHA" --build-arg VERSION="$VERSION" --build-arg TIMESTAMP="$TIMESTAMP" -t "$IMAGE:$TAG"

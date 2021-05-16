@@ -1,19 +1,17 @@
 package expressions.franz
 
 import io.circe.Json
-import io.circe.literal.JsonStringContext
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class SchemaGenTest extends AnyWordSpec with Matchers {
+class SchemaGenTest extends BaseFranzTest {
 
   "SchemaGen" should {
     "generate an avro schema from simple json which can also consume that json" in {
 
-      val jason =
-        json"""{
+      val jason = """{
             "root" : {
               "nested" : {
                 "text" : "hello",
@@ -24,7 +22,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
                 "truthy" : false
               }
             }
-            }"""
+            }""".jason
 
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
@@ -33,19 +31,19 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
       }
     }
     "generate an avro schema from a number" in {
-      val jason  = json"""123"""
+      val jason  = 123.toString.jason
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
         val record = SchemaGen.recordForJson(jason)
-        record.get("value") shouldBe 123
+        record.get("value") shouldBe Integer.valueOf(123)
       }
     }
     "generate an avro schema from a boolean" in {
-      val jason  = json"""true"""
+      val jason  = true.toString.jason
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
         val record = SchemaGen.recordForJson(jason)
-        record.get("value") shouldBe true
+        record.get("value") shouldBe Boolean.box(true)
       }
     }
     "generate an avro schema from a string" in {
@@ -58,8 +56,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
     }
 
     "generate an avro schema from array json which can also consume that json" in {
-      val jason =
-        json"""{
+      val jason = """{
                 "mixarray" : [
                 {
                   "foo" : "bar"
@@ -68,7 +65,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
                   "foo" : "buzz"
                 }
                 ]
-            }"""
+            }""".jason
 
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {
@@ -107,8 +104,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
       val parser = new Schema.Parser()
       val schema = parser.parse(schemaStr)
 
-      val jason =
-        json"""{
+      val jason = """{
                 "mixarray" : [
                 {
                   "foo" : 2
@@ -117,7 +113,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
                   "fizz" : 3
                 }
                 ]
-            }"""
+            }""".jason
 
       val readBack = SchemaGen.recordForJsonAndSchema(jason, schema)
 
@@ -125,8 +121,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
     }
     "generate an avro schema from heterogeneous json arrays which can also consume that json" in {
 
-      val jason =
-        json"""{
+      val jason = """{
             "root" : {
               "nested" : {
                 "text" : "hello",
@@ -140,7 +135,7 @@ class SchemaGenTest extends AnyWordSpec with Matchers {
                 "bools" : [ true, false, true ],
                 "strings" : [ "hello", "world" ]
             }
-            }"""
+            }""".jason
 
       val schema = SchemaGen(jason)
       withClue(schema.toString(true)) {

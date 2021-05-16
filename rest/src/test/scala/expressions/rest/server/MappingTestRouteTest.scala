@@ -3,7 +3,6 @@ package expressions.rest.server
 import expressions.CodeTemplate
 import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.Json
-import io.circe.literal.JsonStringContext
 import io.circe.syntax._
 
 class MappingTestRouteTest extends BaseRouteTest {
@@ -13,7 +12,7 @@ class MappingTestRouteTest extends BaseRouteTest {
       val script = """record.content.foo.value""".stripMargin
 
       val request = {
-        val jason = json"""{ "foo" : "bar" }"""
+        val jason = """{ "foo" : "bar" }""".jason
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
       val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]().map(_.andThen(_.asJson)))
@@ -31,7 +30,7 @@ class MappingTestRouteTest extends BaseRouteTest {
       val script = "this doesn't compile"
 
       val request = {
-        val jason = json"""{ "foo" : "bar" }"""
+        val jason = """{ "foo" : "bar" }""".jason
         post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
       val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]())

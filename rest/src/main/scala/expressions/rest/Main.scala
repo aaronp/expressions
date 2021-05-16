@@ -1,10 +1,11 @@
 package expressions.rest
 
-import args4c.implicits._
+import args4c.implicits.*
 import com.typesafe.config.Config
-import zio._
-import zio.console.putStrLn
-import zio.interop.catz._
+import zio.*
+import zio.console.{Console, putStrLn}
+import zio.interop.catz.*
+import args4c.implicits.RichArgs
 
 /**
   * A REST application which will drive
@@ -14,7 +15,7 @@ object Main extends CatsApp {
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
     val config = args.toArray.asConfig()
 
-    for {
+    val app = for {
       _          <- putStrLn("⭐⭐ Starting Service ⭐⭐")
       _          <- putStrLn(configSummary(config))
       _          <- putStrLn(s"PID:${ProcessHandle.current().pid()}")
@@ -25,6 +26,11 @@ object Main extends CatsApp {
       //
       exitCode <- restServer.serve(config)
     } yield exitCode
+
+    app.either.map {
+      case Left(_)     => ExitCode.failure
+      case Right(code) => code
+    }
   }
 
   def configSummary(config: Config): String = {

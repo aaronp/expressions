@@ -1,6 +1,5 @@
 package expressions.rest.server
 
-import com.typesafe.scalalogging.StrictLogging
 import expressions.CodeTemplate.Expression
 import expressions.client.{TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
@@ -14,8 +13,9 @@ import zio.{Task, UIO, ZIO}
 
 import scala.util.control.NonFatal
 
-object MappingTestRoute extends StrictLogging {
+object MappingTestRoute {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   import RestRoutes.Resp
   import RestRoutes.taskDsl._
 

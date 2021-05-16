@@ -1,12 +1,10 @@
-import java.nio.file.{Path, Paths}
 import scala.collection.immutable
 
 val repo = "expressions"
 name := repo
 
 val username            = "aaronp"
-val scalaThirteen       = "2.13.5"
-val defaultScalaVersion = scalaThirteen
+val defaultScalaVersion = "3.1.0"
 val scalaVersions       = Seq(defaultScalaVersion) //, scalaThirteen)
 
 crossScalaVersions := scalaVersions
@@ -22,21 +20,20 @@ ThisBuild / scalafmtVersion := "1.4.0"
 
 // Define a `Configuration` for each project, as per http://www.scala-sbt.org/sbt-site/api-documentation.html
 val Expressions    = config("expressions")
-val ExpressionsAst = config("expressionsAst")
 
 git.remoteRepo := s"git@github.com:$username/$repo.git"
 
-val circeVersion      = "0.13.0"
-val circeDependencies = List("circe-core", "circe-generic", "circe-parser", "circe-generic-extras", "circe-optics")
+val circeVersion      = Build.circeVersion
+val circeDependencies = List("circe-core", "circe-generic", "circe-parser") //"circe-generic-extras",  "circe-optics",
 
 val testDependencies = List(
   "junit"                  % "junit"      % "4.13.2"  % "test",
-  "org.scalatest"          %% "scalatest" % "3.2.6" % "test",
-  "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
+  "org.scalatest"          %% "scalatest" % "3.2.10" % "test",
+//  "org.scala-lang.modules" %% "scala-xml" % "1.3.0" % "test",
   "org.pegdown"            % "pegdown"    % "1.6.0" % "test"
 )
 
-val simulacrum: ModuleID = "com.github.mpilquist" %% "simulacrum" % "0.13.0"
+//val simulacrum: ModuleID = "com.github.mpilquist" %% "simulacrum" % "0.13.0"
 
 val Avro = "org.apache.avro" % "avro" % "1.10.1"
 
@@ -78,16 +75,8 @@ def additionalScalcSettings = List(
 
 val baseScalacSettings = List(
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
-  "-encoding",
-  "utf-8", // Specify character encoding used by source files.
   "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-  "-language:reflectiveCalls", // Allow reflective calls
-  "-language:higherKinds", // Allow higher-kinded types
-  "-language:implicitConversions", // Allow definition of implicit functions called views
-  "-unchecked",
-  "-language:reflectiveCalls", // Allow reflective calls
-  "-language:higherKinds",         // Allow higher-kinded types
-  "-language:implicitConversions", // Allow definition of implicit functions called views
+  "-unchecked"
 )
 
 val scalacSettings = baseScalacSettings
@@ -129,7 +118,6 @@ lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
   .aggregate(
     expressions,
-    expressionsAst,
     clientJS,
     clientJVM,
     rest,
@@ -154,29 +142,26 @@ lazy val client = crossProject(JSPlatform, JVMPlatform)
   .in(file("client"))
   .settings(commonSettings: _*)
   .settings(
-    name := "client",
+    name := "client"
     //https://dzone.com/articles/5-useful-circe-feature-you-may-have-overlooked
-    libraryDependencies ++= List(
-      "io.circe" %%% "circe-generic"        % circeVersion,
-      "io.circe" %%% "circe-generic-extras" % circeVersion,
-      "io.circe" %%% "circe-parser"         % circeVersion,
-      "io.circe" %%% "circe-literal"        % circeVersion % Test
-    )
   )
   .jvmSettings(commonSettings: _*)
   .jvmSettings(
     name := "client-jvm",
-    libraryDependencies ++= Build.jvmClient
+    libraryDependencies ++= Build.jvmClient ++ List(
+      "io.circe" %%% "circe-generic"        % circeVersion,
+      "io.circe" %%% "circe-parser"         % circeVersion,
+      )
   )
   .jsSettings(scalaJSUseMainModuleInitializer in Global := true)
   .jsSettings(name := "client-js")
   .jsSettings(test := {}) // ignore JS tests - they're all done on the JVM
-  .jsSettings(libraryDependencies ++= List(
-    "org.scala-js"  %%% "scalajs-java-time" % "1.0.0",
-    "com.lihaoyi"   %%% "scalatags"         % "0.9.2",
-    "org.scala-js"  %%% "scalajs-dom"       % "1.1.0",
-    "org.scalatest" %%% "scalatest"         % "3.1.2" % "test"
-  ))
+//  .jsSettings(libraryDependencies ++= List(
+//    "org.scala-js"  %%% "scalajs-java-time" % "1.0.0",
+//    "com.lihaoyi"   %%% "scalatags"         % "0.9.2",
+//    "org.scala-js"  %%% "scalajs-dom"       % "1.1.0",
+//    "org.scalatest" %%% "scalatest"         % "3.1.2" % "test"
+//  ))
 
 lazy val clientJVM = client.jvm
 lazy val clientJS  = client.js
@@ -187,7 +172,8 @@ lazy val rest = (project in file("rest"))
     name := "rest",
     libraryDependencies ++= Build.rest,
     mainClass := Some("expressions.rest.Main"),
-    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+
+//    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(commonSettings: _*)
   .settings(parallelExecution  := false)
@@ -198,7 +184,6 @@ lazy val rest = (project in file("rest"))
 
 lazy val example = project
   .in(file("example"))
-  .dependsOn(expressionsAst % "compile->compile;test->test")
   .dependsOn(avroRecords % "compile->compile;test->test")
   .settings(name := "example", coverageFailOnMinimum := false)
   .settings(commonSettings: _*)
@@ -219,21 +204,14 @@ lazy val expressions = project
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= testDependencies)
   .settings(libraryDependencies ++= circeDependencies.map(artifact => "io.circe" %% artifact % circeVersion))
-  .settings(libraryDependencies += "com.github.aaronp" %% "eie" % "1.0.0")
+  .settings(libraryDependencies += ("com.github.aaronp" %% "eie" % "1.0.0").cross(CrossVersion.for3Use2_13))
   .settings(libraryDependencies ++= List(
     "org.apache.avro" % "avro"           % "1.10.0",
-    "org.scala-lang"  % "scala-reflect"  % scalaThirteen,
-    "org.scala-lang"  % "scala-compiler" % scalaThirteen,
-    "io.circe"        %% "circe-literal" % circeVersion % "test"
+    "org.scala-lang" %% "scala3-staging" % defaultScalaVersion,
+//    "org.scala-lang"  % "scala-reflect"  % scalaThirteen,
+//    "org.scala-lang"  % "scala-compiler" % scalaThirteen,
+//    "io.circe"        %% "circe-literal" % circeVersion % "test"
   ))
-
-lazy val expressionsAst = project
-  .in(file("expressions-ast"))
-  .settings(name := "expressions-ast", coverageMinimum := 30, coverageFailOnMinimum := true)
-  .settings(commonSettings: _*)
-  .settings(libraryDependencies ++= testDependencies)
-  .settings(libraryDependencies ++= List("com.lihaoyi" %% "fastparse" % "2.3.0"))
-  .dependsOn(expressions % "compile->compile;test->test")
 
 // see https://leonard.io/blog/2017/01/an-in-depth-guide-to-deploying-to-maven-central/
 pomIncludeRepository := (_ => false)
@@ -258,6 +236,8 @@ pomExtra in Global := {
     </developers>
 }
 
+
+
 lazy val clientBuild = taskKey[String]("Builds the client").withRank(KeyRanks.APlusTask)
 
 clientBuild := {
@@ -268,7 +248,7 @@ clientBuild := {
   output
 }
 
-lazy val assembleApp = taskKey[Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
+lazy val assembleApp = taskKey[java.nio.file.Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
 
 assembleApp := {
   val restAssembly = (assembly in (rest, Compile)).value
@@ -279,7 +259,7 @@ assembleApp := {
   val fullOptPath = (fullOptJS in (clientJS, Compile)).value.data.asPath
   def fastOptPath = (fastOptJS in (clientJS, Compile)).value.data.asPath
 
-  val jsArtifacts: immutable.Seq[Path] = {
+  val jsArtifacts: immutable.Seq[java.nio.file.Path] = {
 //    val dependencyFiles = fullOptPath.getParent.find(_.getFileName.toString.endsWith("-jsdeps.min.js")).toList
     fullOptPath :: Nil //dependencyFiles
   }
@@ -300,6 +280,9 @@ assembleApp := {
        |""".stripMargin
 
   sLog.value.info(report)
+
+  val versionPath = dockerTargetDir.resolve("version.txt").toFile
+  sbt.io.IO.write(versionPath, version.value)
 
   val wwwDir = dockerTargetDir.resolve("www")
   IO.copyDirectory((baseDirectory.value / "ui" / "build" / "web"), dockerTargetDir.resolve("ui").toFile)

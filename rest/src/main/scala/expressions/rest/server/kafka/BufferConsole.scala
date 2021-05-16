@@ -2,7 +2,7 @@ package expressions.rest.server.kafka
 
 import zio.console.Console
 import zio.{IO, Ref, UIO, ZIO}
-
+import io.circe.Codec
 import java.io.IOException
 
 final class BufferConsole(stdOutRef: Ref[List[String]], stdErrRef: Ref[List[String]]) extends Console.Service {
@@ -17,9 +17,13 @@ final class BufferConsole(stdOutRef: Ref[List[String]], stdErrRef: Ref[List[Stri
 
   override def putStr(line: String): UIO[Unit] = stdOutRef.update(line :: _)
 
-  override def putStrErr(line: String): UIO[Unit] = stdErrRef.update(line :: _)
+  override def putStrErr(line: String): UIO[Unit] =
+    println(s"putStrErr($line)")
+    stdErrRef.update(line :: _)
 
-  override def putStrLn(line: String): UIO[Unit] = putStr(s"${line}\n")
+  override def putStrLn(line: String): UIO[Unit] =
+    println(s"putStrLn($line)")
+    putStr(s"${line}\n")
 
   override def putStrLnErr(line: String): UIO[Unit] = putStrErr(s"${line}\n")
 
@@ -33,7 +37,7 @@ object BufferConsole {
 
   case class Output(stdOut: Seq[String], stdErr: Seq[String])
   object Output {
-    implicit val codec = io.circe.generic.semiauto.deriveCodec[Output]
+    given codec : Codec[Output] = io.circe.generic.semiauto.deriveCodec[Output]
   }
 
   val make: UIO[BufferConsole] = {

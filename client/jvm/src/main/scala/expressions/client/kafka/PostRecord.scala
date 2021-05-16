@@ -2,6 +2,7 @@ package expressions.client.kafka
 
 import expressions.client.kafka.PostRecord.Placeholder
 import io.circe.Json
+import io.circe.Codec
 
 /**
   * A means for us to publish data to a topic
@@ -18,7 +19,7 @@ case class PostRecord(data: Json,
                       partition: Option[Int] = None,
                       topicOverride: Option[String] = None,
                       headers: Map[String, String] = Map.empty) {
-  def isTombstone: Boolean = data == null || data.asString.exists(_.trim.isEmpty) || data.isNull
+  def isTombstone: Boolean                       = data == null || data.asString.exists(_.trim.isEmpty) || data.isNull
   def replacePlaceholder(value: Int): PostRecord = replacePlaceholder(value.toString)
   def replacePlaceholder(value: String): PostRecord = {
     copy(
@@ -48,9 +49,9 @@ object PostRecord {
             case (k, v) =>
               k.replace(key, value) -> replaceAll(v, key, value)
           }
-        }
+      }
     )
 
   val Placeholder    = "{{i}}"
-  implicit val codec = io.circe.generic.semiauto.deriveCodec[PostRecord]
+  given codec : Codec[PostRecord] = io.circe.generic.semiauto.deriveCodec[PostRecord]
 }

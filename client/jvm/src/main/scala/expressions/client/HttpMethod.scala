@@ -1,6 +1,5 @@
 package expressions.client
 
-
 import io.circe.{Decoder, Encoder}
 
 sealed trait HttpMethod {

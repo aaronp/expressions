@@ -1,16 +1,15 @@
 package expressions.franz
 
-import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.util.Base64
 
-class JsonSupportTest extends AnyWordSpec with Matchers {
+class JsonSupportTest extends BaseFranzTest {
   "JsonSupport.anyToJson.format" should {
     "work" in {
-      val helloWorld = json"""{ "hello" : "world" }"""
+      val helloWorld = """{ "hello" : "world" }""".jason
       JsonSupport.anyToJson.format("hello") shouldBe "hello".asJson
       JsonSupport.anyToJson.format(helloWorld) shouldBe helloWorld
       JsonSupport.anyToJson.format(SchemaGen.recordForJson(helloWorld)) shouldBe helloWorld

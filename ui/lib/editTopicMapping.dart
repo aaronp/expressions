@@ -256,7 +256,7 @@ class _EditTopicMappingWidgetState extends State<EditTopicMappingWidget> {
             padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Container(
               // constraints: BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(color: Colors.deepPurple),
+              decoration: BoxDecoration(color: Colors.white30),
               child: Scrollbar(
                   isAlwaysShown: true,
                   controller: _testInputScrollController,

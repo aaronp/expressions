@@ -17,17 +17,19 @@ import java.util.UUID
 
 abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThen with Eventually with ScalaFutures {
 
-  implicit val rt: zio.Runtime[ZEnv] = zio.Runtime.default
+  extension (json: String)
+    def jason = io.circe.parser.parse(json).toTry.get
+
+  given rt: zio.Runtime[ZEnv] = zio.Runtime.default
 
   def zenv = rt.environment
 
-  def testTimeout: Duration = 30.seconds
+  def testTimeout: Duration = 10.seconds
 
   def shortTimeoutJava = 200.millis
 
-  implicit def asRichZIO[A](zio: => ZIO[ZEnv, Any, A])(implicit rt: _root_.zio.Runtime[_root_.zio.ZEnv]) = new {
+  extension [A](zio: => ZIO[ZEnv, Any, A])(using rt: _root_.zio.Runtime[_root_.zio.ZEnv])
     def value(): A = rt.unsafeRun(zio.timeout(testTimeout)).getOrElse(sys.error("Test timeout"))
-  }
 
   def withTmpDir[A](f: java.nio.file.Path => A) = {
     val dir = Paths.get(s"./target/${getClass.getSimpleName}-${UUID.randomUUID()}")
@@ -50,21 +52,14 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   implicit override def patienceConfig = PatienceConfig(timeout = scaled(Span(testTimeout.toSeconds, Seconds)), interval = scaled(Span(150, Millis)))
 
-  implicit def forResponse(response: Response[Task])(implicit rt: zio.Runtime[zio.ZEnv]) = new {
-
+  extension (response: Response[Task])(using rt: zio.Runtime[zio.ZEnv])
     def bodyTask: Task[String] = EntityDecoder.decodeText(response)
-
     def bodyAsString: String  = bodyTask.value()
     def bodyAs[A: Decoder]: A = io.circe.parser.parse(bodyAsString).toTry.flatMap(_.as[A].toTry).get
-  }
 
-  implicit class RichRoute(route: HttpRoutes[Task]) {
+  extension (route: HttpRoutes[Task])
     def responseFor(request: Request[Task]): Response[Task] = responseForOpt(request).getOrElse(sys.error("no response"))
-
-    def responseForOpt(request: Request[Task]): Option[Response[Task]] = {
-      route(request).value.value()
-    }
-  }
+    def responseForOpt(request: Request[Task]): Option[Response[Task]] = route(request).value.value()
 
   def get(url: String, queryParams: (String, String)*): Request[Task] = {
     val uri: Uri = asUri(url, queryParams: _*)

@@ -8,7 +8,7 @@ import expressions.rest.server.{RestRoutes, StaticFileRoutes}
 import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.Router
-import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.middleware.{CORS, Logger}
 import zio._
 import zio.interop.catz._

@@ -54,7 +54,7 @@ object Disk {
       }
 
       override def remove(path: Seq[String]): Task[Boolean] = Task {
-        val file = fileFor(path)
+        val file    = fileFor(path)
         val deleted = file.isFile
         if (deleted) {
           file.delete(true)
@@ -75,7 +75,7 @@ object Disk {
           if (subDir.isDir) {
             val entries: Array[Either[FullPathToEntry, SubDir]] = subDir.children.collect {
               case child if child.isFile => Left(List(child.fileName))
-              case child if child.isDir => Right(child.fileName)
+              case child if child.isDir  => Right(child.fileName)
             }
             entries.toList
           } else if (subDir.isFile) {

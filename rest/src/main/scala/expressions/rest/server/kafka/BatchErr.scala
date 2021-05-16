@@ -1,13 +1,13 @@
 package expressions.rest.server.kafka
 
-import com.typesafe.scalalogging.LazyLogging
 import expressions.CodeTemplate.Expression
 import expressions.client.{HttpRequest, HttpResponse}
 import expressions.rest.server.JsonMsg
 import zio.Task
 import zio.kafka.consumer.CommittableRecord
 
-sealed trait BatchErr extends Exception with LazyLogging {
+sealed trait BatchErr extends Exception {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   def fail: Task[Nothing] = {
     Task.fail(this)
   }

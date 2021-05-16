@@ -1,11 +1,11 @@
 package expressions
 
-import expressions.AvroExpressions.compiler
 import expressions.template.Context
 
+import javax.script.{ScriptEngine, ScriptEngineFactory}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 /**
   * Provides a script-able means to produce some type B for any type A
@@ -16,12 +16,14 @@ object CodeTemplate {
 
   case class Compiled[A, B](code: String, inputType: String, thunk: A => B) extends (A => B) {
     override def apply(input: A): B = thunk(input)
+
     override def toString(): String = s"COMPILED [$inputType] => B:\n${code}\n"
   }
 
   case class CompiledExpression[A, B](contextType: String, code: String, thunk: Expression[A, B]) extends Expression[A, B] {
     override def apply(input: Context[A]): B = thunk(input)
-    override def toString(): String          = s"COMPILED Context[$contextType] => B:\n${code}\n"
+
+    override def toString(): String = s"COMPILED Context[$contextType] => B:\n${code}\n"
   }
 
   def const[A, B](value: B): Expression[A, B] = _ => value
@@ -30,6 +32,7 @@ object CodeTemplate {
 
   /**
     * We bias these expressions for [[DynamicJson]] inputs
+    *
     * @param expression
     * @tparam B
     * @return
@@ -52,6 +55,7 @@ object CodeTemplate {
     * {{{
     *
     * }}}
+    *
     * @param expression
     * @tparam A
     * @tparam B
@@ -82,18 +86,25 @@ object CodeTemplate {
 
   def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
 
-  def compile[A, B](inputType: String, script: String): Try[Compiled[A, B]] = {
+  def scalaEngine() = {
+    val manager = new javax.script.ScriptEngineManager(getClass().getClassLoader())
+    manager.getEngineByName("scala")
+  }
+  def compile[A: ClassTag, B](inputType: String, script: String): Try[Compiled[A, B]] = {
     type Thunk = A => B
-    try {
-      val tree   = compiler.parse(script)
-      val result = compiler.eval(tree)
+
+    val thunk = try {
+      val engine: ScriptEngine = scalaEngine()
+      val result               = engine.eval(script)
       result match {
-        case expr: Thunk => Success(Compiled(script, inputType, expr))
-        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
+        case expr: Thunk => Try(Compiled(script, inputType, expr))
+        case other =>
+          Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className]: $other"))
       }
     } catch {
       case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
     }
+    thunk
   }
 
   private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {

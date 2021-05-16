@@ -3,7 +3,6 @@ package expressions.rest.server.record
 import java.nio.file.Path
 import java.time.LocalDateTime
 
-import com.typesafe.scalalogging.StrictLogging
 import eie.io._
 import io.circe.Decoder.Result
 import io.circe.syntax._
@@ -37,12 +36,12 @@ object Recorder {
   }
 
   object Request {
-    implicit val encoder: Encoder[Request] = Encoder.instance[Request] {
+    given encoder: Encoder[Request] = Encoder.instance[Request] {
       case get: Get   => Get.encoder(get)
       case post: Post => Post.encoder(post)
     }
 
-    implicit object decoder extends Decoder[Request] {
+    given decoder : Decoder[Request] with {
       override def apply(c: HCursor): Result[Request] = {
         Post.decoder
           .tryDecode(c)
@@ -78,8 +77,8 @@ object Recorder {
   }
 
   object Get {
-    implicit val encoder = io.circe.generic.semiauto.deriveEncoder[Get].mapJsonObject(_.add("method", "GET".asJson))
-    implicit val decoder = io.circe.generic.semiauto.deriveDecoder[Get]
+    given encoder : Encoder[Get] = io.circe.generic.semiauto.deriveEncoder[Get].mapJsonObject(_.add("method", "GET".asJson))
+    given decoder : Decoder[Get] = io.circe.generic.semiauto.deriveDecoder[Get]
   }
 
   case class Post(route: String, headers: Map[String, String], body: String) extends Request {
@@ -89,8 +88,8 @@ object Recorder {
   }
 
   object Post {
-    implicit val encoder = io.circe.generic.semiauto.deriveEncoder[Post].mapJsonObject(_.add("method", "POST".asJson))
-    implicit val decoder = io.circe.generic.semiauto.deriveDecoder[Post]
+    given encoder : Encoder[Post] = io.circe.generic.semiauto.deriveEncoder[Post].mapJsonObject(_.add("method", "POST".asJson))
+    given decoder : Decoder[Post] = io.circe.generic.semiauto.deriveDecoder[Post]
   }
 
   case class Response(status: Int, headers: Map[String, String], body: String) {
@@ -98,8 +97,8 @@ object Recorder {
   }
 
   object Response {
-    implicit val encoder = io.circe.generic.semiauto.deriveEncoder[Response]
-    implicit val decoder = io.circe.generic.semiauto.deriveDecoder[Response]
+    given encoder : Encoder[Response] = io.circe.generic.semiauto.deriveEncoder[Response]
+    given decoder : Decoder[Response] = io.circe.generic.semiauto.deriveDecoder[Response]
   }
 
   def savedSessionDir: Path = integrationTestResourceDir.resolve("savedSessions")
@@ -111,8 +110,9 @@ object Recorder {
     paths.find(_.isDir).getOrElse(sys.error("Couldn't seem to find the fucking integration-test src resources dir"))
   }
 
-  class Buffer(sessionId: Long, onDumpCallback: (Path, String) => Unit, limit: Int = 100) extends StrictLogging {
+  class Buffer(sessionId: Long, onDumpCallback: (Path, String) => Unit, limit: Int = 100) {
 
+    private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
     private val buffer = ListBuffer[Either[Request, Response]]()
 
     private def pad(n: Int) = n.toString.reverse.padTo(3, '0').reverse

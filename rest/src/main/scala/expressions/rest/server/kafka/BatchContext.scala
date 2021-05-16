@@ -3,17 +3,21 @@ package expressions.rest.server.kafka
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.DynamicJson
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
-import expressions.franz.SupportedType._
+import expressions.franz.SupportedType.*
 import expressions.franz.{FranzConfig, SupportedType}
+import expressions.rest.server.RestRoutes
 import expressions.rest.server.kafka.BatchContext.HttpClient
 import expressions.template.{Env, FileSystem}
+import io.circe.syntax.*
 import io.circe.{Encoder, Json}
-import io.circe.syntax._
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
+import org.slf4j.LoggerFactory
 import zio.blocking.Blocking
 import zio.kafka.producer.Producer
+import zio.kafka.serde.Serde
 import zio.{Ref, Task, ZIO, ZManaged}
+import zio.*
 
 import java.nio.charset.StandardCharsets
 
@@ -34,6 +38,8 @@ trait BatchContext {
   type Key
   type Value
 
+  def keySerde: Serde[Any, Key]
+  def valueSerde: Serde[Any, Value]
   def config: FranzConfig
   def env: Env
   def fs: FileSystem
@@ -59,42 +65,65 @@ trait BatchContext {
     * @param key the key type
     */
   class RichKey(key: Key) {
-    def withValue(value: DynamicJson): RecordBuilder[Key, Value] = RecordBuilder[Key, Value](key, value, producer, blocking)
-    def withValue(value: Json): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value, producer, blocking)
-    def withValue(value: String): RecordBuilder[Key, Value]      = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
-    def withValue(value: Long): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
+    def withValue(value: DynamicJson): RecordBuilder[Key, Value] = RecordBuilder[Key, Value](key, value, producer, blocking, keySerde, valueSerde)
+    def withValue(value: Json): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value, producer, blocking, keySerde, valueSerde)
+    def withValue(value: String): RecordBuilder[Key, Value]      = RecordBuilder[Key, Value](key, value.asJson, producer, blocking, keySerde, valueSerde)
+    def withValue(value: Long): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value.asJson, producer, blocking, keySerde, valueSerde)
   }
-  implicit def richKey(key: DynamicJson): RichKey                             = new RichKey(key)
-  implicit def richKey(key: Json): RichKey                                    = new RichKey(key)
-  implicit def richKey(key: String): RichKey                                  = new RichKey(key.asJson)
-  implicit def richKey(key: Long): RichKey                                    = new RichKey(key.asJson)
-  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = producer.produce(record).provide(blocking)
+  implicit def richKey(key: DynamicJson): RichKey = new RichKey(key)
+  implicit def richKey(key: Json): RichKey        = new RichKey(key)
+  implicit def richKey(key: String): RichKey      = new RichKey(key.asJson)
+  implicit def richKey(key: Long): RichKey        = new RichKey(key.asJson)
+
+  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = {
+    producer.produce(record, keySerde, valueSerde) //.provide(blocking)
+  }
 
   def keyType: SupportedType[Key]
   def valueType: SupportedType[Value]
-  def producer: Producer.Service[Any, Key, Value]
+  def producer: Producer
 
   final def send(request: HttpRequest): Task[HttpResponse] = restClient(request)
-  final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty): Task[HttpResponse] = {
 
-    send(HttpRequest.post(url, headers).withBody(body))
+  final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty) = {
+    send(HttpRequest.post(url, headers).withBody(body)).either.timed.tap { r =>
+      ZIO {
+        val msg = s"post to $url returned $r"
+        LoggerFactory.getLogger(classOf[BatchContext]).info(msg)
+        println(msg)
+      }
+    }
   }
 }
 
 object BatchContext {
   type ConfigPath     = String
   type HttpClient     = HttpRequest => Task[HttpResponse]
-  type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer.Service[Any, Any, Any]]
+  type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer]
+
+  def dataDir(rootConfig: Config) = {
+    import eie.io.{given, *}
+    rootConfig.getString("app.data").asPath
+  }
 
   def apply(rootConfig: Config = ConfigFactory.load(), env: Env = Env()): ZManaged[Blocking, Throwable, BatchContext] = {
-    val franzConfig            = FranzConfig.fromRootConfig(rootConfig)
-    val fileSystem: FileSystem = FileSystem(KafkaRecordToHttpRequest.dataDir(rootConfig))
-    val client: HttpClient     = (r: HttpRequest) => Task.fromFuture(_ => RestClient.send(r))
+    val franzConfig = FranzConfig.fromRootConfig(rootConfig)
+
+    import args4c.implicits.{given, *}
+
+    val fileSystem: FileSystem = FileSystem(dataDir(rootConfig))
+    val client: HttpClient = (r: HttpRequest) =>
+      Task {
+        LoggerFactory.getLogger(classOf[BatchContext]).info(s"Sending $r")
+        val result = RestClient.sendSync(r)
+        LoggerFactory.getLogger(classOf[BatchContext]).info(s"Reply from $r is $result")
+        result
+    }
     franzConfig.producerKeyType match {
-      case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t, fileSystem, env, client)
-      case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t, fileSystem, env, client)
-      case t @ STRING     => withKey[String](franzConfig, t, fileSystem, env, client)
-      case t @ LONG       => withKey[Long](franzConfig, t, fileSystem, env, client)
+      case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t.asInstanceOf[SupportedType[GenericRecord]], fileSystem, env, client)
+      case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t.asInstanceOf[SupportedType[Array[Byte]]], fileSystem, env, client)
+      case t @ STRING     => withKey[String](franzConfig, t.asInstanceOf[SupportedType[String]], fileSystem, env, client)
+      case t @ LONG       => withKey[Long](franzConfig, t.asInstanceOf[SupportedType[Long]], fileSystem, env, client)
     }
   }
 
@@ -105,10 +134,10 @@ object BatchContext {
                          client: HttpClient //
   ): ZManaged[Blocking, Throwable, BatchContext] = {
     franzConfig.producerValueType match {
-      case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t, fs, env, client)
-      case t @ BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t, fs, env, client)
-      case t @ STRING     => managed[K, String](franzConfig, keyType, t, fs, env, client)
-      case t @ LONG       => managed[K, Long](franzConfig, keyType, t, fs, env, client)
+      case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t.asInstanceOf[SupportedType[GenericRecord]], fs, env, client)
+      case t @ BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t.asInstanceOf[SupportedType[Array[Byte]]], fs, env, client)
+      case t @ STRING     => managed[K, String](franzConfig, keyType, t.asInstanceOf[SupportedType[String]], fs, env, client)
+      case t @ LONG       => managed[K, Long](franzConfig, keyType, t.asInstanceOf[SupportedType[Long]], fs, env, client)
     }
   }
 
@@ -118,24 +147,38 @@ object BatchContext {
                             fileSystem: FileSystem, //
                             envIn: Env, //
                             clientIn: HttpClient): ZManaged[Blocking, Throwable, BatchContext] = {
-    for {
-      b        <- ZIO.environment[Blocking].toManaged_
-      cacheRef <- Ref.make(Map[String, Any]()).toManaged_
-      c <- franzConfig.producer[K, V].map { producerIn =>
-        new BatchContext {
-          type Key   = K
-          type Value = V
-          override val config: FranzConfig                         = franzConfig
-          override val env: Env                                    = envIn
-          override val fs: FileSystem                              = fileSystem
-          override val cache: Ref[Map[String, Any]]                = cacheRef
-          override val restClient: HttpClient                      = clientIn
-          override val blocking: Blocking                          = b
-          override val keyType: SupportedType[Key]                 = keyTypeIn
-          override val valueType: SupportedType[Value]             = valueTypeIn
-          override val producer: Producer.Service[Any, Key, Value] = producerIn
+    val setup = for {
+      b        <- ZIO.environment[Blocking]
+      cacheRef <- Ref.make(Map[String, Any]())
+      keys     <- franzConfig.keySerde[K]()
+      values   <- franzConfig.valueSerde[V]()
+    } yield (b, cacheRef, keys, values)
+
+    val mngd = ZManaged.fromEffect(setup).flatMap {
+      case (b, cacheRef, keys, values) =>
+        franzConfig.producer.map { producerIn =>
+          new BatchContext {
+            type Key   = K
+            type Value = V
+            override val keySerde                        = keys
+            override val valueSerde                      = values
+            override val config: FranzConfig             = franzConfig
+            override val env: Env                        = envIn
+            override val fs: FileSystem                  = fileSystem
+            override val cache: Ref[Map[String, Any]]    = cacheRef
+            override val restClient: HttpClient          = clientIn
+            override val blocking: Blocking              = b
+            override val keyType: SupportedType[Key]     = keyTypeIn
+            override val valueType: SupportedType[Value] = valueTypeIn
+            override val producer: Producer              = producerIn
+          }
         }
+    }
+
+    mngd.onExit { result =>
+      UIO {
+        println(s"DEBUG: BatchContext done with $result")
       }
-    } yield c
+    }
   }
 }

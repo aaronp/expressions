@@ -1,13 +1,14 @@
 package expressions.rest.server.kafka
 
-import com.typesafe.scalalogging.LazyLogging
 import expressions.CodeTemplate.Expression
 import expressions.client.{HttpRequest, HttpResponse}
 import expressions.rest.server.JsonMsg
 import zio.kafka.consumer.CommittableRecord
 import zio.{Task, ZIO}
 
-sealed trait KafkaErr extends Exception with LazyLogging {
+sealed trait KafkaErr extends Exception {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+
   def fail: Task[Nothing] = {
     Task.fail(this)
   }

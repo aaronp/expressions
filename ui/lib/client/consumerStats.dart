@@ -46,6 +46,9 @@ class RecordSummary {
   dynamic value;
   int timestampEpochMillis;
   dynamic supplementaryData;
+  
+  @override
+  String toString() => asJson.toString();
 
   Map<String, Object> get asJson {
     return {

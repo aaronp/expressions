@@ -120,12 +120,12 @@ a new project which has your e.g. AVRO schemas/test records, opinionated/hard-co
 The expressions themselves are meant to be shippable as a library, though in practice they work well as part
 of a larger ecosystems, such as Kafka sink transformations.
 
-The rest app assumes a locally running Kafka instance, but just running `make` from the root will do the trick.
+The rest app assumes a locally running Kafka instance, but just running `make` from the root will do the trick:
+
+```dart
+make
+docker run -p 8080:8080 porpoiseltd/expressions:latest
+```
 
 Then just fire up `DevMain` and head on over to `http://localhost:8080/index.html`
 
-# TODO:
-
- * Add means to save a ConfigSummary and apply that to a config
-  - entails translating between e.g. 'string' or 'avro' and string/avro serde
- * make ConfigSummary editable on the UI

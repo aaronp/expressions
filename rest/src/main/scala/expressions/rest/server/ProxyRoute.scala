@@ -10,7 +10,7 @@ import zio.interop.catz._
 object ProxyRoute {
 
   def apply(): HttpRoutes[Task] = proxy { in =>
-    Task.fromFuture(_ => RestClient.send(in))
+    Task(RestClient.sendSync(in))
   }
 
   def proxy(makeRequest: HttpRequest => Task[HttpResponse]): HttpRoutes[Task] = {

@@ -1,14 +1,11 @@
 package expressions
 
 import io.circe.Json
-import io.circe.literal._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 
-class DynamicJsonTest extends AnyWordSpec with Matchers {
+class DynamicJsonTest extends BaseTest {
 
   val input: Json =
-    json"""{
+    """{
         "hello" : {
           "there" : true,
           "world" : [
@@ -22,7 +19,7 @@ class DynamicJsonTest extends AnyWordSpec with Matchers {
           }
           ]
         }
-      }"""
+      }""".jason
 
   import DynamicJson.implicits._
   "DynamicJson" should {

@@ -23,20 +23,25 @@ class ConfigClient {
     }
   }
 
-  static Future<ConfigSummary> get(String configName) async {
+  static Future<dynamic> _get(String configName, bool summary) async {
     final request = rc.Request(
-        url: '${Rest.HostPort}/rest/config/$configName?summary=true',
+        url: '${Rest.HostPort}/rest/config/$configName?summary=$summary',
         method: rc.RequestMethod.get,
         headers: Rest.HttpHeaders);
 
-    try {
-      var response = await Rest.client.execute(request: request);
-      print("get config '$configName' returned >${response.body}<");
-      return ConfigSummary.fromJson(response.body);
-    } catch (e) {
-      print("Error getting config $configName: $e");
-      return ConfigSummary.empty();
-    }
+    var response = await Rest.client.execute(request: request);
+    print("get config '$configName' returned >${response.body}<");
+    return response.body;
+  }
+
+  static Future<String> getConfig(String configName) async {
+    var response = await _get(configName, false);
+    return response.toString();
+  }
+
+  static Future<ConfigSummary> getSummary(String configName) async {
+    var response = await _get(configName, true);
+    return ConfigSummary.fromJson(response);
   }
 
   static Future<ConfigSummary> configSummary(String config) async {

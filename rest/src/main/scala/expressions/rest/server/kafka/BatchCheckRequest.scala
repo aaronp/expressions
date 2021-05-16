@@ -2,6 +2,7 @@ package expressions.rest.server.kafka
 
 import expressions.DynamicJson
 import expressions.template.Message
+import io.circe.Codec
 
 /**
   * The user input
@@ -17,5 +18,5 @@ final case class BatchCheckRequest(rootConfig: String, batch: Seq[Message[Dynami
   }
 }
 object BatchCheckRequest {
-  implicit val codec = io.circe.generic.semiauto.deriveCodec[BatchCheckRequest]
+  given codec : Codec[BatchCheckRequest] = io.circe.generic.semiauto.deriveCodec[BatchCheckRequest]
 }

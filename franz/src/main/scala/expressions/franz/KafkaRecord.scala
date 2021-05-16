@@ -1,6 +1,5 @@
 package expressions.franz
 
-import com.typesafe.scalalogging.StrictLogging
 import io.circe.Json
 import org.apache.avro.generic.GenericData
 import org.apache.kafka.common.header.Headers
@@ -33,7 +32,9 @@ final case class KafkaRecord[K, A](
   def recordJsonString: String = GenericData.get.toString(recordBody)
 }
 
-object KafkaRecord extends StrictLogging {
+object KafkaRecord {
+
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
 
 //  type KafkaToRecord = CommittableRecord[String, Array[Byte]] => KafkaRecord[GenericData]
 

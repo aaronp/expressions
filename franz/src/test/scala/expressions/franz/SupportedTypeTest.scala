@@ -1,13 +1,12 @@
 package expressions.franz
 
-import io.circe.literal.JsonStringContext
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class SupportedTypeTest extends AnyWordSpec with Matchers {
+class SupportedTypeTest extends BaseFranzTest {
 
   def keyOf(s: Schema) = {
     val schema1 = new AvroSchema(s)
@@ -18,8 +17,8 @@ class SupportedTypeTest extends AnyWordSpec with Matchers {
   }
   "SupportedType" should {
     "produce the same schema for the same types" in {
-      val r1: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : "foo", "qualifier" : "y" }""")
-      val r2: GenericRecord = SchemaGen.recordForJson(json"""{ "key" : "bar", "qualifier" : "x" }""")
+      val r1: GenericRecord = SchemaGen.recordForJson("""{ "key" : "foo", "qualifier" : "y" }""".jason)
+      val r2: GenericRecord = SchemaGen.recordForJson("""{ "key" : "bar", "qualifier" : "x" }""".jason)
       val k1                = keyOf(r1.getSchema)
       val k2                = keyOf(r2.getSchema)
       k1 shouldBe k2

@@ -1,13 +1,12 @@
 package expressions.rest.server.kafka
 
 import com.typesafe.config.{Config, ConfigRenderOptions}
-import com.typesafe.scalalogging.StrictLogging
 import eie.io.AlphaCounter
 import expressions.Cache
 import expressions.CodeTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
-import expressions.franz.{ForEachStream, FranzConfig}
+import expressions.franz.{FranzConfig, BatchedStream}
 import expressions.rest.Main
 import expressions.rest.server.JsonMsg
 import zio.kafka.consumer.CommittableRecord
@@ -43,7 +42,7 @@ object KafkaSink {
   /**
     * A task which, when run, produces a 'sink' -- a function which persists the given record (and returns back that record)
     */
-  type SinkIO = UIO[CommittableRecord[_, _] => Task[Unit]]
+  type SinkIO = UIO[Array[CommittableRecord[_, _]] => Task[Unit]]
 
   trait Service {
     def start(config: Config): Task[RunningSinkId]
@@ -52,25 +51,26 @@ object KafkaSink {
     def running(): UIO[List[StartedConsumer]]
   }
 
-  /**
-    * This is one way to make the sink. We could also just drop in some code we might reflectively initialized
-    * from a config.
-    *
-    * The important thing is that we return an instance of the Sink Service
-    * @param templateCache
-    * @return
-    */
-  def apply(templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
-    for {
-      clock    <- ZIO.environment[ZEnv]
-      statsMap <- Ref.make(Map[String, ConsumerStats]())
-      writer = (input: SinkInput) => {
-        // this could be swapped out with anything that will write data down given a record input
-        KafkaRecordToHttpRequest(input, templateCache, statsMap, clock).provide(clock).orDie
-      }
-      svc <- Service(statsMap, writer)
-    } yield svc
-  }
+//  /**
+//    * This is one way to make the sink. We could also just drop in some code we might reflectively initialized
+//    * from a config.
+//    *
+//    * The important thing is that we return an instance of the Sink Service
+//    * @param templateCache
+//    * @return
+//    */
+//  def apply(templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
+//    for {
+//      clock    <- ZIO.environment[ZEnv]
+//      statsMap <- Ref.make(Map[String, ConsumerStats]())
+//      writer = (input: SinkInput) => {
+//        // this could be swapped out with anything that will write data down given a record input
+////        KafkaRecordToHttpRequest(input, templateCache, statsMap, clock).provide(clock).orDie
+//        ???
+//      }
+//      svc <- Service(statsMap, writer)
+//    } yield svc
+//  }
 
   object Service {
     def apply(statsMap: Ref[Map[String, ConsumerStats]], makeSink: SinkInput => SinkIO): ZIO[zio.ZEnv, Nothing, RunnablePipeline] =
@@ -93,9 +93,8 @@ object KafkaSink {
                               statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
                               makeSink: SinkInput => SinkIO,
                               env: ZEnv)
-      extends Service
-      with StrictLogging {
-
+      extends Service {
+    private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
     private val counter = AlphaCounter.from(0)
 
     override def running(): UIO[List[StartedConsumer]] = tasksById.get.map { map =>
@@ -104,12 +103,14 @@ object KafkaSink {
 
     override def start(rootConfig: Config): Task[RunningSinkId] = {
       val startIO = for {
-        id        <- ZIO(counter.next())
-        _         = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
-        _         <- statsMap.update(_.updated(id, ConsumerStats(id)))
-        sink      <- makeSink(id, rootConfig)
-        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
-        fiber     <- kafkaFeed.runCount.fork
+        id   <- ZIO(counter.next())
+        _    = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
+        _    <- statsMap.update(_.updated(id, ConsumerStats(id)))
+        sink <- makeSink(id, rootConfig)
+//        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
+        batchedStream <- BatchedStream(FranzConfig.fromRootConfig(rootConfig))
+        kafkaFeed     = batchedStream.run(sink)
+        fiber         <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
           val consumer = startedConsumerFor(rootConfig, id)
           map.updated(id, (consumer, fiber))

@@ -3,7 +3,6 @@ package expressions.rest.server
 import cats.data.OptionT
 import cats.effect.{Sync, _}
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
 import eie.io._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{HttpRoutes, Request, Response, StaticFile}
@@ -22,9 +21,8 @@ import scala.concurrent.ExecutionContext
   * @param jsRootDirs   the directory which will serve the /js artifacts
   * @param cssRootDirs  the directory which will serve the /css artifacts
   */
-case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRootDirs: Seq[JPath], cssRootDirs: Seq[JPath], resourceMap: Map[String, Option[String]])
-    extends StrictLogging {
-
+case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRootDirs: Seq[JPath], cssRootDirs: Seq[JPath], resourceMap: Map[String, Option[String]]) {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   htmlRootDirs.foreach { htmlRootDir =>
     require(htmlRootDir.exists(), s"htmlRootDir '$htmlRootDir' doesn't exist (working dir is ${(Paths.get(".").toAbsolutePath)})")
   }
@@ -39,7 +37,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRoo
 
     require(jsRootDir.exists(), error)
   }
-  cssRootDirs.foreach { cssRootDir: JPath =>
+  cssRootDirs.foreach { cssRootDir => //: JPath
     require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist (${cssRootDir.toAbsolutePath})")
   }
 

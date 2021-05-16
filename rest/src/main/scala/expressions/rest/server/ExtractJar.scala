@@ -1,7 +1,5 @@
 package expressions.rest.server
 
-import com.typesafe.scalalogging.StrictLogging
-
 import java.net.URL
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
@@ -10,8 +8,8 @@ import java.util.zip.ZipInputStream
 /**
   * Provides a means to extract the web artifacts (css, html files, etc) from our Jar to some specified directory
   */
-object ExtractJar extends StrictLogging {
-
+object ExtractJar {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   def extractResourcesFromJar(toDir: Path): Path = {
     logger.info(s"Extracting jar contents to ${toDir.toAbsolutePath}")
 
@@ -64,7 +62,7 @@ object ExtractJar extends StrictLogging {
       case _: FileAlreadyExistsException =>
     }
 
-    using(new ZipInputStream(Files.newInputStream(jarDest))) { is: ZipInputStream =>
+    using(new ZipInputStream(Files.newInputStream(jarDest))) { is => // is: ZipInputStream =>
       var entry = is.getNextEntry
       while (entry != null) {
         if (entry.getName.contains("web") && !entry.isDirectory && !entry.getName.endsWith(".class")) {

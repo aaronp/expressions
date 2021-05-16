@@ -7,19 +7,23 @@ import io.circe.Json
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
 import zio.{Task, UIO, ZIO}
-import expressions.rest.server.RestRoutes.taskDsl._
-import zio.interop.catz._
-import org.http4s.circe.CirceEntityCodec._
-import cats.implicits._
+
+import expressions.rest.server.RestRoutes.taskDsl.*
+import zio.interop.catz.*
+import org.http4s.circe.CirceEntityCodec.*
+import cats.implicits.*
 import io.circe.syntax.EncoderOps
+import zio.clock.Clock
 
 object KafkaPublishRoute {
 
-  def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Blocking, Nothing, HttpRoutes[Task]] = fromFranzConfig(rootConfig.getConfig("app.franz"))
+  def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = fromFranzConfig(rootConfig.getConfig("app.franz"))
 
-  def fromFranzConfig(franzConfig: Config): ZIO[Blocking, Nothing, HttpRoutes[Task]] = {
-    ZIO.environment[Blocking].map { blocking =>
-      val publisher: PostRecord => UIO[Int] = KafkaPublishService(FranzConfig(franzConfig)).andThen(_.provide(blocking))
+  def fromFranzConfig(franzConfig: Config): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = {
+    for {
+      env <- ZIO.environment[Clock with Blocking]
+    } yield {
+      val publisher: PostRecord => UIO[Int] = KafkaPublishService(FranzConfig(franzConfig)).andThen(_.provide(env))
       publish(publisher) <+> getDefault(franzConfig)
     }
   }

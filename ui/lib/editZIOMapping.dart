@@ -63,6 +63,7 @@ batch.foreach { msg =>
 
   for {
     _ <- putStr(s"publishing to \${msg.topic}")
+    _ = org.slf4j.LoggerFactory.getLogger("test").info(s" P U B L I S H I N G \${msg.topic}")
     r <- msg.key.id.asString.withValue(value).publishTo(msg.topic)
     url = s"\$RestServer/\${msg.partition}/\${msg.offset}"
     postResponse <- post(url, msg.key.deepMerge(msg.content.value))
@@ -165,7 +166,7 @@ batch.foreach { msg =>
                 label: new Text('Cancel'),
               ),
               ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => Navigator.of(context).pop(true),
                 icon: Icon(Icons.cancel_outlined),
                 label: new Text("Don't Save"),
               ),
@@ -324,7 +325,7 @@ batch.foreach { msg =>
         Padding(
             padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Container(
-              decoration: BoxDecoration(color: Colors.deepPurple),
+              decoration: BoxDecoration(color: Colors.black87),
               child: Scrollbar(
                   isAlwaysShown: true,
                   controller: _testInputScrollController,

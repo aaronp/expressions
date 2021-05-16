@@ -8,9 +8,6 @@ JVM_ARGS="$JVM_ARGS -server"
 JVM_ARGS="$JVM_ARGS -XX:MaxMetaspaceSize=256m"
 JVM_ARGS="$JVM_ARGS -Xmn100m"
 JVM_ARGS="$JVM_ARGS -XX:SurvivorRatio=6"
-JVM_ARGS="$JVM_ARGS -XX:StartFlightRecording=duration=2h,dumponexit=true,maxage=1d,maxsize=2g,delay=10s,filename=/app/jfr/app.jfr"
-JVM_ARGS="$JVM_ARGS -XX:+FlightRecorder"
-JVM_ARGS="$JVM_ARGS -XX:+CMSParallelRemarkEnabled"
 JVM_ARGS="$JVM_ARGS -verbose:gc -Xlog:gc:/app/logs/gc.log"
 JVM_ARGS="$JVM_ARGS -Dsun.net.inetaddr.ttl=3600"
 JVM_ARGS="$JVM_ARGS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/heapdump/dump.hprof"
@@ -29,5 +26,4 @@ fi
 
 echo "Starting w/ JVM_ARGS=$JVM_ARGS CLASSPATH=${CLASSPATH} with $# args $@" && cat /build.txt
 
-# userConf.conf is set up empty, but is there for convenience if run with /app/data/ as a mapped drive
-java ${JVM_ARGS} -cp ${CLASSPATH} expressions.rest.Main  /app/data/userConf.conf $@
+java ${JVM_ARGS} -cp ${CLASSPATH} expressions.rest.Main $@

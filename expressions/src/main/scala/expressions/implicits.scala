@@ -1,6 +1,5 @@
 package expressions
 
-object implicits
-    extends DynamicJson.LowPriority
+object implicits extends DynamicJson.LowPriority
 //  with LowPriorityOptionalImplicits
-    with LowPriorityAvroImplicits
+//    with LowPriorityAvroImplicits

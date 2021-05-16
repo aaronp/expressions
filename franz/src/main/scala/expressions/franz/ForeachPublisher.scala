@@ -1,10 +1,13 @@
 package expressions.franz
 
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.LoggerFactory
 import zio.Chunk
 import zio.kafka.producer.Producer
 
 object ForeachPublisher {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def publish[K, V](config: FranzConfig, first: ProducerRecord[K, V], theRest: ProducerRecord[K, V]*) = {
     val list: Seq[ProducerRecord[K, V]] = first +: theRest
@@ -12,9 +15,17 @@ object ForeachPublisher {
   }
 
   def publishAll[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
-  }
-  def apply[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
+    val op = for {
+      k     <- config.keySerde[K]()
+      v     <- config.valueSerde[V]()
+      chunk = Chunk.fromIterable(records)
+      p     <- config.producer.use(_.produceChunk(chunk, k, v))
+    } yield p
+
+    op.timed.map {
+      case (time, result) =>
+        logger.info(s"TIMING: publishAll took $time")
+        result
+    }
   }
 }

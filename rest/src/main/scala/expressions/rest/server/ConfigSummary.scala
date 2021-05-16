@@ -5,7 +5,7 @@ import args4c.implicits.configAsRichConfig
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.Unquote
 import expressions.franz.{FranzConfig, SupportedType}
-import io.circe.Json
+import io.circe.{Json, Codec}
 import zio.ZIO
 
 /**
@@ -106,14 +106,12 @@ case class ConfigSummary(topic: String,
 }
 
 object ConfigSummary {
-  implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
-
+  given codec : Codec[ConfigSummary] = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
 
   def asJson(config: Config): Json = {
     val jasonStr = config.root().render(ConfigRenderOptions.concise())
     io.circe.parser.parse(jasonStr).toTry.get
   }
-
 
   def empty = ConfigSummary("", Nil, Map.empty, "", "", "", "")
   def fromRootConfig(rootConfig: Config): ConfigSummary = {
@@ -134,7 +132,7 @@ object ConfigSummary {
 case class ConfigLine(comments: List[String], origin: String, key: String, value: String)
 
 object ConfigLine {
-  implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigLine]
+  given codec : Codec[ConfigLine]= io.circe.generic.semiauto.deriveCodec[ConfigLine]
 
   def apply(config: Config): Seq[ConfigLine] = {
     config.summaryEntries().map {
