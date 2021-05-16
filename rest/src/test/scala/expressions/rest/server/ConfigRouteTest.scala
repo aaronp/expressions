@@ -1,35 +1,132 @@
 package expressions.rest.server
 
+import args4c.implicits._
 import com.typesafe.config.ConfigFactory
+import io.circe.Json
 import io.circe.syntax._
 
 class ConfigRouteTest extends BaseRouteTest {
   "POST /config/save" should {
     "merge a ConfigSummary with an existing config" in {
-      ???
-    }
-    "save a new ConfigSummary when there isn't an existing one" in {
-      ???
-    }
-    "save a full config as-is" in {
-      ???
-    }
-    "delete all your data. Just Kidding. Gosh - can you imagine?!? It just saves ConfigSummaries " in {
-
-      val cfgName = rnd(getClass.getSimpleName)
+      Given("A config route under test")
+      val cfgName = newName()
       val disk = Disk.Service().value()
       val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
-      //      val underTest = ConfigRoute(disk)
 
-      val expected = ConfigSummary(
-        topic = "a",
-        brokers = List("b"),
-        mappings = Map("x" -> List("y")),
+      And("And initially saved configuration")
+      val initial = ConfigSummary(
+        topic = "test",
+        brokers = List("12", "34"),
+        mappings = Map("foo" -> List("bar")),
         keyType = "long",
-        valueType = "avro:some.ns",
+        valueType = "avro:ex.ample",
         producerKeyType = "byte array",
-        producerValueType = "avro:acme.foo.bar"
+        producerValueType = "string"
       )
+
+      When("We save the initial configuration")
+      val Some(response) = {
+        val baseConfig = ConfigSummary.asJson(initial.asConfig.withFallback(ConfigFactory.load()))
+        underTest(post(s"config/save/${cfgName}?fallback=true", baseConfig.noSpaces)).value.value()
+      }
+
+      Then("That should work - unless we've really fucked something up. We're not even testing yet")
+      response.status.code shouldBe 200
+      response.bodyAsString shouldBe "{\"success\":true}"
+
+      When("We try and save a ConfigSummary update")
+      val updated = initial.copy(topic = "changed", brokers = List("updated"))
+      val Some(updatedResponse) = underTest(post(s"config/save/${cfgName}", updated.asJson.noSpaces)).value.value()
+
+      Then("that should obs work")
+      updatedResponse.status.code shouldBe 200
+      updatedResponse.bodyAsString shouldBe "{\"success\":true}"
+
+      And("when we read it back - either as a full config or a summary")
+      val Some(readBackFull) = underTest(get(s"config/${cfgName}")).value.value()
+      Then("It should be merged!")
+      val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
+
+      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only ("updated")
+      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only ("updated")
+
+      val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
+      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      asSummary shouldBe updated
+    }
+
+    "save a new ConfigSummary when there isn't an existing one" in {
+      Given("A config route under test")
+      val cfgName = newName()
+      val disk = Disk.Service().value()
+      val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
+
+      And("And initial summary")
+      val initial = ConfigSummary(
+        topic = "test",
+        brokers = List("12", "34"),
+        mappings = Map("foo" -> List("bar")),
+        keyType = "long",
+        valueType = "avro:ex.ample",
+        producerKeyType = "byte array",
+        producerValueType = "string"
+      )
+
+      When("We save the initial summary as a summary")
+      val Some(response) = underTest(post(s"config/save/${cfgName}?fallback=true", initial.asJson.noSpaces)).value.value()
+
+      Then("That should work")
+      response.status.code shouldBe 200
+      response.bodyAsString shouldBe "{\"success\":true}"
+
+      And("when we read it back - either as a full config or a summary")
+      val Some(readBackFull) = underTest(get(s"config/${cfgName}")).value.value()
+      Then("It should be merged!")
+      val readBackConfig = ConfigFactory.parseString(readBackFull.bodyAsString)
+
+      readBackConfig.asList("app.franz.consumer.bootstrap.servers") should contain only ("12", "34")
+      readBackConfig.asList("app.franz.producer.bootstrap.servers") should contain only ("12", "34")
+
+      val Some(readBackSummary) = underTest(get(s"config/${cfgName}?summary=true")).value.value()
+      val asSummary = readBackSummary.bodyAs[ConfigSummary]
+      asSummary shouldBe initial
+    }
+    "save a full config as-is" in {
+      Given("A config route under test")
+      val cfgName = newName()
+      val disk = Disk.Service().value()
+      val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
+
+      And("And initial config")
+      val initial = ConfigSummary(
+        topic = "test",
+        brokers = List("12", "34"),
+        mappings = Map("foo" -> List("bar")),
+        keyType = "long",
+        valueType = "avro:ex.ample",
+        producerKeyType = "byte array",
+        producerValueType = "string"
+      ).asConfigJson()
+
+      When("We save the initial config")
+      val Some(response) = underTest(post(s"config/save/${cfgName}?fallback=true", initial.noSpaces)).value.value()
+
+      Then("That should work")
+      response.status.code shouldBe 200
+      response.bodyAsString shouldBe "{\"success\":true}"
+
+      And("when we read it back - either as a full config or a summary")
+      val Some(readBackFull) = underTest(get(s"config/${cfgName}")).value.value()
+      val readBackJson = readBackFull.bodyAs[Json]
+      readBackJson shouldBe initial
+    }
+
+    "delete all your data. Just Kidding. Gosh - can you imagine?!? It just saves ConfigSummaries " in {
+      val cfgName = newName()
+      val disk = Disk.Service().value()
+      val underTest = ConfigRoute(disk, ConfigFactory.load().withoutPath("app.mapping"))
+
+      val expected = testSummary()
 
       val Some(response) = underTest(post(s"config/save/${cfgName}?fallback=true", expected.asJson.noSpaces)).value.value()
       response.status.isSuccess shouldBe true
@@ -66,5 +163,17 @@ class ConfigRouteTest extends BaseRouteTest {
       readBack.status.isSuccess shouldBe true
     }
   }
+
+  def newName() = rnd(getClass.getSimpleName)
+
+  def testSummary() = ConfigSummary(
+    topic = "a",
+    brokers = List("b"),
+    mappings = Map("x" -> List("y")),
+    keyType = "long",
+    valueType = "avro:some.ns",
+    producerKeyType = "byte array",
+    producerValueType = "avro:acme.foo.bar"
+  )
 
 }

@@ -2,8 +2,10 @@ package expressions.rest.server
 
 import args4c.StringEntry
 import args4c.implicits.configAsRichConfig
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import expressions.franz.{FranzConfig, SupportedType}
+import io.circe.Json
+import zio.ZIO
 
 /**
   * The parsed pieces from the typesafe config in a json-friendly data structure
@@ -36,7 +38,9 @@ case class ConfigSummary(topic: String,
         serde.serializer().getClass.getName ->
           serde.deserializer().getClass.getName)
 
-  /** @return the configsummary as a config
+  def asConfigJson(): Json = ConfigSummary.asJson(asConfig())
+
+  /** @return the config summary as a config
     */
   def asConfig(): Config = {
     val consNS: String = {
@@ -102,6 +106,13 @@ case class ConfigSummary(topic: String,
 
 object ConfigSummary {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
+
+
+  def asJson(config: Config): Json = {
+    val jasonStr = config.root().render(ConfigRenderOptions.concise())
+    io.circe.parser.parse(jasonStr).toTry.get
+  }
+
 
   def empty = ConfigSummary("", Nil, Map.empty, "", "", "", "")
   def fromRootConfig(rootConfig: Config): ConfigSummary = {

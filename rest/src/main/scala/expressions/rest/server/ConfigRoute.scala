@@ -6,9 +6,9 @@ import io.circe.Json
 import io.circe.parser.parse
 import io.circe.syntax._
 import org.http4s.circe.CirceEntityCodec._
-import org.http4s.{HttpRoutes, Request, Response, Status}
+import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
-import zio.{Task, URIO, ZIO}
+import zio.{Task, ZIO}
 
 import scala.util.{Failure, Success, Try}
 
@@ -38,7 +38,7 @@ object ConfigRoute {
       listEntries(rootConfig) <+>
       formatJson(rootConfig) <+>
       summary(rootConfig) <+>
-      saveConfig(disk)
+      saveConfig(disk, rootConfig)
   }
 
   /**
@@ -118,19 +118,24 @@ object ConfigRoute {
     }
   }
 
-  private def asJson(config: Config) = {
-    val jasonStr = config.root().render(ConfigRenderOptions.concise())
-    ZIO.fromTry(io.circe.parser.parse(jasonStr).toTry)
-  }
+  private def withoutPaths(config: Config, paths: String*): Config = paths.foldLeft(config) { _ withoutPath _ }
 
-  private def merge(previousConfig: Option[String], config: Config) = {
+  private def merge(previousConfig: Option[String], config: Config): ZIO[Any, Exception, Config] = {
     previousConfig match {
       case None => ZIO.succeed(config)
       case Some(str) =>
-        val parsed = ZIO(ConfigFactory.parseString(str)).refineOrDie {
+        val parsedZIO = ZIO(ConfigFactory.parseString(str)).refineOrDie {
           case err => new Exception(s"Error '${err.getMessage}' parsing existing configuration: $str")
         }
-        parsed
+
+        parsedZIO.map { previous =>
+          val previousCfgSansArrays = withoutPaths(previous,
+            "app.franz.consumer.bootstrap.servers",
+            "app.franz.consumer.producer.servers",
+            "app.mapping",
+          )
+          config.withFallback(previousCfgSansArrays)
+        }
     }
   }
 
@@ -141,23 +146,23 @@ object ConfigRoute {
     * @param disk
     * @return the route
     */
-  def saveConfig(disk: Disk.Service): HttpRoutes[Task] = {
+  def saveConfig(disk: Disk.Service, rootConfig: Config): HttpRoutes[Task] = {
 
     saveConfigRoute {
       // If saving a [[ConfigSummary]], we first try and read the config and merge it.
       case (fileName, Right(rawConfig)) =>
+        // we have a raw config - just save it
+        val path = List("config", fileName)
+        disk.write(path, ConfigSummary.asJson(rawConfig).noSpaces).unit
+      case (fileName, Left(summary: ConfigSummary)) =>
+        // we have a summary - merge it
         val path = List("config", fileName)
         for {
           previousConfigStrOpt <- disk.read(path)
-          config <- merge(previousConfigStrOpt, rawConfig)
-          jason <- asJson(config)
+          config <- merge(previousConfigStrOpt, summary.asConfig())
+          jason = ConfigSummary.asJson(config.withFallback(rootConfig))
           _ <- disk.write(path, jason.noSpaces)
         } yield ()
-      case (fileName, Left(summary)) =>
-
-        //        val jason = summary.asConfig().root().render(ConfigRenderOptions.concise())
-        //        disk.write(List("config", fileName), jason) >>>
-        disk.write(List("config", fileName), summary.asJson.noSpaces).unit
     }
   }
 
@@ -180,29 +185,28 @@ object ConfigRoute {
       }
     }
 
-    def saveAsSummary(req: Request[Task], name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
+    def saveAsSummary(body: Json, name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
       for {
-        summary <- req.as[ConfigSummary]
+        summary <- ZIO.fromTry(body.as[ConfigSummary].toTry)
         result <- saveConfig(name, Left(summary)).either
       } yield asResponse(result)
     }
 
-    def saveAsRawConfig(req: Request[Task], name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
-      req.as[String].flatMap { configText =>
-        Try(ConfigFactory.parseString(configText)) match {
-          case Failure(err) =>
-            ZIO.succeed(asResponse(Left(err)))
-          case Success(config) =>
-            saveConfig(name, Right(config)).either.map(asResponse)
-        }
+    def saveAsRawConfig(body: Json, name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
+      Try(ConfigFactory.parseString(body.noSpaces)) match {
+        case Failure(err) =>
+          ZIO.succeed(asResponse(Left(err)))
+        case Success(config) =>
+          saveConfig(name, Right(config)).either.map(asResponse)
       }
-
     }
 
     HttpRoutes.of[Task] {
       case req@POST -> Root / "config" / "save" / name =>
-        saveAsSummary(req, name).catchAll {
-          case _ => saveAsRawConfig(req, name)
+        req.as[Json].flatMap { body =>
+          saveAsSummary(body, name).catchAll {
+            case _ => saveAsRawConfig(body, name)
+          }
         }
     }
   }
@@ -241,13 +245,13 @@ object ConfigRoute {
               case None => Task(Response[Task](Status.Ok).withEntity(Json.obj()))
               case Some(found) =>
                 // try and read as a config summary first
-//                val parsed: Try[ConfigSummary] = io.circe.parser.parse(found).toTry.flatMap(_.as[ConfigSummary].toTry)
-//
-//                parsed match {
-//                  case Success(summary) if asSummary => Task(ok(summary.asJson))
-//                  case Success(summary) => loadCfg(summary.asConfig(), asSummary)
-//                  case Failure(_) => loadCfg(ConfigFactory.parseString(found), asSummary)
-//                }
+                //                val parsed: Try[ConfigSummary] = io.circe.parser.parse(found).toTry.flatMap(_.as[ConfigSummary].toTry)
+                //
+                //                parsed match {
+                //                  case Success(summary) if asSummary => Task(ok(summary.asJson))
+                //                  case Success(summary) => loadCfg(summary.asConfig(), asSummary)
+                //                  case Failure(_) => loadCfg(ConfigFactory.parseString(found), asSummary)
+                //                }
                 loadCfg(ConfigFactory.parseString(found), asSummary)
             }
         }
