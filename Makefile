@@ -3,6 +3,9 @@ include ./Makefile.vars
 buildDocker:
 	./build.sh
 
+run: buildDocker
+	docker run -p 8080:8080 porpoiseltd/expressions:latest
+
 buildFlutterUI:
 	cd ui && flutter build web
 

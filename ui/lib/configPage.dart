@@ -45,24 +45,19 @@ class _ConfigPageState extends State<ConfigPage> {
   final _formKey = GlobalKey<FormState>();
 
   Future<LoadedConfig> loadConfig(String fileName) async {
-    if (fileName == "") {
-      final content = await ConfigClient.defaultConfig();
-      return summaryFor("application.conf", content).then((value) {
-        setState(() {
-          _lastLoadedFileName = "application.conf";
-        });
-        return value;
-      });
-    } else {
-      final summary = await ConfigClient.getSummary(fileName);
-      return LoadedConfig(fileName, "", summary);
+    var file = fileName;
+    if (file == "") {
+      file = "application.conf";
     }
+    final summary = await ConfigClient.getSummary(file);
+    final loaded = LoadedConfig(file, "", summary);
+    return loaded;
+
   }
 
   Future<LoadedConfig> defaultConfig() async {
-    var lastSavedFileName = await DiskClient.getLastSaved();
-    final loaded = await loadConfig(lastSavedFileName);
-    return loaded;
+    final lastSavedFileName = await DiskClient.getLastSaved();
+    return await loadConfig(lastSavedFileName);
   }
 
   Future<LoadedConfig> summaryFor(String fileName, String content) async {
@@ -82,7 +77,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
   void _reload() {
     print(
-        "reload checking ${_lastLoadedFileName} != ${_currentConfig.fileName} = ${_lastLoadedFileName != _currentConfig.fileName}");
+        "reload checking _lastLoadedFileName '${_lastLoadedFileName}' != _currentConfig.fileName '${_currentConfig.fileName}' = ${_lastLoadedFileName != _currentConfig.fileName}");
 
     if (_lastLoadedFileName.isEmpty ||
         _lastLoadedFileName != _currentConfig.fileName) {

@@ -36,6 +36,7 @@ class _OpenFileWidgetState extends State<OpenFileWidget> {
   }
 
   Widget listFiles(BuildContext context, List<String> children) {
+    children.sort();
     return AlertDialog(
       title: Text("${children.length} Files:"),
       content: listFilesContent(context, children),
