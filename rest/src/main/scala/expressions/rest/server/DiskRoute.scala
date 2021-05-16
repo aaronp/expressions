@@ -3,6 +3,7 @@ package expressions.rest.server
 import cats.implicits._
 import com.typesafe.config.Config
 import expressions.rest.server.Disk.ListEntry
+import io.circe.Json
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
 import zio.{Task, ZIO}
@@ -18,14 +19,14 @@ object DiskRoute {
     Disk(rootConfig).map(svc => apply(svc))
   }
 
-  def apply(service: Disk.Service): HttpRoutes[Task] = getRoute(service) <+> postRoute(service) <+> listRoute(service.list)
+  def apply(service: Disk.Service): HttpRoutes[Task] = getRoute(service) <+> postRoute(service) <+> listRoute(service.list) <+> deleteRoute(service)
 
   def postRoute(service: Disk.Service): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ (POST -> "store" /: theRest) =>
+      case req@(POST -> "store" /: theRest) =>
         for {
           body: String <- req.bodyText.compile.string
-          created      <- service.write(theRest.toList, body)
+          created <- service.write(theRest.toList, body)
         } yield {
           if (created) Response[Task](Status.Created) else Response[Task](Status.Ok)
         }
@@ -43,6 +44,16 @@ object DiskRoute {
         }
     }
   }
+
+  def deleteRoute(service: Disk.Service): HttpRoutes[Task] = {
+    HttpRoutes.of[Task] {
+      case DELETE -> "store" /: theRest =>
+        service.remove(theRest.toList).map { _ =>
+          Response[Task](Status.Ok)
+        }
+    }
+  }
+
   def listRoute(service: Seq[String] => Task[Seq[ListEntry]]): HttpRoutes[Task] = {
 
     import org.http4s.circe.CirceEntityCodec._
@@ -51,7 +62,7 @@ object DiskRoute {
         service(theRest.toList).map { values =>
           val entries: Seq[String] = values.map {
             case Left(fullPath) => fullPath.mkString("/")
-            case Right(path)    => (theRest.toList :+ path).mkString("/")
+            case Right(path) => (theRest.toList :+ path).mkString("/")
           }
           Response[Task](Status.Ok).withEntity(entries)
         }

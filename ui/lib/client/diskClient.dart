@@ -17,7 +17,6 @@ class DiskClient {
 
   static Future<String> getLastSaved() {
     return get("metadata/lastSaved");
-    // return Future.value("");
   }
 
   static Future<void> setLastSaved(String fileName) =>
@@ -36,6 +35,20 @@ class DiskClient {
       return got.body.toString();
     } catch (e) {
       print("Error getting '$url': >>$e<<");
+      return "";
+    }
+  }
+
+  static Future<void> remove(String path) async {
+    final url = Uri.http(Rest.Authority, '/rest/store/$path');
+    try {
+      final getHeaders = Map<String, String>.of(Rest.HttpHeaders);
+      getHeaders["accept"] = "text/plain";
+      getHeaders["content-type"] = "text/plain";
+      await http.delete(url, headers: getHeaders);
+      return;
+    } catch (e) {
+      print("Error delete '$url': >>$e<<");
       return "";
     }
   }

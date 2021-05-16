@@ -61,10 +61,24 @@ class _OpenFileWidgetState extends State<OpenFileWidget> {
 
   Widget fileWidget(int index, String fileName) {
     return InkWell(
-      child: Text(fileName),
+      child: Row(
+        children: [
+          IconButton(
+              onPressed: () async => _onDelete(fileName),
+              icon: Icon(Icons.delete_forever)),
+          Text(fileName),
+        ],
+      ),
       onTap: () {
         Navigator.pop(context, fileName);
       },
     );
+  }
+
+  void _onDelete(String fileName) async {
+    // TODO - confirm
+    await DiskClient.remove("config/$fileName");
+    // refresh
+    setState(() {});
   }
 }

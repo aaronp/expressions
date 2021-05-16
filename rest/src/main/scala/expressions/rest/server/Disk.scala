@@ -28,6 +28,8 @@ object Disk {
 
     def read(path: Seq[String]): Task[Option[String]]
 
+    def remove(path: Seq[String]): Task[Boolean]
+
     /**
       * @return either the leaves as full paths (Left values) or the subdirectories (Right values)
       */
@@ -40,11 +42,7 @@ object Disk {
     def apply(dataDir: java.nio.file.Path) = new Service {
       import eie.io._
 
-      private def fileFor(path: Seq[String]) = {
-        val full = dataDir.resolve(path.mkString("/"))
-        println(s"Resolved ${full.toAbsolutePath}")
-        full
-      }
+      private def fileFor(path: Seq[String]) = dataDir.resolve(path.mkString("/"))
 
       override def write(path: Seq[String], body: String): Task[Boolean] = {
         Task {
@@ -53,6 +51,15 @@ object Disk {
           file.text = body
           created
         }
+      }
+
+      override def remove(path: Seq[String]): Task[Boolean] = Task {
+        val file = fileFor(path)
+        val deleted = file.isFile
+        if (deleted) {
+          file.delete(true)
+        }
+        deleted
       }
 
       override def read(path: Seq[String]): Task[Option[String]] = Task {
@@ -95,6 +102,11 @@ object Disk {
           }
           eithers.toList
         }
+      }
+
+      override def remove(path: Seq[String]): Task[Boolean] = dataDir.modify { byPath =>
+        val removed = byPath.contains(path)
+        removed -> byPath.removed(path)
       }
     }
   }
