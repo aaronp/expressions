@@ -48,13 +48,13 @@ object ConfigRoute {
     */
   def listMappingsRoute(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@POST -> Root / "config" / "mappings" / "list" =>
+      case req @ POST -> Root / "config" / "mappings" / "list" =>
         for {
-          body <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
         } yield {
           val mappings: Map[String, List[String]] = MappingConfig(config).mappings.toMap
-          val json = mappings.asJson
+          val json                                = mappings.asJson
           Response[Task](Status.Ok).withEntity(json)
         }
     }
@@ -67,11 +67,11 @@ object ConfigRoute {
     */
   def listEntries(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@POST -> Root / "config" / "entries" =>
+      case req @ POST -> Root / "config" / "entries" =>
         for {
-          body <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
-          lines = ConfigLine(config.withOnlyPath("app"))
+          lines  = ConfigLine(config.withOnlyPath("app"))
         } yield Response[Task](Status.Ok).withEntity(lines)
     }
   }
@@ -83,11 +83,11 @@ object ConfigRoute {
 
   def formatJson(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@POST -> Root / "config" / "format" =>
+      case req @ POST -> Root / "config" / "format" =>
         for {
-          body <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
-          lines = formatConfigAsJson(config.withOnlyPath("app"))
+          lines  = formatConfigAsJson(config.withOnlyPath("app"))
         } yield Response[Task](Status.Ok).withEntity(lines)
     }
   }
@@ -100,7 +100,7 @@ object ConfigRoute {
     */
   def summary(rootConfig: Config): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@POST -> Root / "config" / "parse" :? OptionalIncludeDefault(includeDefault) =>
+      case req @ POST -> Root / "config" / "parse" :? OptionalIncludeDefault(includeDefault) =>
         def parse(body: String) = {
           val withFallback = includeDefault.getOrElse(true)
           if (withFallback) {
@@ -111,8 +111,8 @@ object ConfigRoute {
         }
 
         for {
-          body <- req.bodyText.compile.string
-          config <- Task(parse(body).resolve())
+          body    <- req.bodyText.compile.string
+          config  <- Task(parse(body).resolve())
           summary = ConfigSummary.fromRootConfig(config)
         } yield Response[Task](Status.Ok).withEntity(summary)
     }
@@ -122,10 +122,7 @@ object ConfigRoute {
     _ withoutPath _
   }
 
-  def withoutLists(config: Config) = withoutPaths(config,
-    "app.franz.consumer.bootstrap.servers",
-    "app.franz.consumer.producer.servers",
-    "app.mapping")
+  def withoutLists(config: Config) = withoutPaths(config, "app.franz.consumer.bootstrap.servers", "app.franz.consumer.producer.servers", "app.mapping")
 
   private def merge(previousConfig: Option[String], config: Config): ZIO[Any, Exception, Config] = {
     previousConfig match {
@@ -161,9 +158,9 @@ object ConfigRoute {
         val path = List("config", fileName)
         for {
           previousConfigStrOpt <- disk.read(path)
-          config <- merge(previousConfigStrOpt, summary.asConfig())
-          jason = ConfigSummary.asJson(config.withFallback(withoutLists(rootConfig)))
-          _ <- disk.write(path, jason.noSpaces)
+          config               <- merge(previousConfigStrOpt, summary.asConfig())
+          jason                = ConfigSummary.asJson(config.withFallback(withoutLists(rootConfig)))
+          _                    <- disk.write(path, jason.noSpaces)
         } yield ()
     }
   }
@@ -179,7 +176,7 @@ object ConfigRoute {
         case Left(error) =>
           Response[Task](Status.Ok).withEntity(
             Map(
-              "error" -> error.getLocalizedMessage.asJson,
+              "error"   -> error.getLocalizedMessage.asJson,
               "success" -> false.asJson,
             ))
         case Right(_) =>
@@ -190,19 +187,19 @@ object ConfigRoute {
     def saveAsSummary(body: Json, name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
       for {
         summary <- ZIO.fromTry(body.as[ConfigSummary].toTry)
-        result <- saveConfig(name, Left(summary)).either
+        result  <- saveConfig(name, Left(summary)).either
       } yield asResponse(result)
     }
 
     def saveAsRawConfig(body: Json, name: String): ZIO[Any, Throwable, Response[Task]#Self] = {
       Try(ConfigFactory.parseString(body.noSpaces)) match {
-        case Failure(err) => ZIO.succeed(asResponse(Left(err)))
+        case Failure(err)    => ZIO.succeed(asResponse(Left(err)))
         case Success(config) => saveConfig(name, Right(config)).either.map(asResponse)
       }
     }
 
     HttpRoutes.of[Task] {
-      case req@POST -> Root / "config" / "save" / name =>
+      case req @ POST -> Root / "config" / "save" / name =>
         req.as[Json].flatMap { body =>
           saveAsSummary(body, name).catchAll {
             case _ => saveAsRawConfig(body, name)

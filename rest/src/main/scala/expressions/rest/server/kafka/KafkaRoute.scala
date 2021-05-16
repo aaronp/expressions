@@ -23,11 +23,10 @@ object KafkaRoute extends StrictLogging {
       case POST -> "kafka" /: "start" /: pathToConfig =>
         for {
           config <- loadCfg.at(pathToConfig.toList)
-          id <- execute(config)
+          id     <- execute(config)
         } yield Response[Task](Status.Ok).withEntity(id)
     }
   }
-
 
   def stop(stop: String => Task[Boolean]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {

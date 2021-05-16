@@ -1,6 +1,7 @@
 FROM adoptopenjdk/openjdk11:x86_64-alpine-jre-11.0.9_11
 #FROM gcr.io/distroless/java:11
 
+ARG VERSION
 ARG GITSHA
 ARG TIMESTAMP
 

@@ -1,8 +1,9 @@
 package expressions.rest.server.kafka
 
+import com.typesafe.config.ConfigFactory
 import expressions.DynamicJson
 import expressions.client.TransformResponse
-import expressions.rest.server.BaseRouteTest
+import expressions.rest.server.{BaseRouteTest, Disk, LoadConfig}
 import expressions.template.Message
 import io.circe.literal.JsonStringContext
 
@@ -42,7 +43,7 @@ class BatchRouteTest extends BaseRouteTest {
       import io.circe.syntax._
 
       val testCase = for {
-        underTest <- BatchRoute.make
+        underTest <- BatchRoute.make(LoadConfig(Disk.Service().value(), ConfigFactory.load()))
         result    <- underTest(post("batch/test", request.asJson.noSpaces)).value
       } yield result
 

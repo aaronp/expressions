@@ -108,12 +108,10 @@ case class ConfigSummary(topic: String,
 object ConfigSummary {
   implicit val codec = io.circe.generic.semiauto.deriveCodec[ConfigSummary]
 
-
   def asJson(config: Config): Json = {
     val jasonStr = config.root().render(ConfigRenderOptions.concise())
     io.circe.parser.parse(jasonStr).toTry.get
   }
-
 
   def empty = ConfigSummary("", Nil, Map.empty, "", "", "", "")
   def fromRootConfig(rootConfig: Config): ConfigSummary = {

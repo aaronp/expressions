@@ -77,7 +77,7 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
-    // _reload();
+    _reload();
   }
 
   void _reload() {
@@ -105,7 +105,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
-    _reload();
+    // _reload();
 
     final runningButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
@@ -337,7 +337,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   void onStartBatchConsumer(BuildContext ctxt) async {
-    final bStart = await BatchClient.start(_currentConfig.loadedContent);
+    final bStart = await BatchClient.start(_lastLoadedFileName);
     ScaffoldMessenger.of(ctxt).showSnackBar(
         SnackBar(content: Text("Started batch client '$bStart'")));
     _push(ctxt, RunningConsumersWidget());

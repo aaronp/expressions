@@ -23,10 +23,10 @@ object DiskRoute {
 
   def postRoute(service: Disk.Service): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@(POST -> "store" /: theRest) =>
+      case req @ (POST -> "store" /: theRest) =>
         for {
           body: String <- req.bodyText.compile.string
-          created <- service.write(theRest.toList, body)
+          created      <- service.write(theRest.toList, body)
         } yield {
           if (created) Response[Task](Status.Created) else Response[Task](Status.Ok)
         }
@@ -62,7 +62,7 @@ object DiskRoute {
         service(theRest.toList).map { values =>
           val entries: Seq[String] = values.map {
             case Left(fullPath) => fullPath.mkString("/")
-            case Right(path) => (theRest.toList :+ path).mkString("/")
+            case Right(path)    => (theRest.toList :+ path).mkString("/")
           }
           Response[Task](Status.Ok).withEntity(entries)
         }

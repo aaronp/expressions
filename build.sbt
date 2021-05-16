@@ -301,6 +301,9 @@ assembleApp := {
 
   sLog.value.info(report)
 
+  val versionPath = dockerTargetDir.resolve("version.txt").toFile
+  sbt.io.IO.write(versionPath, version.value)
+
   val wwwDir = dockerTargetDir.resolve("www")
   IO.copyDirectory((baseDirectory.value / "ui" / "build" / "web"), dockerTargetDir.resolve("ui").toFile)
   IO.copyDirectory(restResourceDir.resolve("www").toFile, wwwDir.toFile)

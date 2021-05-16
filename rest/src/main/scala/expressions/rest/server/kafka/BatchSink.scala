@@ -3,9 +3,10 @@ package expressions.rest.server.kafka
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import com.typesafe.scalalogging.StrictLogging
 import eie.io.AlphaCounter
-import expressions.client.kafka.{ConsumerStats, StartedConsumer}
+import expressions.client.kafka.{ConsumerStats, RecordCoords, RecordSummary, StartedConsumer}
 import expressions.franz.{BatchedStream, FranzConfig}
 import expressions.rest.Main
+import io.circe.Json
 import zio.kafka.consumer.CommittableRecord
 import zio.{Fiber, Ref, Task, UIO, ZEnv, ZIO}
 
@@ -61,6 +62,14 @@ object BatchSink {
       map.values.map(_._1).toList.sortBy(_.startedAtEpoch)
     }
 
+    def asCoords(r: CommittableRecord[_, _]): RecordCoords = RecordCoords(r.record.topic(), r.offset.offset, r.partition, r.key.toString)
+
+    def asSummary(records: Array[CommittableRecord[_, _]]): Seq[RecordSummary] = {
+      records.map { r =>
+        RecordSummary(asCoords(r), r.value.toString, Json.fromString(r.value.toString), r.timestamp)
+      }
+    }
+
     override def start(rootConfig: Config): Task[RunningSinkId] = {
       val startIO = for {
         id                     <- ZIO(counter.next())
@@ -69,8 +78,16 @@ object BatchSink {
         sink                   <- makeSink(id, rootConfig)
         franzConfig            = FranzConfig.fromRootConfig(rootConfig)
         batcher: Batch.ByTopic = Batch.ByTopic(franzConfig)
-        kafkaFeed              = BatchedStream(franzConfig).run(records => persist(records, batcher, sink))
-        fiber                  <- kafkaFeed.runCount.fork
+        kafkaFeed = BatchedStream(franzConfig).run { records: Array[CommittableRecord[_, _]] =>
+          for {
+            _ <- statsMap.update { map =>
+              val consumerStats: ConsumerStats = map.getOrElse(id, ConsumerStats(id))
+              map.updated(id, consumerStats ++ asSummary(records))
+            }
+            _ <- persist(records, batcher, sink)
+          } yield ()
+        }
+        fiber <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
           val consumer = startedConsumerFor(rootConfig, id)
           map.updated(id, (consumer, fiber))
@@ -107,4 +124,5 @@ object BatchSink {
       }
     }
   }
+
 }

@@ -3,7 +3,7 @@ package expressions.rest.server.kafka
 import cats.implicits._
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
-import expressions.rest.server.RestRoutes
+import expressions.rest.server.{LoadConfig, RestRoutes}
 import expressions.rest.server.RestRoutes.taskDsl._
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec._
@@ -14,14 +14,14 @@ import zio.{Task, UIO, URIO, ZEnv, ZIO}
 object BatchRoute {
   import RestRoutes.Resp
 
-  val make: URIO[ZEnv, HttpRoutes[Task]] =
+  def make(loadCfg: LoadConfig): URIO[ZEnv, HttpRoutes[Task]] =
     for {
       batchSink <- BatchSink.make
       env       <- ZIO.environment[ZEnv]
-    } yield apply(ConfigFactory.load(), batchSink, env)
+    } yield apply(loadCfg, batchSink, env)
 
-  def apply(defaultConfig: Config, service: KafkaSink.Service, defaultEnv: ZEnv): HttpRoutes[Task] = {
-    start(defaultConfig, service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats) <+> testRoute(BatchCheck(defaultConfig, defaultEnv))
+  def apply(loadCfg: LoadConfig, service: KafkaSink.Service, defaultEnv: ZEnv): HttpRoutes[Task] = {
+    start(loadCfg, service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats) <+> testRoute(BatchCheck(loadCfg.rootConfig, defaultEnv))
   }
 
   def testRoute(handler: BatchCheckRequest => ZIO[Any, Throwable, Resp]): HttpRoutes[Task] = {
@@ -34,15 +34,15 @@ object BatchRoute {
     }
   }
 
-  def start(defaultConfig: Config, start: Config => Task[String]): HttpRoutes[Task] = {
+  def start(loadCfg: LoadConfig, execute: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ POST -> Root / "batch" / "start" =>
+      case POST -> "batch" /: "start" /: pathToConfig =>
         for {
-          body   <- req.bodyText.compile.string
-          config <- Task(ConfigFactory.parseString(body).withFallback(defaultConfig).resolve())
-          id     <- start(config)
+          config <- loadCfg.at(pathToConfig.toList)
+          id     <- execute(config)
         } yield Response[Task](Status.Ok).withEntity(id)
     }
+
   }
 
   def stop(stop: String => Task[Boolean]): HttpRoutes[Task] = {

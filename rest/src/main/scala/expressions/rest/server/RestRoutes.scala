@@ -46,12 +46,13 @@ object RestRoutes extends StrictLogging {
         StringTemplate.newCache[DynamicJson, DynamicJson]()
 
       val diskRoute                                                = DiskRoute(diskService)
+      val loadCfg                                                  = LoadConfig(diskService, defaultConfig)
       val jsonCache: Cache[CodeTemplate.Expression[JsonMsg, Json]] = httpCompiler.map(_.andThen(_.asJson))
       val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(diskService, defaultConfig)
-      val batchRoute                                               = BatchRoute(defaultConfig, batchSink, env)
-      val kafkaRoute                                               = KafkaRoute(LoadConfig(diskService, defaultConfig), kafkaSink)
+      val batchRoute                                               = BatchRoute(loadCfg, batchSink, env)
+      val kafkaRoute                                               = KafkaRoute(loadCfg, kafkaSink)
       val proxyRoute                                               = ProxyRoute()
 
       batchRoute <+> kafkaRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute
