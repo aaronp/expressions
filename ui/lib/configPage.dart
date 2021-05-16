@@ -54,9 +54,7 @@ class _ConfigPageState extends State<ConfigPage> {
         return value;
       });
     } else {
-      // final content = await DiskClient.get(lastSavedFileName);
-      final summary = await ConfigClient.get(fileName);
-      // return summaryFor(lastSavedFileName, content);
+      final summary = await ConfigClient.getSummary(fileName);
       return LoadedConfig(fileName, "", summary);
     }
   }
@@ -83,9 +81,11 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   void _reload() {
-    print("reload checking ${_lastLoadedFileName} != ${_currentConfig.fileName} = ${_lastLoadedFileName != _currentConfig.fileName}");
+    print(
+        "reload checking ${_lastLoadedFileName} != ${_currentConfig.fileName} = ${_lastLoadedFileName != _currentConfig.fileName}");
 
-    if (_lastLoadedFileName.isEmpty || _lastLoadedFileName != _currentConfig.fileName) {
+    if (_lastLoadedFileName.isEmpty ||
+        _lastLoadedFileName != _currentConfig.fileName) {
       defaultConfig().then((value) {
         print("defaultConfig() returned (${!value.isEmpty()}) :  $value");
         _updateLoadedConfig(value);
@@ -93,14 +93,16 @@ class _ConfigPageState extends State<ConfigPage> {
     }
   }
 
-  void _updateLoadedConfig(LoadedConfig value) {
+  void _updateLoadedConfig(LoadedConfig value) async {
     if (!value.isEmpty()) {
+      await DiskClient.setLastSaved(value.fileName);
       setState(() {
         _currentConfig = value;
         _lastLoadedFileName = value.fileName;
       });
     }
   }
+
   @override
   Widget build(BuildContext context) {
     _reload();
@@ -342,14 +344,23 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   void onStartRestConsumer(BuildContext ctxt) async {
-    final kStart = await KafkaClient.start(_currentConfig.loadedContent);
-    ScaffoldMessenger.of(ctxt)
-        .showSnackBar(SnackBar(content: Text("Started REST client '$kStart'")));
-    _push(ctxt, RunningConsumersWidget());
+    if (_lastLoadedFileName.isNotEmpty) {
+      final config = await ConfigClient.getConfig(_lastLoadedFileName);
+
+      final kStart = await KafkaClient.start(config);
+      ScaffoldMessenger.of(ctxt).showSnackBar(
+          SnackBar(content: Text("Started REST client '$kStart'")));
+      _push(ctxt, RunningConsumersWidget());
+    } else {
+      ScaffoldMessenger.of(ctxt)
+          .showSnackBar(SnackBar(content: Text("Config was empty")));
+    }
   }
 
-  void onEditMapping(BuildContext ctxt, MappingEntry entry) =>
-      _push(ctxt, EditZIOMappingWidget(_currentConfig.fileName, entry, _currentConfig.summary));
+  void onEditMapping(BuildContext ctxt, MappingEntry entry) => _push(
+      ctxt,
+      EditZIOMappingWidget(
+          _currentConfig.fileName, entry, _currentConfig.summary));
 
   void onEditHttpMapping(BuildContext ctxt, MappingEntry entry) =>
       _push(ctxt, EditTopicMappingWidget(entry));
@@ -361,13 +372,15 @@ class _ConfigPageState extends State<ConfigPage> {
             MappingEntry("new topic name", ""), _currentConfig.summary));
 
     print("returnValue is $returnValue");
-    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
+    await loadConfig(_currentConfig.fileName)
+        .then((value) => _updateLoadedConfig(value));
   }
 
   void onRemoveMapping(BuildContext ctxt, String key) async {
     _currentConfig.summary.mappings.remove(key);
     await ConfigClient.save(_currentConfig.fileName, _currentConfig.summary);
-    await loadConfig(_currentConfig.fileName).then((value) => _updateLoadedConfig(value));
+    await loadConfig(_currentConfig.fileName)
+        .then((value) => _updateLoadedConfig(value));
   }
 
   Future<Object> _push(BuildContext ctxt, Widget page) async {
@@ -446,7 +459,7 @@ class _ConfigPageState extends State<ConfigPage> {
         });
     final fileName = chosen.toString();
     if (fileName.isNotEmpty) {
-      loadConfig(fileName).then((value) => _updateLoadedConfig(value));
+      loadConfig(fileName).then((value) async => _updateLoadedConfig(value));
     }
     return fileName;
   }

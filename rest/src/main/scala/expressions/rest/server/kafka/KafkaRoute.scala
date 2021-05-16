@@ -8,9 +8,16 @@ import expressions.rest.server.RestRoutes.taskDsl._
 import zio.interop.catz._
 import org.http4s.circe.CirceEntityCodec._
 import cats.implicits._
+import com.typesafe.scalalogging.StrictLogging
+import expressions.rest.server.ConfigRoute.OptionalIncludeDefault
 import io.circe.syntax.EncoderOps
 
-object KafkaRoute {
+import scala.util.control.NonFatal
+
+object KafkaRoute extends StrictLogging {
+
+  object OptionalIncludeDefault extends OptionalQueryParamDecoderMatcher[Boolean]("fallback")
+
 
   def apply(defaultConfig: Config, service: KafkaSink.Service): HttpRoutes[Task] = {
     start(defaultConfig, service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats)
@@ -18,11 +25,25 @@ object KafkaRoute {
 
   def start(defaultConfig: Config, start: Config => Task[String]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req @ POST -> Root / "kafka" / "start" =>
+      case req@POST -> Root / "kafka" / "start" :? OptionalIncludeDefault(includeDefault) =>
+        def asConfig(body: String) = {
+          try {
+            if (includeDefault.getOrElse(false)) {
+              ConfigFactory.parseString(body).withFallback(defaultConfig).resolve()
+            } else {
+              ConfigFactory.parseString(body).resolve()
+            }
+          } catch {
+            case NonFatal(err) =>
+              logger.error(s"Error parsing config '${err.getMessage}' : >${body}<")
+              throw err
+          }
+        }
+
         for {
-          body   <- req.bodyText.compile.string
-          config <- Task(ConfigFactory.parseString(body).withFallback(defaultConfig).resolve())
-          id     <- start(config)
+          body <- req.bodyText.compile.string
+          config <- Task(asConfig(body))
+          id <- start(config)
         } yield Response[Task](Status.Ok).withEntity(id)
     }
   }
