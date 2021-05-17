@@ -4,7 +4,7 @@ buildDocker:
 	./build.sh
 
 run: buildDocker
-	docker run -p 8080:8080 porpoiseltd/expressions:latest
+	mkdir ./docker-data && docker run -p 8080:8080 -v `pwd`/docker-data:/app/data porpoiseltd/expressions:latest
 
 buildFlutterUI:
 	cd ui && flutter build web

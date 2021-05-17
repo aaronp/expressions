@@ -165,7 +165,7 @@ batch.foreach { msg =>
                 label: new Text('Cancel'),
               ),
               ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => Navigator.of(context).pop(true),
                 icon: Icon(Icons.cancel_outlined),
                 label: new Text("Don't Save"),
               ),

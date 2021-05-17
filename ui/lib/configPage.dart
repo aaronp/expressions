@@ -51,6 +51,9 @@ class _ConfigPageState extends State<ConfigPage> {
     }
     final summary = await ConfigClient.getSummary(file);
     final loaded = LoadedConfig(file, "", summary);
+    // setState(() {
+    //   _lastLoadedFileName = "application.conf";
+    // });
     return loaded;
 
   }
@@ -72,6 +75,7 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
+    print('configPage::initState!');
     _reload();
   }
 

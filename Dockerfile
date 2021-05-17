@@ -22,7 +22,6 @@ COPY target/docker/app.jar /app/lib/app.jar
 COPY ui/build/web /app/www
 
 ADD build/boot.sh /app/boot.sh
-ADD build/userConf.conf /app/data/userConf.conf
 ADD build/application.conf /app/config/application.conf
 ADD build/logback.xml /app/config/logback.xml
 
