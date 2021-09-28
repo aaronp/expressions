@@ -5,6 +5,7 @@ import com.typesafe.config.Config
 import zio._
 import zio.console.putStrLn
 import zio.interop.catz._
+import args4c.implicits.RichArgs
 
 /**
   * A REST application which will drive

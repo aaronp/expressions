@@ -1,4 +1,3 @@
-import java.nio.file.{Path, Paths}
 import scala.collection.immutable
 
 val repo = "expressions"
@@ -258,6 +257,8 @@ pomExtra in Global := {
     </developers>
 }
 
+
+
 lazy val clientBuild = taskKey[String]("Builds the client").withRank(KeyRanks.APlusTask)
 
 clientBuild := {
@@ -268,7 +269,7 @@ clientBuild := {
   output
 }
 
-lazy val assembleApp = taskKey[Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
+lazy val assembleApp = taskKey[java.nio.file.Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
 
 assembleApp := {
   val restAssembly = (assembly in (rest, Compile)).value
