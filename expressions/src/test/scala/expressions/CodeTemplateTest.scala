@@ -4,13 +4,9 @@ import expressions.CodeTemplate.Expression
 import expressions.template.Message
 import io.circe.Json
 
-import io.circe.literal._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-
 import scala.util.Success
 
-class CodeTemplateTest extends AnyWordSpec with Matchers {
+class CodeTemplateTest extends BaseTest {
   type JsonMsg = Message[DynamicJson, DynamicJson]
   "CodeTemplate" should {
     "work" in {
@@ -31,7 +27,7 @@ class CodeTemplateTest extends AnyWordSpec with Matchers {
           |        requests.asJson
           |""".stripMargin)
 
-      val data = json"""{
+      val data = """{
         "hello" : {
           "there" : true,
           "world" : [
@@ -45,7 +41,7 @@ class CodeTemplateTest extends AnyWordSpec with Matchers {
           }
           ]
         }
-      }"""
+      }""".jason
 
       import DynamicJson.implicits._
       val ctxt   = Message.of(data.asDynamic).withKey(data.asDynamic).asContext()

@@ -3,8 +3,7 @@ package expressions
 import expressions.template.Context
 
 import scala.reflect.ClassTag
-import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
   * Provides a script-able means to produce some type B for any type A
