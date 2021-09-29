@@ -4,6 +4,7 @@ import expressions.template.Context
 
 import scala.reflect.ClassTag
 import scala.util.Try
+import scala.quoted.*
 
 /**
   * Provides a script-able means to produce some type B for any type A
@@ -93,6 +94,18 @@ object CodeTemplate {
 //      case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
 //    }
     // FIXME
+
+    given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
+
+    val f: Array[Int] => Int = staging.run {
+      val stagedSum: Expr[Array[Int] => Int] =
+      '{ (arr: Array[Int]) => ${sum('arr)}}
+      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+      stagedSum
+    }
+
+    f.apply(Array(1, 2, 3))
+
     ???
   }
 
