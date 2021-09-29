@@ -1,6 +1,5 @@
 package expressions
 
-import expressions.AvroExpressions.compiler
 import expressions.template.Context
 
 import scala.reflect.ClassTag
@@ -83,17 +82,19 @@ object CodeTemplate {
   def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
 
   def compile[A, B](inputType: String, script: String): Try[Compiled[A, B]] = {
-    type Thunk = A => B
-    try {
-      val tree   = compiler.parse(script)
-      val result = compiler.eval(tree)
-      result match {
-        case expr: Thunk => Success(Compiled(script, inputType, expr))
-        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
-      }
-    } catch {
-      case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
-    }
+//    type Thunk = A => B
+//    try {
+//      val tree   = compiler.parse(script)
+//      val result = compiler.eval(tree)
+//      result match {
+//        case expr: Thunk => Success(Compiled(script, inputType, expr))
+//        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
+//      }
+//    } catch {
+//      case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
+//    }
+    // FIXME
+    ???
   }
 
   private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {

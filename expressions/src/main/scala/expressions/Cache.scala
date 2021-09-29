@@ -17,11 +17,11 @@ class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new Illega
   private def createUnsafe(expression: String): Try[V] = {
     val result = create(expression)
 
-    logger.debug(s"""Compiling:
-        |${expression}
-        |
-        |Yields: ${result.isSuccess}
-        |""".stripMargin)
+//    logger.debug(s"""Compiling:
+//        |${expression}
+//        |
+//        |Yields: ${result.isSuccess}
+//        |""".stripMargin)
     result.map { value =>
       thunkByCode = thunkByCode.updated(expression, value)
       value

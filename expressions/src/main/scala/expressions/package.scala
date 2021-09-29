@@ -10,10 +10,8 @@ import org.apache.avro.generic.IndexedRecord
   *   dataStream.filter(rule)
   * }}}
   */
-package object expressions extends LowPriorityAvroImplicits {
+package object expressions {
 
   type Record = IndexedRecord
-
-  def asAvroPredicate(rule: String): AvroExpressions.Predicate = AvroExpressions.Predicate(rule)
 
 }
