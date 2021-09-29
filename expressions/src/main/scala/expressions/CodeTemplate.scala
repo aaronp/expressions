@@ -5,6 +5,7 @@ import expressions.template.Context
 import scala.reflect.ClassTag
 import scala.util.Try
 import scala.quoted.*
+import scala.quoted.staging.{run, withQuotes, Compiler}
 
 /**
   * Provides a script-able means to produce some type B for any type A
@@ -82,31 +83,30 @@ object CodeTemplate {
   def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
 
   def compile[A, B](inputType: String, script: String): Try[Compiled[A, B]] = {
-//    type Thunk = A => B
-//    try {
-//      val tree   = compiler.parse(script)
-//      val result = compiler.eval(tree)
+    type Thunk = A => B
+
+    given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
+
+    try {
+      val expr : Expr[A] = withQuotes(script)
+      Success(Compiled(script, inputType, expr))
 //      result match {
 //        case expr: Thunk => Success(Compiled(script, inputType, expr))
 //        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
 //      }
-//    } catch {
-//      case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
-//    }
-    // FIXME
-
-    given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
-
-    val f: Array[Int] => Int = staging.run {
-      val stagedSum: Expr[Array[Int] => Int] =
-      '{ (arr: Array[Int]) => ${sum('arr)}}
-      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
-      stagedSum
+    } catch {
+      case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
     }
 
-    f.apply(Array(1, 2, 3))
+//    val f: Array[Int] => Int = staging.run {
+//      val stagedSum: Expr[Array[Int] => Int] =
+//      '{ (arr: Array[Int]) => ${sum('arr)}}
+//      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+//      stagedSum
+//    }
+//
+//    f.apply(Array(1, 2, 3))
 
-    ???
   }
 
   private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {
