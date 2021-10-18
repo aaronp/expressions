@@ -2,10 +2,11 @@ package expressions
 
 import expressions.template.Context
 
+import javax.script.{ScriptEngine, ScriptEngineFactory}
 import scala.reflect.ClassTag
-import scala.util.Try
-import scala.quoted.*
-import scala.quoted.staging.{run, withQuotes, Compiler}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Try}
+
 
 /**
   * Provides a script-able means to produce some type B for any type A
@@ -16,12 +17,14 @@ object CodeTemplate {
 
   case class Compiled[A, B](code: String, inputType: String, thunk: A => B) extends (A => B) {
     override def apply(input: A): B = thunk(input)
+
     override def toString(): String = s"COMPILED [$inputType] => B:\n${code}\n"
   }
 
   case class CompiledExpression[A, B](contextType: String, code: String, thunk: Expression[A, B]) extends Expression[A, B] {
     override def apply(input: Context[A]): B = thunk(input)
-    override def toString(): String          = s"COMPILED Context[$contextType] => B:\n${code}\n"
+
+    override def toString(): String = s"COMPILED Context[$contextType] => B:\n${code}\n"
   }
 
   def const[A, B](value: B): Expression[A, B] = _ => value
@@ -30,6 +33,7 @@ object CodeTemplate {
 
   /**
     * We bias these expressions for [[DynamicJson]] inputs
+    *
     * @param expression
     * @tparam B
     * @return
@@ -52,6 +56,7 @@ object CodeTemplate {
     * {{{
     *
     * }}}
+    *
     * @param expression
     * @tparam A
     * @tparam B
@@ -82,35 +87,41 @@ object CodeTemplate {
 
   def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
 
-  def compile[A, B](inputType: String, script: String): Try[Compiled[A, B]] = {
+  def compile[A: ClassTag, B](inputType: String, script: String): Try[Compiled[A, B]] = {
     type Thunk = A => B
 
-    given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
-
-    try {
-      val expr : Expr[A] = withQuotes(script)
-      Success(Compiled(script, inputType, expr))
-//      result match {
-//        case expr: Thunk => Success(Compiled(script, inputType, expr))
-//        case other       => Failure(new Exception(s"'$script' isn't a function [$inputType] : ${other}"))
-//      }
+    val thunk = try {
+      //      new ScriptEngineFactory {}
+      val m = new javax.script.ScriptEngineManager(getClass().getClassLoader())
+      val engine: ScriptEngine = m.getEngineByName("scala")
+      println(engine)
+      println("----")
+      println(script)
+      println("----")
+      val result = engine.eval(script)
+      println(result)
+      result match {
+        case expr: Thunk => Try(Compiled(script, inputType, expr))
+        case other =>
+          Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className]"))
+      }
     } catch {
       case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
     }
 
-//    val f: Array[Int] => Int = staging.run {
-//      val stagedSum: Expr[Array[Int] => Int] =
-//      '{ (arr: Array[Int]) => ${sum('arr)}}
-//      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
-//      stagedSum
-//    }
-//
-//    f.apply(Array(1, 2, 3))
-
+    //    val f: Array[Int] => Int = staging.run {
+    //      val stagedSum: Expr[Array[Int] => Int] =
+    //      '{ (arr: Array[Int]) => ${sum('arr)}}
+    //      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+    //      stagedSum
+    //    }
+    //
+    //    f.apply(Array(1, 2, 3))
+    thunk
   }
 
   private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {
     case other if other.isPrimitive => other.getName.capitalize
-    case other                      => other.getName
+    case other => other.getName
   }
 }
