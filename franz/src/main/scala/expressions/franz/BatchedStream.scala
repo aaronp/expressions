@@ -1,9 +1,9 @@
 package expressions.franz
 
 import com.typesafe.scalalogging.StrictLogging
-import zio._
+import zio.*
 import zio.duration.Duration
-import zio.kafka.consumer._
+import zio.kafka.consumer.*
 import zio.kafka.serde.Deserializer
 import zio.stream.ZStream
 

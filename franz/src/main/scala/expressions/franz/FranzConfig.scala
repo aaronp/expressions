@@ -184,14 +184,10 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 //    val valueManaged = valueSerde[V](producerConfig.getConfig("value")).toManaged_
 
     for {
-      k <- ZManaged.fromEffect(keySerde[K](producerConfig.getConfig("key")))
-      v <- ZManaged.fromEffect(valueSerde[V](producerConfig.getConfig("value")))
-      p <- producer[K, V](k, v)
+//      k <- ZManaged.fromEffect(keySerde[K](producerConfig.getConfig("key")))
+//      v <- ZManaged.fromEffect(valueSerde[V](producerConfig.getConfig("value")))
+      p <- Producer.make(producerSettings)
     } yield p
-  }
-
-//  def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
-  def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): RManaged[Blocking, Producer] = {
     Producer.make(producerSettings)
   }
 

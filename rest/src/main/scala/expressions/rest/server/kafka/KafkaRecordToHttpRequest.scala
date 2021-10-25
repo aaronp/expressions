@@ -125,7 +125,7 @@ object KafkaRecordToHttpRequest extends StrictLogging {
 
   def asMessage[K: Encoder, V: Encoder](record: CommittableRecord[K, V]): JsonMsg = Batch.asMessage[K, V](record)
 
-  def writeScriptForTopic(mappingConfig: MappingConfig, disk: Disk.Service, topic: String, script: String): ZIO[Any, Serializable, Unit] = {
+  def writeScriptForTopic(mappingConfig: MappingConfig, disk: Disk.Service, topic: String, script: String): ZIO[Any, Any, Unit] = {
     for {
       pathToMapping <- ZIO.fromOption(mappingConfig.lookup(topic)).catchSome {
         case None => ZIO.fail(new Exception(s"No mapping found for topic '$topic' in $mappingConfig"))

@@ -39,7 +39,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath], landingPage: String, jsRoo
 
     require(jsRootDir.exists(), error)
   }
-  cssRootDirs.foreach { cssRootDir: JPath =>
+  cssRootDirs.foreach { cssRootDir => //: JPath
     require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist (${cssRootDir.toAbsolutePath})")
   }
 

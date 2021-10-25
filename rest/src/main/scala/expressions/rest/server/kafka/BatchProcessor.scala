@@ -50,7 +50,7 @@ object BatchProcessor extends StrictLogging {
     for {
       handler <- createOnBatchHandler(config, templateCache)
       env     <- ZIO.environment[ZEnv]
-    } yield { batch: Batch =>
+    } yield { batch => //: Batch =>
       handler(batch).either.flatMap { either =>
         env.get[Clock.Service].instant.map(_.toEpochMilli).flatMap { nowEpoch =>
           val update = statsMap.update { byId =>

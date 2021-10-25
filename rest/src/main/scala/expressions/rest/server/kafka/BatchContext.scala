@@ -3,12 +3,12 @@ package expressions.rest.server.kafka
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.DynamicJson
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
-import expressions.franz.SupportedType._
+import expressions.franz.SupportedType.*
 import expressions.franz.{FranzConfig, SupportedType}
 import expressions.rest.server.kafka.BatchContext.HttpClient
 import expressions.template.{Env, FileSystem}
+import io.circe.syntax.*
 import io.circe.{Encoder, Json}
-import io.circe.syntax._
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import zio.blocking.Blocking
@@ -68,11 +68,11 @@ trait BatchContext {
   implicit def richKey(key: Json): RichKey                                    = new RichKey(key)
   implicit def richKey(key: String): RichKey                                  = new RichKey(key.asJson)
   implicit def richKey(key: Long): RichKey                                    = new RichKey(key.asJson)
-  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = producer.produce(record).provide(blocking)
+  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = producer.produce(record.topic(), record, record.key(), record.value()).provide(blocking)
 
   def keyType: SupportedType[Key]
   def valueType: SupportedType[Value]
-  def producer: Producer.Service[Any, Key, Value]
+  def producer: Producer
 
   final def send(request: HttpRequest): Task[HttpResponse] = restClient(request)
   final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty): Task[HttpResponse] = {
@@ -92,7 +92,7 @@ object BatchContext {
     val client: HttpClient     = (r: HttpRequest) => Task.fromFuture(_ => RestClient.send(r))
     franzConfig.producerKeyType match {
       case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t, fileSystem, env, client)
-      case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t, fileSystem, env, client)
+      case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t.asInstanceOf[SupportedType[Array[Byte]]], fileSystem, env, client)
       case t @ STRING     => withKey[String](franzConfig, t, fileSystem, env, client)
       case t @ LONG       => withKey[Long](franzConfig, t, fileSystem, env, client)
     }
@@ -125,15 +125,15 @@ object BatchContext {
         new BatchContext {
           type Key   = K
           type Value = V
-          override val config: FranzConfig                         = franzConfig
-          override val env: Env                                    = envIn
-          override val fs: FileSystem                              = fileSystem
-          override val cache: Ref[Map[String, Any]]                = cacheRef
-          override val restClient: HttpClient                      = clientIn
-          override val blocking: Blocking                          = b
-          override val keyType: SupportedType[Key]                 = keyTypeIn
-          override val valueType: SupportedType[Value]             = valueTypeIn
-          override val producer: Producer.Service[Any, Key, Value] = producerIn
+          override val config: FranzConfig             = franzConfig
+          override val env: Env                        = envIn
+          override val fs: FileSystem                  = fileSystem
+          override val cache: Ref[Map[String, Any]]    = cacheRef
+          override val restClient: HttpClient          = clientIn
+          override val blocking: Blocking              = b
+          override val keyType: SupportedType[Key]     = keyTypeIn
+          override val valueType: SupportedType[Value] = valueTypeIn
+          override val producer: Producer              = producerIn
         }
       }
     } yield c

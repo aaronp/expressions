@@ -22,7 +22,7 @@ object CacheRoute {
     HttpRoutes.of[Task] {
       case req @ (POST -> "cache" /: theRest) =>
         asJson(req).flatMap { json =>
-          val key = theRest.toList.mkString("/")
+          val key = theRest.segments.mkString("/")
           cache.modify { byPath =>
             val response = if (byPath.contains(key)) {
               Response[Task](Status.Ok)
@@ -47,8 +47,8 @@ object CacheRoute {
   def getRoute(cache: Ref[Map[String, Json]]): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case GET -> "cache" /: theRest =>
-        cache.get.map { byPath: Map[String, Json] =>
-          val key = theRest.toList.mkString("/")
+        cache.get.map { byPath =>
+          val key = theRest.segments.mkString("/")
           byPath.get(key) match {
             case Some(value) =>
               Response[Task](Status.Ok).withEntity(value)

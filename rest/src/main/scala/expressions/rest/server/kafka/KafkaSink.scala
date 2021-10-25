@@ -7,7 +7,7 @@ import expressions.Cache
 import expressions.CodeTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
-import expressions.franz.{ForEachStream, FranzConfig}
+import expressions.franz.{ForEachStream, FranzConfig, BatchedStream}
 import expressions.rest.Main
 import expressions.rest.server.JsonMsg
 import zio.kafka.consumer.CommittableRecord
@@ -104,10 +104,10 @@ object KafkaSink {
 
     override def start(rootConfig: Config): Task[RunningSinkId] = {
       val startIO = for {
-        id        <- ZIO(counter.next())
-        _         = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
-        _         <- statsMap.update(_.updated(id, ConsumerStats(id)))
-        sink      <- makeSink(id, rootConfig)
+        id   <- ZIO(counter.next())
+        _    = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
+        _    <- statsMap.update(_.updated(id, ConsumerStats(id)))
+        sink <- makeSink(id, rootConfig)
 //        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         kafkaFeed = BatchedStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork

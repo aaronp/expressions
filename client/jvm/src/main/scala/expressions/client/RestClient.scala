@@ -3,7 +3,9 @@ package expressions.client
 import cats.effect.{ConcurrentEffect, ExitCode, IO, IOApp}
 import org.http4s.client.Client
 import org.http4s.{Header, Headers, Uri}
+import org.typelevel.ci.CIString
 
+import scala.concurrent.ExecutionContext.Implicits
 import scala.concurrent.Future
 
 object RestClient {
@@ -15,13 +17,13 @@ object RestClient {
       override def run(args: List[String]): IO[ExitCode] = IO(ExitCode.Success)
     }
 
-    import org.http4s.client.blaze._
-    implicit val ce = FML.ce
+    import org.http4s.blaze.client._
+    given ce : ConcurrentEffect[IO] = FML.ce
 
     def asHttp4sReq(req: HttpRequest): org.http4s.Request[IO] = {
       val m = org.http4s.Method.fromString(req.method.name).toTry.get
       val headers = Headers(req.headers.toList.map {
-        case (k, v) => Header(k, v)
+        case (k, v) => Header.Raw(CIString(k), v)
       })
 
       val body = fs2.Stream.fromIterator(req.body.iterator)
@@ -29,13 +31,12 @@ object RestClient {
     }
 
     def apply(req: HttpRequest): IO[String] = {
-      BlazeClientBuilder[IO](Implicits.global).resource.use { client: Client[IO] =>
-        // use `client` here and return an `IO`.
-        // the client will be acquired and shut down
-        // automatically each time the `IO` is run.
-        val r = asHttp4sReq(req)
-
-        client.expect[String](r)
+      BlazeClientBuilder[IO](scala.concurrent.ExecutionContext.Implicits.global).resource.use { client =>
+          // use `client` here and return an `IO`.
+          // the client will be acquired and shut down
+          // automatically each time the `IO` is run.
+          val r = asHttp4sReq(req)
+          client.expect[String](r)
       }
     }
   }

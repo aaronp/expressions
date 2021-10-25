@@ -64,7 +64,7 @@ object ExtractJar extends StrictLogging {
       case _: FileAlreadyExistsException =>
     }
 
-    using(new ZipInputStream(Files.newInputStream(jarDest))) { is: ZipInputStream =>
+    using(new ZipInputStream(Files.newInputStream(jarDest))) { is => // is: ZipInputStream =>
       var entry = is.getNextEntry
       while (entry != null) {
         if (entry.getName.contains("web") && !entry.isDirectory && !entry.getName.endsWith(".class")) {

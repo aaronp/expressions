@@ -5,7 +5,7 @@ import zio.Task
 import zio.blocking.Blocking
 import zio.kafka.producer.Producer
 
-case class RecordBuilder[K, V](key: K, value: V, producer: Producer.Service[Any, K, V], blocking: Blocking, partition: Int = -1) {
+case class RecordBuilder[K, V](key: K, value: V, producer: Producer, blocking: Blocking, partition: Int = -1) {
   def withPartition(p: Int): RecordBuilder[K, V] = copy(partition = p)
 
   def publishTo(topic: String, timestamp: Long = System.currentTimeMillis()): Task[RecordMetadata] = {

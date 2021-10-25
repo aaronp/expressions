@@ -12,9 +12,15 @@ object ForeachPublisher {
   }
 
   def publishAll[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
-  }
-  def apply[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
+//    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
+//  }
+//
+//  def apply[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
+    for {
+      k     <- config.keySerde[K]()
+      v     <- config.valueSerde[V]()
+      chunk = Chunk.fromIterable(records)
+      p     <- config.producer[K, V].use(_.produceChunk(chunk, k, v))
+    } yield p
   }
 }

@@ -14,7 +14,7 @@ object LiveRecorder extends StrictLogging {
   def recordSession(): String => Task[Unit] = LiveRecorder(createFeature).log
 
   def createFeature(dir: Path, testName: String) = {
-    val featureDir = FeatureGenerator.generateFeatureFromDump(dir, testName)
-    logger.info(s"Created feature in ${featureDir}")
+    logger.info(s"Created feature in ${dir}")
+    ???
   }
 }
