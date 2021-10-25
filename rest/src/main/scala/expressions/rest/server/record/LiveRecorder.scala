@@ -1,11 +1,12 @@
 package expressions.rest.server.record
 
-import com.typesafe.scalalogging.StrictLogging
 import zio.Task
 
 import java.nio.file.Path
 
-object LiveRecorder extends StrictLogging {
+object LiveRecorder {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+
   def apply(onDumpSession: (Path, String) => Unit = (_, _) => ()): Recorder.Buffer = {
     val sessionId = System.currentTimeMillis()
     Recorder(sessionId)(onDumpSession)

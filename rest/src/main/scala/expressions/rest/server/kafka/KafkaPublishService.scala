@@ -1,7 +1,6 @@
 package expressions.rest.server.kafka
 
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.StrictLogging
 import expressions.client.kafka.PostRecord
 import expressions.franz.{ForeachPublisher, FranzConfig, SupportedType}
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -14,8 +13,8 @@ import scala.jdk.CollectionConverters._
 /**
   * Handles the publishing of [[PostRecord]] records to Kafka
   */
-object KafkaPublishService extends StrictLogging {
-
+object KafkaPublishService {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   def apply(config: FranzConfig): PostRecord => URIO[Blocking, Int] = { record =>
     execPost(record, config)
   }

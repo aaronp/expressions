@@ -62,10 +62,10 @@ trait BatchContext {
     * @param key the key type
     */
   class RichKey(key: Key) {
-    def withValue(value: DynamicJson): RecordBuilder[Key, Value] = RecordBuilder[Key, Value](key, value, producer, blocking)
-    def withValue(value: Json): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value, producer, blocking)
-    def withValue(value: String): RecordBuilder[Key, Value]      = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
-    def withValue(value: Long): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
+    def withValue(value: DynamicJson): RecordBuilder[Key, Value] = RecordBuilder[Key, Value](key, value, producer, blocking, keySerde, valueSerde)
+    def withValue(value: Json): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value, producer, blocking, keySerde, valueSerde)
+    def withValue(value: String): RecordBuilder[Key, Value]      = RecordBuilder[Key, Value](key, value.asJson, producer, blocking, keySerde, valueSerde)
+    def withValue(value: Long): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value.asJson, producer, blocking, keySerde, valueSerde)
   }
   implicit def richKey(key: DynamicJson): RichKey = new RichKey(key)
   implicit def richKey(key: Json): RichKey        = new RichKey(key)
@@ -124,7 +124,7 @@ object BatchContext {
                             fileSystem: FileSystem, //
                             envIn: Env, //
                             clientIn: HttpClient): ZManaged[Blocking, Throwable, BatchContext] = {
-    for {
+    val created = for {
       b        <- ZIO.environment[Blocking].toManaged_
       cacheRef <- Ref.make(Map[String, Any]()).toManaged_
       keys     <- franzConfig.keySerde[K]()
@@ -147,5 +147,7 @@ object BatchContext {
         }
       }
     } yield c
+
+    created
   }
 }

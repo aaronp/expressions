@@ -2,7 +2,6 @@ package expressions.rest.server.kafka
 
 import cats.implicits._
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
 import expressions.rest.server.LoadConfig
 import expressions.rest.server.RestRoutes.taskDsl._
@@ -12,8 +11,8 @@ import org.http4s.{HttpRoutes, Response, Status}
 import zio.interop.catz._
 import zio.{Task, UIO}
 
-object KafkaRoute extends StrictLogging {
-
+object KafkaRoute {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   def apply(loadCfg: LoadConfig, service: KafkaSink.Service): HttpRoutes[Task] = {
     start(loadCfg, service.start) <+> stop(service.stop) <+> running(service.running()) <+> stats(service.stats)
   }

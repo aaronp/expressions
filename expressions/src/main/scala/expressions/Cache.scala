@@ -1,15 +1,14 @@
 package expressions
 
-import com.typesafe.scalalogging.StrictLogging
-
 import scala.util.{Failure, Success, Try}
 
 /**
   * A really dumb, lazy cache of expressions
   */
-class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new IllegalArgumentException("no default provided for empty script"))) extends StrictLogging {
+class Cache[V](create: String => Try[V], default: Try[V] = Failure[V](new IllegalArgumentException("no default provided for empty script"))) {
   private object Lock
 
+  private val logger      = org.slf4j.LoggerFactory.getLogger(getClass)
   private var thunkByCode = Map[String, V]()
 
   def map[A](thunk: V => A): Cache[A] = new Cache[A](create.andThen(_.map(thunk)))

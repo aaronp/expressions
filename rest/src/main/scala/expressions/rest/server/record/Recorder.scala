@@ -3,7 +3,6 @@ package expressions.rest.server.record
 import java.nio.file.Path
 import java.time.LocalDateTime
 
-import com.typesafe.scalalogging.StrictLogging
 import eie.io._
 import io.circe.Decoder.Result
 import io.circe.syntax._
@@ -111,8 +110,9 @@ object Recorder {
     paths.find(_.isDir).getOrElse(sys.error("Couldn't seem to find the fucking integration-test src resources dir"))
   }
 
-  class Buffer(sessionId: Long, onDumpCallback: (Path, String) => Unit, limit: Int = 100) extends StrictLogging {
+  class Buffer(sessionId: Long, onDumpCallback: (Path, String) => Unit, limit: Int = 100) {
 
+    private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
     private val buffer = ListBuffer[Either[Request, Response]]()
 
     private def pad(n: Int) = n.toString.reverse.padTo(3, '0').reverse

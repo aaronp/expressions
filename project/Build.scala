@@ -33,9 +33,8 @@ object Build {
 
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.1"
 
-  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
   val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.32")
+  val logging      = List(logback, "org.slf4j" % "slf4j-api" % "1.7.32")
 
   val scalaTest =  List ("org.scalactic" %% "scalactic" % "3.2.10" % Test,
   "org.scalatest" %% "scalatest" % "3.2.10" % Test,

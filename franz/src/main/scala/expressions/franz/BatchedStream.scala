@@ -1,6 +1,5 @@
 package expressions.franz
 
-import com.typesafe.scalalogging.StrictLogging
 import zio.*
 import zio.duration.Duration
 import zio.kafka.consumer.*
@@ -45,8 +44,8 @@ case class BatchedStream[K, V](topic: Subscription,
 /** A Kafka stream which will batch up records by the least of either a time-window or max-size,
   * and then use the provided 'persist' function on each batch
   */
-object BatchedStream extends StrictLogging {
-
+object BatchedStream {
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   type JsonString = String
 
   /** @param config our parsed typesafe config

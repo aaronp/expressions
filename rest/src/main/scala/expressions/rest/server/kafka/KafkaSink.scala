@@ -1,7 +1,6 @@
 package expressions.rest.server.kafka
 
 import com.typesafe.config.{Config, ConfigRenderOptions}
-import com.typesafe.scalalogging.StrictLogging
 import eie.io.AlphaCounter
 import expressions.Cache
 import expressions.CodeTemplate.Expression
@@ -93,9 +92,8 @@ object KafkaSink {
                               statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
                               makeSink: SinkInput => SinkIO,
                               env: ZEnv)
-      extends Service
-      with StrictLogging {
-
+      extends Service {
+    private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
     private val counter = AlphaCounter.from(0)
 
     override def running(): UIO[List[StartedConsumer]] = tasksById.get.map { map =>

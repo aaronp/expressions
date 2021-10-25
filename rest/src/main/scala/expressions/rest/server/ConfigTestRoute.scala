@@ -2,7 +2,6 @@ package expressions.rest.server
 
 import args4c.StringEntry
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.StrictLogging
 import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
 import expressions.template.{Context, Message}
@@ -22,8 +21,9 @@ import zio.{Task, UIO, ZIO}
   *
   * whose 'script' is actually assumed to be a typesafe config whose values may be '{{ ... }}' placeholders
   */
-object ConfigTestRoute extends StrictLogging {
+object ConfigTestRoute {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   import RestRoutes.Resp
   import RestRoutes.taskDsl._
 
