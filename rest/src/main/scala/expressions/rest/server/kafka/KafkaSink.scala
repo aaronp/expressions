@@ -43,7 +43,7 @@ object KafkaSink {
   /**
     * A task which, when run, produces a 'sink' -- a function which persists the given record (and returns back that record)
     */
-  type SinkIO = UIO[CommittableRecord[_, _] => Task[Unit]]
+  type SinkIO = UIO[Array[CommittableRecord[_, _]] => Task[Unit]]
 
   trait Service {
     def start(config: Config): Task[RunningSinkId]
@@ -109,8 +109,9 @@ object KafkaSink {
         _    <- statsMap.update(_.updated(id, ConsumerStats(id)))
         sink <- makeSink(id, rootConfig)
 //        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
-        kafkaFeed = BatchedStream(FranzConfig.fromRootConfig(rootConfig))(sink)
-        fiber     <- kafkaFeed.runCount.fork
+        batchedStream <- BatchedStream(FranzConfig.fromRootConfig(rootConfig))
+        kafkaFeed     = batchedStream.run(sink)
+        fiber         <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
           val consumer = startedConsumerFor(rootConfig, id)
           map.updated(id, (consumer, fiber))

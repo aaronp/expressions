@@ -223,7 +223,7 @@ object ConfigRoute {
     HttpRoutes.of[Task] {
       case (GET -> "config" /: theRest) :? AsSummaryFormat(asSummaryOpt) =>
         val asSummary = asSummaryOpt.getOrElse(false)
-        LoadConfig(disk, rootConfig).at(theRest.segments).map {
+        LoadConfig(disk, rootConfig).at(theRest.segments.map(_.encoded).toList).map {
           case cfg if asSummary => ok(ConfigSummary.fromRootConfig(cfg).asJson)
           case cfg =>
             val jsonStr = cfg.root.render(ConfigRenderOptions.concise())

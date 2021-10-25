@@ -13,6 +13,7 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import zio.blocking.Blocking
 import zio.kafka.producer.Producer
+import zio.kafka.serde.Serde
 import zio.{Ref, Task, ZIO, ZManaged}
 
 import java.nio.charset.StandardCharsets
@@ -34,6 +35,8 @@ trait BatchContext {
   type Key
   type Value
 
+  def keySerde: Serde[Any, Key]
+  def valueSerde: Serde[Any, Value]
   def config: FranzConfig
   def env: Env
   def fs: FileSystem
@@ -64,19 +67,22 @@ trait BatchContext {
     def withValue(value: String): RecordBuilder[Key, Value]      = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
     def withValue(value: Long): RecordBuilder[Key, Value]        = RecordBuilder[Key, Value](key, value.asJson, producer, blocking)
   }
-  implicit def richKey(key: DynamicJson): RichKey                             = new RichKey(key)
-  implicit def richKey(key: Json): RichKey                                    = new RichKey(key)
-  implicit def richKey(key: String): RichKey                                  = new RichKey(key.asJson)
-  implicit def richKey(key: Long): RichKey                                    = new RichKey(key.asJson)
-  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = producer.produce(record.topic(), record, record.key(), record.value()).provide(blocking)
+  implicit def richKey(key: DynamicJson): RichKey = new RichKey(key)
+  implicit def richKey(key: Json): RichKey        = new RichKey(key)
+  implicit def richKey(key: String): RichKey      = new RichKey(key.asJson)
+  implicit def richKey(key: Long): RichKey        = new RichKey(key.asJson)
+
+  final def publish(record: ProducerRecord[Key, Value]): Task[RecordMetadata] = {
+    producer.produce(record, keySerde, valueSerde) //.provide(blocking)
+  }
 
   def keyType: SupportedType[Key]
   def valueType: SupportedType[Value]
   def producer: Producer
 
   final def send(request: HttpRequest): Task[HttpResponse] = restClient(request)
-  final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty): Task[HttpResponse] = {
 
+  final def post[A: Encoder](url: String, body: A, headers: Map[String, String] = Map.empty): Task[HttpResponse] = {
     send(HttpRequest.post(url, headers).withBody(body))
   }
 }
@@ -84,17 +90,17 @@ trait BatchContext {
 object BatchContext {
   type ConfigPath     = String
   type HttpClient     = HttpRequest => Task[HttpResponse]
-  type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer.Service[Any, Any, Any]]
+  type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer]
 
   def apply(rootConfig: Config = ConfigFactory.load(), env: Env = Env()): ZManaged[Blocking, Throwable, BatchContext] = {
     val franzConfig            = FranzConfig.fromRootConfig(rootConfig)
     val fileSystem: FileSystem = FileSystem(KafkaRecordToHttpRequest.dataDir(rootConfig))
     val client: HttpClient     = (r: HttpRequest) => Task.fromFuture(_ => RestClient.send(r))
     franzConfig.producerKeyType match {
-      case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t, fileSystem, env, client)
+      case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t.asInstanceOf[SupportedType[GenericRecord]], fileSystem, env, client)
       case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t.asInstanceOf[SupportedType[Array[Byte]]], fileSystem, env, client)
-      case t @ STRING     => withKey[String](franzConfig, t, fileSystem, env, client)
-      case t @ LONG       => withKey[Long](franzConfig, t, fileSystem, env, client)
+      case t @ STRING     => withKey[String](franzConfig, t.asInstanceOf[SupportedType[String]], fileSystem, env, client)
+      case t @ LONG       => withKey[Long](franzConfig, t.asInstanceOf[SupportedType[Long]], fileSystem, env, client)
     }
   }
 
@@ -105,10 +111,10 @@ object BatchContext {
                          client: HttpClient //
   ): ZManaged[Blocking, Throwable, BatchContext] = {
     franzConfig.producerValueType match {
-      case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t, fs, env, client)
-      case t @ BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t, fs, env, client)
-      case t @ STRING     => managed[K, String](franzConfig, keyType, t, fs, env, client)
-      case t @ LONG       => managed[K, Long](franzConfig, keyType, t, fs, env, client)
+      case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t.asInstanceOf[SupportedType[GenericRecord]], fs, env, client)
+      case t @ BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t.asInstanceOf[SupportedType[Array[Byte]]], fs, env, client)
+      case t @ STRING     => managed[K, String](franzConfig, keyType, t.asInstanceOf[SupportedType[String]], fs, env, client)
+      case t @ LONG       => managed[K, Long](franzConfig, keyType, t.asInstanceOf[SupportedType[Long]], fs, env, client)
     }
   }
 
@@ -121,10 +127,14 @@ object BatchContext {
     for {
       b        <- ZIO.environment[Blocking].toManaged_
       cacheRef <- Ref.make(Map[String, Any]()).toManaged_
+      keys     <- franzConfig.keySerde[K]()
+      values   <- franzConfig.valueSerde[V]()
       c <- franzConfig.producer[K, V].map { producerIn =>
         new BatchContext {
           type Key   = K
           type Value = V
+          override val keySerde                        = keys
+          override val valueSerde                      = values
           override val config: FranzConfig             = franzConfig
           override val env: Env                        = envIn
           override val fs: FileSystem                  = fileSystem

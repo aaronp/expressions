@@ -38,7 +38,7 @@ object BatchRoute {
     HttpRoutes.of[Task] {
       case POST -> "batch" /: "start" /: pathToConfig =>
         for {
-          config <- loadCfg.at(pathToConfig.segments)
+          config <- loadCfg.at(pathToConfig.segments.map(_.encoded).toList)
           id     <- execute(config)
         } yield Response[Task](Status.Ok).withEntity(id)
     }
