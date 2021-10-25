@@ -11,6 +11,7 @@ node_modules
 .target
 .bsp
 ui/build
+ui/ios/build
 ui/.idea.dart_tool
 ui/.dart_tool
 ui/.flutter-plugins-dependencies
@@ -22,3 +23,4 @@ shared-src
 .vertx/
 rest/src/test/resources/savedSessions
 rest/src/test/resources/database-states
+.vscode
