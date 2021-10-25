@@ -108,7 +108,8 @@ object KafkaSink {
         _         = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
         _         <- statsMap.update(_.updated(id, ConsumerStats(id)))
         sink      <- makeSink(id, rootConfig)
-        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
+//        kafkaFeed = ForEachStream(FranzConfig.fromRootConfig(rootConfig))(sink)
+        kafkaFeed = BatchedStream(FranzConfig.fromRootConfig(rootConfig))(sink)
         fiber     <- kafkaFeed.runCount.fork
         _ <- tasksById.update { map =>
           val consumer = startedConsumerFor(rootConfig, id)

@@ -29,7 +29,7 @@ object RestClient {
     }
 
     def apply(req: HttpRequest): IO[String] = {
-      BlazeClientBuilder[IO](global).resource.use { client: Client[IO] =>
+      BlazeClientBuilder[IO](Implicits.global).resource.use { client: Client[IO] =>
         // use `client` here and return an `IO`.
         // the client will be acquired and shut down
         // automatically each time the `IO` is run.

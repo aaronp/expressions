@@ -17,7 +17,13 @@ object ForEachStream extends StrictLogging {
     */
   def apply[K, V](config: FranzConfig = FranzConfig())(saveToDatabase: CommittableRecord[K, V] => RIO[ZEnv, Unit]): ZStream[zio.ZEnv, Throwable, Any] = {
     import config._
-    forEach(subscription, consumerSettings, keySerde[K](), valueSerde[V](), blockOnCommits, concurrency)(saveToDatabase)
+
+    for {
+      ks     <- ZStream.fromEffect(keySerde[K]())
+      vs     <- ZStream.fromEffect(valueSerde[V]())
+      stream = forEach(subscription, consumerSettings, ks, vs, blockOnCommits, concurrency)(saveToDatabase)
+    } yield stream
+
   }
 
   /** This is the kafka -> DB pipeline
@@ -43,14 +49,18 @@ object ForEachStream extends StrictLogging {
       .subscribeAnd(topics)
       .plainStream(keyDeserializer, valueDeserializer)
 
-    val stream: ZStream[zio.ZEnv with Consumer, Throwable, Offset] = if (concurrency > 1) {
-      plainStream.mapMPar(concurrency) { record =>
-        saveToDatabase(record).as(record.offset)
-      }
-    } else {
-      plainStream.mapM { record =>
-        saveToDatabase(record).as(record.offset)
-      }
+    val stream: ZStream[zio.ZEnv with Consumer, Throwable, Offset] = {
+//      if (concurrency > 1) {
+//        val result: ZStream[Any, Throwable, Offset] = plainStream.mapMPar(concurrency) { record =>
+//          saveToDatabase(record).as(record.offset)
+//        }
+//        result
+//      } else {
+//        plainStream.mapM { record =>
+//          saveToDatabase(record).as(record.offset)
+//        }
+//      }
+      ???
     }
 
     stream

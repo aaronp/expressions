@@ -5,15 +5,16 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 import eie.io.AlphaCounter
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
 import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
-import org.apache.kafka.common.serialization._
-import zio.ZManaged
+import org.apache.kafka.common.serialization.*
+import zio.blocking.Blocking
+import zio.{RManaged, ZIO, ZManaged, Task}
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.{ConsumerSettings, Subscription}
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.Serde
 
 import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 import scala.util.Try
 
@@ -151,36 +152,47 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   def consumerKeyType: SupportedType[_] = keyType(consumerConfig.getConfig("key"))
 
-  def consumerKeySerde[K]: Serde[Any, K] = keySerde[K]()
+  def consumerKeySerde[K]: Task[Serde[Any, K]] = keySerde[K]()
 
   def consumerValueType: SupportedType[_] = valueType(consumerConfig.getConfig("value"))
 
-  def consumerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
+  def consumerValueSerde[V]: Task[Serde[Any, V]] = valueSerde[V]()
 
   def producerKeyType: SupportedType[_] = typeOf(producerConfig.getConfig("key"), producerNamespace)
 
-  def producerKeySerde[K]: Serde[Any, K] = keySerde[K]()
+  def producerKeySerde[K]: Task[Serde[Any, K]] = keySerde[K]()
 
   def producerValueType: SupportedType[_] = typeOf(producerConfig.getConfig("value"), producerNamespace)
 
-  def producerValueSerde[V]: Serde[Any, V] = valueSerde[V]()
+  def producerValueSerde[V]: Task[Serde[Any, V]] = valueSerde[V]()
 
   def keyType(keyConfig: Config = consumerConfig.getConfig("key")): SupportedType[_] = typeOf(keyConfig, consumerNamespace)
 
-  def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Serde[Any, K] = serdeFor[K](keyConfig)
+  def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Task[Serde[Any, K]] = serdeFor[K](keyConfig)
 
   def valueType(valueConfig: Config = consumerConfig.getConfig("value")): SupportedType[_] = typeOf(valueConfig, consumerNamespace)
 
-  def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Serde[Any, V] = serdeFor[V](valueConfig)
+  def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Task[Serde[Any, V]] = serdeFor[V](valueConfig)
 
-  def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
-    val k = keySerde[K](producerConfig.getConfig("key"))
-    val v = valueSerde[V](producerConfig.getConfig("value"))
-    producer[K, V](k, v)
+//  def producer[K, V]: ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
+  def producer[K, V]: RManaged[Blocking, Producer] = {
+//    val k = keySerde[K](producerConfig.getConfig("key"))
+//    val v = valueSerde[V](producerConfig.getConfig("value"))
+//    producer[K, V](k, v)
+
+//    val keyManaged: Task[Serde[Any, K]] = keySerde[K](producerConfig.getConfig("key")).toManaged_
+//    val valueManaged = valueSerde[V](producerConfig.getConfig("value")).toManaged_
+
+    for {
+      k <- ZManaged.fromEffect(keySerde[K](producerConfig.getConfig("key")))
+      v <- ZManaged.fromEffect(valueSerde[V](producerConfig.getConfig("value")))
+      p <- producer[K, V](k, v)
+    } yield p
   }
 
-  def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
-    Producer.make(producerSettings, keySerde, valueSerde)
+//  def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): ZManaged[Any, Throwable, Producer.Service[Any, K, V]] = {
+  def producer[K, V](keySerde: Serde[Any, K], valueSerde: Serde[Any, V]): RManaged[Blocking, Producer] = {
+    Producer.make(producerSettings)
   }
 
   lazy val schemaRegistryClient: SchemaRegistryClient = {
@@ -196,17 +208,23 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     * @tparam A
     * @return
     */
-  private def serdeFor[A](serdeConfig: Config): Serde[Any, A] = {
+  private def serdeFor[A](serdeConfig: Config): Task[Serde[Any, A]] = {
     val deserializerName = serdeConfig.getString("deserializer")
 
     deserializerName.toLowerCase match {
-      case "string" | "strings" => Serde.string.asInstanceOf[Serde[Any, A]]
-      case "long" | "longs"     => Serde.long.asInstanceOf[Serde[Any, A]]
+      case "string" | "strings" => Task(Serde.string.asInstanceOf[Serde[Any, A]])
+      case "long" | "longs"     => Task(Serde.long.asInstanceOf[Serde[Any, A]])
       case _ =>
         val kafkaDeserializer: Deserializer[A] = instantiate[Deserializer[A]](serdeConfig.getString("deserializer"))
         val kafkaSerializer: Serializer[A]     = instantiate[Serializer[A]](serdeConfig.getString("serializer"))
 
-        Serde[Any, A](zio.kafka.serde.Deserializer.apply[A](kafkaDeserializer))(zio.kafka.serde.Serializer(kafkaSerializer))
+        val task: ZIO[Any, Throwable, Serde[Any, A]] = for {
+          deserializer <- zio.kafka.serde.Deserializer.fromKafkaDeserializer[A](kafkaDeserializer, Map.empty, false)
+          serializer   <- zio.kafka.serde.Serializer.fromKafkaSerializer[A](kafkaSerializer, Map.empty, false)
+        } yield Serde[Any, A](deserializer)(serializer)
+
+        //  : Serde[Any, A]
+        task
     }
   }
 

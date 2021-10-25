@@ -78,7 +78,8 @@ object BatchSink {
         sink                   <- makeSink(id, rootConfig)
         franzConfig            = FranzConfig.fromRootConfig(rootConfig)
         batcher: Batch.ByTopic = Batch.ByTopic(franzConfig)
-        kafkaFeed = BatchedStream(franzConfig).run { records: Array[CommittableRecord[_, _]] =>
+        batchedStream <- BatchedStream(franzConfig)
+        kafkaFeed <- batchedStream.run { records: Array[CommittableRecord[_, _]] =>
           for {
             _ <- statsMap.update { map =>
               val consumerStats: ConsumerStats = map.getOrElse(id, ConsumerStats(id))

@@ -4,7 +4,7 @@ import java.nio.file.Path
 
 object Build {
 
-  val zioVersion = "1.0.9"
+  val zioVersion = "1.0.12"
 //  val zioVersion = "2.0.0-M3"
   val zio = List(
     "dev.zio" %% "zio-interop-cats" % "2.5.1.0",
@@ -35,7 +35,7 @@ object Build {
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
   val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.30")
+  val logging      = List(scalaLogging, logback, "org.slf4j" % "slf4j-api" % "1.7.32")
 
   val scalaTest =  List ("org.scalactic" %% "scalactic" % "3.2.10" % Test,
   "org.scalatest" %% "scalatest" % "3.2.10" % Test,
@@ -52,7 +52,7 @@ object Build {
     val aaronp = List(
       "com.github.aaronp" %% "eie" % "1.0.0",
       "com.github.aaronp" %% "args4c" % "0.7.0",
-      "com.github.aaronp" %% "dockerenv"               % "0.5.4"
+      "com.github.aaronp" %% "dockerenv"               % "0.6.0"
     ).map { art =>
       art.cross(CrossVersion.for3Use2_13)
         .exclude("com.typesafe.scala-logging", "scala-logging")
@@ -63,7 +63,7 @@ object Build {
     zio ++ logging ++ circe ++ prometheus ++ aaronp ++ explicitCats ++ scalaTest ++
       Seq(
         "dev.zio"           %% "zio-streams"             % zioVersion,
-        "dev.zio"           %% "zio-kafka"               % "0.16.0",
+        "dev.zio"           %% "zio-kafka"               % "0.17.1",
         "io.confluent"      % "kafka-streams-avro-serde" % "6.1.1",
         typesafeConfig,
       )

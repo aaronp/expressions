@@ -7,7 +7,6 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
-
 /**
   * Provides a script-able means to produce some type B for any type A
   */
@@ -92,7 +91,7 @@ object CodeTemplate {
 
     val thunk = try {
       //      new ScriptEngineFactory {}
-      val m = new javax.script.ScriptEngineManager(getClass().getClassLoader())
+      val m                    = new javax.script.ScriptEngineManager(getClass().getClassLoader())
       val engine: ScriptEngine = m.getEngineByName("scala")
       println(engine)
       println("----")
@@ -122,6 +121,6 @@ object CodeTemplate {
 
   private[expressions] def className[A: ClassTag] = implicitly[ClassTag[A]].runtimeClass match {
     case other if other.isPrimitive => other.getName.capitalize
-    case other => other.getName
+    case other                      => other.getName
   }
 }

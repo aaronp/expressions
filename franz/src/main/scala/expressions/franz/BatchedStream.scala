@@ -52,8 +52,12 @@ object BatchedStream extends StrictLogging {
   /** @param config our parsed typesafe config
     * @return a managed resource which will return the running stream
     */
-  def apply[K, V](config: FranzConfig = FranzConfig()): BatchedStream[K, V] = {
+  def apply[K, V](config: FranzConfig = FranzConfig()): Task[BatchedStream[K, V]] = {
     import config._
-    BatchedStream(subscription, consumerSettings, batchSize, batchWindow, consumerKeySerde[K], consumerValueSerde[V], blockOnCommits)
+    for {
+      keys   <- consumerKeySerde[K]
+      values <- consumerValueSerde[V]
+    } yield BatchedStream(subscription, consumerSettings, batchSize, batchWindow, keys, values, blockOnCommits)
+
   }
 }
