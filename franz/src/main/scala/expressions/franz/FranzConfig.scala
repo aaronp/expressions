@@ -174,7 +174,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Task[Serde[Any, V]] = serdeFor[V](valueConfig)
 
-  def producer[K, V]: RManaged[Blocking, Producer] = Producer.make(producerSettings)
+  def producer: RManaged[Blocking, Producer] = Producer.make(producerSettings)
 
   lazy val schemaRegistryClient: SchemaRegistryClient = {
     val baseUrls            = consumerConfig.asList("schema.registry.url").asJava

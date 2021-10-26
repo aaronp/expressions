@@ -20,7 +20,7 @@ object ForeachPublisher {
       k     <- config.keySerde[K]()
       v     <- config.valueSerde[V]()
       chunk = Chunk.fromIterable(records)
-      p     <- config.producer[K, V].use(_.produceChunk(chunk, k, v))
+      p     <- config.producer.use(_.produceChunk(chunk, k, v))
     } yield p
   }
 }
