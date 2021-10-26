@@ -9,7 +9,10 @@ import zio.duration.{Duration, durationInt}
 
 abstract class BaseFranzTest extends AnyWordSpec with Matchers with GivenWhenThen with Eventually with ScalaFutures {
 
-  implicit val rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  extension (json: String)
+    def jason = io.circe.parser.parse(json).toTry.get
+
+  given rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   def zenv: zio.ZEnv = rt.environment
 
@@ -17,7 +20,6 @@ abstract class BaseFranzTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   def shortTimeoutJava: Duration = 200.millis
 
-  implicit def asRichZIO[A](zio: => ZIO[_root_.zio.ZEnv, Any, A])(implicit rt: _root_.zio.Runtime[_root_.zio.ZEnv]) = new {
+  extension [A](zio: => ZIO[_root_.zio.ZEnv, Any, A])(using rt: _root_.zio.Runtime[_root_.zio.ZEnv])
     def value(): A = rt.unsafeRun(zio.timeout(testTimeout)).getOrElse(sys.error("Test timeout"))
-  }
 }
