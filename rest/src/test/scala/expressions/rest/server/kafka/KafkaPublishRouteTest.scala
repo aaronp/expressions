@@ -4,7 +4,6 @@ import args4c.implicits._
 import expressions.client.kafka.{ConsumerStats, PostRecord}
 import expressions.rest.server.BaseRouteTest
 import io.circe.Json
-import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 import zio.kafka.consumer.CommittableRecord
 import zio.{Ref, UIO}
@@ -19,7 +18,7 @@ class KafkaPublishRouteTest extends BaseRouteTest {
       val topic      = rnd("publishroutetest")
       val testConfig = Array(s"app.franz.consumer.topic=$topic").asConfig()
 
-      val postRecordJson = json"""{
+      val postRecordJson = """{
     "data" : {
         "data" : "value-{{i}}",
         "nested" : {
@@ -38,7 +37,7 @@ class KafkaPublishRouteTest extends BaseRouteTest {
     "topicOverride" : "bar",
     "headers" : {
     }
-}"""
+}""".jason
       val testCase = for {
         //
         // setup our route under test and a test message
@@ -50,8 +49,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         // create a sink which will just keep track of our records
         //
         records <- Ref.make(List[CommittableRecord[_, _]]())
-        onRecord = (record: CommittableRecord[_, _]) => {
-          records.update(record :: _)
+        onRecord = (newRecords: Array[CommittableRecord[_, _]]) => {
+          records.update(newRecords ++: _)
         }
         //
         // call our method under test - publish some records to the topic
@@ -94,8 +93,8 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         // create a sink which will just keep track of our records
         //
         records <- Ref.make(List[CommittableRecord[_, _]]())
-        onRecord = (record: CommittableRecord[_, _]) => {
-          records.update(record :: _)
+        onRecord = (record: Array[CommittableRecord[_, _]]) => {
+          records.update(record ++: _)
         }
         //
         // call our method under test - publish some records to the topic

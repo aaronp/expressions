@@ -5,7 +5,6 @@ import expressions.DynamicJson
 import expressions.client.TransformResponse
 import expressions.rest.server.{BaseRouteTest, Disk, LoadConfig}
 import expressions.template.Message
-import io.circe.literal.JsonStringContext
 
 class BatchRouteTest extends BaseRouteTest {
   "BatchCheckRequest" should {
@@ -22,8 +21,8 @@ class BatchRouteTest extends BaseRouteTest {
       val topicA = rnd("topic-")
       val topicB = rnd("topic-")
       val msg1 = Message[DynamicJson, DynamicJson](
-        json"""{ "some" : "content" }""".asDynamic,
-        json"""{ "id" : "abc123" }""".asDynamic,
+        """{ "some" : "content" }""".jason.asDynamic,
+        """{ "id" : "abc123" }""".jason.asDynamic,
         123456789,
         Map("head" -> "er"),
         topicA,
@@ -31,8 +30,8 @@ class BatchRouteTest extends BaseRouteTest {
         100
       )
       val msg2 = Message[DynamicJson, DynamicJson](
-        json"""{ "some" : "more content" }""".asDynamic,
-        json"""{ "id" : "def456" }""".asDynamic,
+        """{ "some" : "more content" }""".jason.asDynamic,
+        """{ "id" : "def456" }""".jason.asDynamic,
         987654321,
         Map.empty,
         topicB,

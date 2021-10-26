@@ -14,11 +14,20 @@ class BatchSinkTest extends BaseRouteTest {
                       }.unit
                       """
 
+        def writeScriptForTopic(mappingConfig: MappingConfig, disk: Disk.Service, topic: String, script: String): ZIO[Any, Any, Unit] = {
+            for {
+                pathToMapping <- ZIO.fromOption(mappingConfig.lookup(topic)).catchSome {
+                    case None => ZIO.fail(new Exception(s"No mapping found for topic '$topic' in $mappingConfig"))
+                    }
+                  _ <- disk.write(pathToMapping, script)
+                } yield ()
+          }
+
       val underTest = for {
         disk <- Disk(mappingConfig.rootConfig)
         _ <- ZIO.foreach(mappingConfig.mappings) {
           case (topic, _) =>
-            KafkaRecordToHttpRequest.writeScriptForTopic(mappingConfig, disk, topic, zioScript)
+            writeScriptForTopic(mappingConfig, disk, topic, zioScript)
         }
         sink                    <- BatchSink.make
         started1: RunningSinkId <- sink.start(testConfig())

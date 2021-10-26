@@ -5,7 +5,6 @@ import expressions.StringTemplate.StringExpression
 import expressions.client.{TransformRequest, TransformResponse}
 import expressions.{Cache, DynamicJson, StringTemplate}
 import io.circe.Json
-import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 
 class ConfigTestRouteTest extends BaseRouteTest {
@@ -16,7 +15,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
     "return a configuration" in {
 
       val underTest = ConfigTestRoute(expressionForString, _.asContext().withEnv("envi" -> "ronment"))
-      val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
+      val jason     = """{ "foo" : "bar", "values" : [0,1,2] }""".jason
       val script =
         """test {
           |  arr : "{{ record.content.values.each.mkString(';'.toString) }}-{{ record.key }}-{{ env.envi }}"
@@ -42,7 +41,7 @@ class ConfigTestRouteTest extends BaseRouteTest {
     "return an error when misconfigured" in {
 
       val underTest = ConfigTestRoute(expressionForString, _.asContext().withEnv("envi" -> "ronment"))
-      val jason     = json"""{ "foo" : "bar", "values" : [0,1,2] }"""
+      val jason     = """{ "foo" : "bar", "values" : [0,1,2] }""".jason
       val script =
         """broken : "{{ record.does not compile }}"
           |""".stripMargin

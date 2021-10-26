@@ -2,7 +2,6 @@ package expressions.rest.server
 
 import expressions.client.{TransformRequest, TransformResponse}
 import io.circe.Json
-import io.circe.literal.JsonStringContext
 import io.circe.syntax.EncoderOps
 import org.http4s.HttpRoutes
 import zio.Task
@@ -17,7 +16,7 @@ class RestRoutesTest extends BaseRouteTest {
       val underTest: HttpRoutes[Task] = RestRoutes().value()
 
       val req = {
-        val jason = json"""{
+        val jason = """{
                       "hello" : {
                         "world" : [
                           {
@@ -30,7 +29,7 @@ class RestRoutesTest extends BaseRouteTest {
                           }
                         ]
                       }
-                    }"""
+                    }""".jason
         val script =
           """
             |

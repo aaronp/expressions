@@ -39,7 +39,7 @@ class ConfigRouteTest extends BaseRouteTest {
 
       When("We save the initial configuration")
       val Some(response) = {
-        val baseConfig = ConfigSummary.asJson(initial.asConfig.withFallback(ConfigFactory.load()))
+        val baseConfig = ConfigSummary.asJson(initial.asConfig().withFallback(ConfigFactory.load()))
         underTest(post(s"config/save/${cfgName}?fallback=true", baseConfig.noSpaces)).value.value()
       }
 
