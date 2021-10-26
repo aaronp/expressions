@@ -78,10 +78,7 @@ val baseScalacSettings = List(
   "-encoding",
   "utf-8", // Specify character encoding used by source files.
   "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-  "-unchecked",
-  "-language:reflectiveCalls", // Allow reflective calls
-  "-language:implicitConversions", // Allow definition of implicit functions called views
-  "-language:higherKinds"         // Allow higher-kinded types
+  "-unchecked"
 )
 
 val scalacSettings = baseScalacSettings

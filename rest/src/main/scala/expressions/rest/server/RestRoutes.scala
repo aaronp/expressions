@@ -35,7 +35,7 @@ object RestRoutes {
       env          <- ZIO.environment[ZEnv]
       cacheRoute   <- CacheRoute()
       diskService  <- Disk(defaultConfig)
-      fsDir        = kafka.KafkaRecordToHttpRequest.dataDir(defaultConfig)
+      fsDir        = BatchContext.dataDir(defaultConfig)
       httpCompiler = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
 //      kafkaSink         <- KafkaSink(httpCompiler)
       batchSink         <- BatchSink.make

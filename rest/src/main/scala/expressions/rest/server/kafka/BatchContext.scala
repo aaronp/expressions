@@ -5,6 +5,7 @@ import expressions.DynamicJson
 import expressions.client.{HttpRequest, HttpResponse, RestClient}
 import expressions.franz.SupportedType.*
 import expressions.franz.{FranzConfig, SupportedType}
+import expressions.rest.server.RestRoutes
 import expressions.rest.server.kafka.BatchContext.HttpClient
 import expressions.template.{Env, FileSystem}
 import io.circe.syntax.*
@@ -92,9 +93,14 @@ object BatchContext {
   type HttpClient     = HttpRequest => Task[HttpResponse]
   type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer]
 
+  def dataDir(rootConfig: Config) = {
+    import eie.io.{given, *}
+    rootConfig.getString("app.data").asPath
+  }
+
   def apply(rootConfig: Config = ConfigFactory.load(), env: Env = Env()): ZManaged[Blocking, Throwable, BatchContext] = {
     val franzConfig            = FranzConfig.fromRootConfig(rootConfig)
-    val fileSystem: FileSystem = FileSystem(KafkaRecordToHttpRequest.dataDir(rootConfig))
+    val fileSystem: FileSystem = FileSystem(dataDir(rootConfig))
     val client: HttpClient     = (r: HttpRequest) => Task.fromFuture(_ => RestClient.send(r))
     franzConfig.producerKeyType match {
       case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t.asInstanceOf[SupportedType[GenericRecord]], fileSystem, env, client)
@@ -124,30 +130,32 @@ object BatchContext {
                             fileSystem: FileSystem, //
                             envIn: Env, //
                             clientIn: HttpClient): ZManaged[Blocking, Throwable, BatchContext] = {
-    val created = for {
-      b        <- ZIO.environment[Blocking].toManaged_
-      cacheRef <- Ref.make(Map[String, Any]()).toManaged_
+    val setup = for {
+      b        <- ZIO.environment[Blocking]
+      cacheRef <- Ref.make(Map[String, Any]())
       keys     <- franzConfig.keySerde[K]()
       values   <- franzConfig.valueSerde[V]()
-      c <- franzConfig.producer[K, V].map { producerIn =>
-        new BatchContext {
-          type Key   = K
-          type Value = V
-          override val keySerde                        = keys
-          override val valueSerde                      = values
-          override val config: FranzConfig             = franzConfig
-          override val env: Env                        = envIn
-          override val fs: FileSystem                  = fileSystem
-          override val cache: Ref[Map[String, Any]]    = cacheRef
-          override val restClient: HttpClient          = clientIn
-          override val blocking: Blocking              = b
-          override val keyType: SupportedType[Key]     = keyTypeIn
-          override val valueType: SupportedType[Value] = valueTypeIn
-          override val producer: Producer              = producerIn
-        }
-      }
-    } yield c
+    } yield (b, cacheRef, keys, values)
 
-    created
+    ZManaged.fromEffect(setup).flatMap {
+      case (b, cacheRef, keys, values) =>
+        franzConfig.producer[K, V].map { producerIn =>
+          new BatchContext {
+            type Key   = K
+            type Value = V
+            override val keySerde                        = keys
+            override val valueSerde                      = values
+            override val config: FranzConfig             = franzConfig
+            override val env: Env                        = envIn
+            override val fs: FileSystem                  = fileSystem
+            override val cache: Ref[Map[String, Any]]    = cacheRef
+            override val restClient: HttpClient          = clientIn
+            override val blocking: Blocking              = b
+            override val keyType: SupportedType[Key]     = keyTypeIn
+            override val valueType: SupportedType[Value] = valueTypeIn
+            override val producer: Producer              = producerIn
+          }
+        }
+    }
   }
 }

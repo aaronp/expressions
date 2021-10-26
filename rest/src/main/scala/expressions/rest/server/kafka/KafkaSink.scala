@@ -6,7 +6,7 @@ import expressions.Cache
 import expressions.CodeTemplate.Expression
 import expressions.client.HttpRequest
 import expressions.client.kafka.{ConsumerStats, StartedConsumer}
-import expressions.franz.{ForEachStream, FranzConfig, BatchedStream}
+import expressions.franz.{FranzConfig, BatchedStream}
 import expressions.rest.Main
 import expressions.rest.server.JsonMsg
 import zio.kafka.consumer.CommittableRecord
@@ -51,25 +51,26 @@ object KafkaSink {
     def running(): UIO[List[StartedConsumer]]
   }
 
-  /**
-    * This is one way to make the sink. We could also just drop in some code we might reflectively initialized
-    * from a config.
-    *
-    * The important thing is that we return an instance of the Sink Service
-    * @param templateCache
-    * @return
-    */
-  def apply(templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
-    for {
-      clock    <- ZIO.environment[ZEnv]
-      statsMap <- Ref.make(Map[String, ConsumerStats]())
-      writer = (input: SinkInput) => {
-        // this could be swapped out with anything that will write data down given a record input
-        KafkaRecordToHttpRequest(input, templateCache, statsMap, clock).provide(clock).orDie
-      }
-      svc <- Service(statsMap, writer)
-    } yield svc
-  }
+//  /**
+//    * This is one way to make the sink. We could also just drop in some code we might reflectively initialized
+//    * from a config.
+//    *
+//    * The important thing is that we return an instance of the Sink Service
+//    * @param templateCache
+//    * @return
+//    */
+//  def apply(templateCache: Cache[Expression[JsonMsg, Seq[HttpRequest]]]): ZIO[ZEnv, Nothing, RunnablePipeline] = {
+//    for {
+//      clock    <- ZIO.environment[ZEnv]
+//      statsMap <- Ref.make(Map[String, ConsumerStats]())
+//      writer = (input: SinkInput) => {
+//        // this could be swapped out with anything that will write data down given a record input
+////        KafkaRecordToHttpRequest(input, templateCache, statsMap, clock).provide(clock).orDie
+//        ???
+//      }
+//      svc <- Service(statsMap, writer)
+//    } yield svc
+//  }
 
   object Service {
     def apply(statsMap: Ref[Map[String, ConsumerStats]], makeSink: SinkInput => SinkIO): ZIO[zio.ZEnv, Nothing, RunnablePipeline] =
