@@ -16,6 +16,7 @@ import zio.blocking.Blocking
 import zio.kafka.producer.Producer
 import zio.kafka.serde.Serde
 import zio.{Ref, Task, ZIO, ZManaged}
+import zio.*
 
 import java.nio.charset.StandardCharsets
 
@@ -100,6 +101,9 @@ object BatchContext {
 
   def apply(rootConfig: Config = ConfigFactory.load(), env: Env = Env()): ZManaged[Blocking, Throwable, BatchContext] = {
     val franzConfig            = FranzConfig.fromRootConfig(rootConfig)
+
+    import args4c.implicits.{given, *}
+
     val fileSystem: FileSystem = FileSystem(dataDir(rootConfig))
     val client: HttpClient     = (r: HttpRequest) => Task.fromFuture(_ => RestClient.send(r))
     franzConfig.producerKeyType match {
@@ -137,7 +141,7 @@ object BatchContext {
       values   <- franzConfig.valueSerde[V]()
     } yield (b, cacheRef, keys, values)
 
-    ZManaged.fromEffect(setup).flatMap {
+    val mngd = ZManaged.fromEffect(setup).flatMap {
       case (b, cacheRef, keys, values) =>
         franzConfig.producer.map { producerIn =>
           new BatchContext {
@@ -156,6 +160,12 @@ object BatchContext {
             override val producer: Producer              = producerIn
           }
         }
+    }
+
+    mngd.onExit { result =>
+      UIO {
+        println(s"DEBUG: BatchContext done with $result")
+      }
     }
   }
 }

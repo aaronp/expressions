@@ -17,9 +17,13 @@ final class BufferConsole(stdOutRef: Ref[List[String]], stdErrRef: Ref[List[Stri
 
   override def putStr(line: String): UIO[Unit] = stdOutRef.update(line :: _)
 
-  override def putStrErr(line: String): UIO[Unit] = stdErrRef.update(line :: _)
+  override def putStrErr(line: String): UIO[Unit] =
+    println(s"putStrErr($line)")
+    stdErrRef.update(line :: _)
 
-  override def putStrLn(line: String): UIO[Unit] = putStr(s"${line}\n")
+  override def putStrLn(line: String): UIO[Unit] =
+    println(s"putStrLn($line)")
+    putStr(s"${line}\n")
 
   override def putStrLnErr(line: String): UIO[Unit] = putStrErr(s"${line}\n")
 

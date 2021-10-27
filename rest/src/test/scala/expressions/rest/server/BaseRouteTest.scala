@@ -24,7 +24,7 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   def zenv = rt.environment
 
-  def testTimeout: Duration = 30.seconds
+  def testTimeout: Duration = 10.seconds
 
   def shortTimeoutJava = 200.millis
 

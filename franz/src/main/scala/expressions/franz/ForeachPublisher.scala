@@ -1,10 +1,13 @@
 package expressions.franz
 
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.LoggerFactory
 import zio.Chunk
 import zio.kafka.producer.Producer
 
 object ForeachPublisher {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def publish[K, V](config: FranzConfig, first: ProducerRecord[K, V], theRest: ProducerRecord[K, V]*) = {
     val list: Seq[ProducerRecord[K, V]] = first +: theRest
@@ -21,7 +24,7 @@ object ForeachPublisher {
 
     op.timed.map {
       case (time, result) =>
-        println(s"\t!!!! publishAll took $time")
+        logger.info(s"TIMING: publishAll took $time")
         result
     }
   }

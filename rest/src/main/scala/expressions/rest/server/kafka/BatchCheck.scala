@@ -30,7 +30,15 @@ object BatchCheck {
                 UIO(Response[Task](status = Status.Ok).withEntity(body))
               case Right(batchContext) =>
                 compiler(dto.script) match {
-                  case Success(handler) => executeBatchScript(buffer, testEnv, dto, batchContext, handler)
+                  case Success(handler: OnBatch) =>
+                    def wrapped(batch : BatchInput) :BatchResult = {
+                      for {
+                        _ <- ZIO(println(s"DEBUG: STARTING BATCH ${batch}"))
+                        res <- handler(batch).either
+                        _ <- ZIO(println(s"DEBUG: DONE WITH BATCH ${batch}"))
+                      } yield res
+                    }
+                    executeBatchScript(buffer, testEnv, dto, batchContext, wrapped)
                   case Failure(err) =>
                     val body = TransformResponse(s"didn't work w/ input: ${dto}".asJson, success = false, List(s"didn't work w/ input: ${err.getMessage}"))
                     UIO(Response[Task](status = Status.Ok).withEntity(body))

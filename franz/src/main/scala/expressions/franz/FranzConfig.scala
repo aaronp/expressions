@@ -5,18 +5,21 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 import eie.io.AlphaCounter
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
 import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
+import org.apache.kafka.common.header.Headers
 import org.apache.kafka.common.serialization.*
+import org.slf4j.LoggerFactory
 import zio.blocking.Blocking
-import zio.{RManaged, Task, ZIO, ZManaged}
+import zio.{RIO, RManaged, Task, ZIO, ZManaged}
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.{ConsumerSettings, Subscription}
 import zio.kafka.producer.{Producer, ProducerSettings}
+import zio.kafka.serde
 import zio.kafka.serde.Serde
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object FranzConfig {
 
@@ -69,7 +72,7 @@ object FranzConfig {
 
   private val counter = AlphaCounter.from(System.currentTimeMillis())
 
-  private def nextRand() = counter.next()
+  def nextRand() = counter.next()
 
   @tailrec
   def unquote(s : String): String = s.trim match {
@@ -152,8 +155,9 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   }
 
   def producerSettings: ProducerSettings = {
+    val map = asJavaMap(producerConfig).asScala
     ProducerSettings(producerConfig.asList("bootstrap.servers"))
-      .withProperties(asJavaMap(producerConfig).asScala.toSeq: _*)
+      .withProperties(map.toSeq: _*)
   }
 
   def consumerKeyType: SupportedType[_] = keyType(consumerConfig.getConfig("key"))
@@ -207,8 +211,32 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
         for {
           deserializer <- zio.kafka.serde.Deserializer.fromKafkaDeserializer[A](kafkaDeserializer, consumerSettings.properties, isKey)
-          serializer   <- zio.kafka.serde.Serializer.fromKafkaSerializer[A](kafkaSerializer, consumerSettings.properties, isKey)
-        } yield Serde[Any, A](deserializer)(serializer)
+          serializer: serde.Serializer[Any, A] <- zio.kafka.serde.Serializer.fromKafkaSerializer[A](kafkaSerializer, consumerSettings.properties, isKey)
+        } yield {
+          val d = deserializer.asTry.map {
+            case Success(ok) => ok
+            case Failure(err) =>
+              LoggerFactory.getLogger(getClass).error(s"BANG: Deserialise failed with ${err}", err)
+              throw err
+          }
+          val s = new serde.Serializer[Any, A] {
+            override def serialize(topic: String, headers: Headers, value: A): RIO[Any, Array[Byte]] = {
+              try {
+                serializer.serialize(topic, headers, value).catchAll { err =>
+                  LoggerFactory.getLogger(classOf[FranzConfig]).error(s"BANG2: serializer.serialize threw ${err}", err)
+                  ZIO(
+                    LoggerFactory.getLogger(classOf[FranzConfig]).error(s"BANG2: serializer.serialize threw ${err}", err)
+                  ) *> ZIO.fail(err)
+                }
+              } catch {
+                case err =>
+                  LoggerFactory.getLogger(classOf[FranzConfig]).error(s"BANG: serializer.serialize failed with ${err}", err)
+                  throw err
+              }
+            }
+          }
+          Serde[Any, A](d)(s)
+        }
     }
   }
 
