@@ -12,15 +12,17 @@ object ForeachPublisher {
   }
 
   def publishAll[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-//    config.producer[K, V].use(_.produceChunk(Chunk.fromIterable(records)))
-//  }
-//
-//  def apply[K, V](config: FranzConfig = FranzConfig(), records: Iterable[ProducerRecord[K, V]]) = {
-    for {
+    val op = for {
       k     <- config.keySerde[K]()
       v     <- config.valueSerde[V]()
       chunk = Chunk.fromIterable(records)
       p     <- config.producer.use(_.produceChunk(chunk, k, v))
     } yield p
+
+    op.timed.map {
+      case (time, result) =>
+        println(s"\t!!!! publishAll took $time")
+        result
+    }
   }
 }

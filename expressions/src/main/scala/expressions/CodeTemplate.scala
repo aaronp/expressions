@@ -86,36 +86,24 @@ object CodeTemplate {
 
   def compile[A: ClassTag, B](script: String): Try[Compiled[A, B]] = compile(className[A], script)
 
+  def scalaEngine() = {
+    val manager                    = new javax.script.ScriptEngineManager(getClass().getClassLoader())
+    manager.getEngineByName("scala")
+  }
   def compile[A: ClassTag, B](inputType: String, script: String): Try[Compiled[A, B]] = {
     type Thunk = A => B
 
     val thunk = try {
-      //      new ScriptEngineFactory {}
-      val m                    = new javax.script.ScriptEngineManager(getClass().getClassLoader())
-      val engine: ScriptEngine = m.getEngineByName("scala")
-      println(engine)
-      println("----")
-      println(script)
-      println("----")
+      val engine: ScriptEngine = scalaEngine()
       val result = engine.eval(script)
-      println(result)
       result match {
         case expr: Thunk => Try(Compiled(script, inputType, expr))
         case other =>
-          Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className]"))
+          Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className]: $other"))
       }
     } catch {
       case NonFatal(err) => Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className] : $err", err))
     }
-
-    //    val f: Array[Int] => Int = staging.run {
-    //      val stagedSum: Expr[Array[Int] => Int] =
-    //      '{ (arr: Array[Int]) => ${sum('arr)}}
-    //      println(stagedSum) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
-    //      stagedSum
-    //    }
-    //
-    //    f.apply(Array(1, 2, 3))
     thunk
   }
 

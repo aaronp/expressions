@@ -7,7 +7,7 @@ import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, Sch
 import io.confluent.kafka.serializers.{KafkaAvroDeserializer, KafkaAvroSerializer}
 import org.apache.kafka.common.serialization.*
 import zio.blocking.Blocking
-import zio.{RManaged, ZIO, ZManaged, Task}
+import zio.{RManaged, Task, ZIO, ZManaged}
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.{ConsumerSettings, Subscription}
 import zio.kafka.producer.{Producer, ProducerSettings}
@@ -70,6 +70,12 @@ object FranzConfig {
   private val counter = AlphaCounter.from(System.currentTimeMillis())
 
   private def nextRand() = counter.next()
+
+  @tailrec
+  def unquote(s : String): String = s.trim match {
+    case s""""${str}"""" => unquote(str)
+    case str             => str
+  }
 }
 
 final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
@@ -115,7 +121,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   lazy val subscription: Subscription = topic match {
     case topic if topic.contains("*") => Subscription.pattern(topic.r)
     case topic if topic.contains(",") => Subscription.Topics(topic.split(",", -1).toSet)
-    case topic                        => Subscription.topics(topic)
+    case topic => Subscription.topics(topic)
   }
   val blockOnCommits = consumerConfig.getBoolean("blockOnCommits")
   val concurrency = consumerConfig.getInt("concurrency") match {
@@ -168,16 +174,16 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
 
   def keyType(keyConfig: Config = consumerConfig.getConfig("key")): SupportedType[_] = typeOf(keyConfig, consumerNamespace)
 
-  def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Task[Serde[Any, K]] = serdeFor[K](keyConfig)
+  def keySerde[K](keyConfig: Config = consumerConfig.getConfig("key")): Task[Serde[Any, K]] = serdeFor[K](keyConfig, true)
 
   def valueType(valueConfig: Config = consumerConfig.getConfig("value")): SupportedType[_] = typeOf(valueConfig, consumerNamespace)
 
-  def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Task[Serde[Any, V]] = serdeFor[V](valueConfig)
+  def valueSerde[V](valueConfig: Config = consumerConfig.getConfig("value")): Task[Serde[Any, V]] = serdeFor[V](valueConfig, false)
 
   def producer: RManaged[Blocking, Producer] = Producer.make(producerSettings)
 
+  private def baseUrls            = consumerConfig.asList("schema.registry.url").asJava
   lazy val schemaRegistryClient: SchemaRegistryClient = {
-    val baseUrls            = consumerConfig.asList("schema.registry.url").asJava
     val identityMapCapacity = consumerConfig.getInt("identityMapCapacity")
     new CachedSchemaRegistryClient(baseUrls, identityMapCapacity)
   }
@@ -189,23 +195,20 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     * @tparam A
     * @return
     */
-  private def serdeFor[A](serdeConfig: Config): Task[Serde[Any, A]] = {
+  private def serdeFor[A](serdeConfig: Config, isKey : Boolean): Task[Serde[Any, A]] = {
     val deserializerName = serdeConfig.getString("deserializer")
 
     deserializerName.toLowerCase match {
       case "string" | "strings" => Task(Serde.string.asInstanceOf[Serde[Any, A]])
       case "long" | "longs"     => Task(Serde.long.asInstanceOf[Serde[Any, A]])
       case _ =>
-        val kafkaDeserializer: Deserializer[A] = instantiate[Deserializer[A]](serdeConfig.getString("deserializer"))
+        val kafkaDeserializer: Deserializer[A] = instantiate[Deserializer[A]](deserializerName)
         val kafkaSerializer: Serializer[A]     = instantiate[Serializer[A]](serdeConfig.getString("serializer"))
 
-        val task: ZIO[Any, Throwable, Serde[Any, A]] = for {
-          deserializer <- zio.kafka.serde.Deserializer.fromKafkaDeserializer[A](kafkaDeserializer, Map.empty, false)
-          serializer   <- zio.kafka.serde.Serializer.fromKafkaSerializer[A](kafkaSerializer, Map.empty, false)
+        for {
+          deserializer <- zio.kafka.serde.Deserializer.fromKafkaDeserializer[A](kafkaDeserializer, consumerSettings.properties, isKey)
+          serializer   <- zio.kafka.serde.Serializer.fromKafkaSerializer[A](kafkaSerializer, consumerSettings.properties, isKey)
         } yield Serde[Any, A](deserializer)(serializer)
-
-        //  : Serde[Any, A]
-        task
     }
   }
 

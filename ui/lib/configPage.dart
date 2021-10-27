@@ -383,8 +383,12 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   Future<Object> _push(BuildContext ctxt, Widget page) async {
-    return await Navigator.push(
+    final result = await Navigator.push(
         ctxt, MaterialPageRoute(builder: (context) => page));
+
+    // refresh
+    setState(() {});
+    return result;
   }
 
   Widget mappingsList(BuildContext ctxt) {
@@ -393,22 +397,22 @@ class _ConfigPageState extends State<ConfigPage> {
       final key = _unquote(quotedKey);
       final path = value.join("/");
 
-      final editHttpButton = OutlinedButton.icon(
-          onPressed: () => onEditHttpMapping(ctxt, MappingEntry(key, path)),
-          label: Text("(old http edit)"),
-          icon: Icon(Icons.edit));
+      // final editHttpButton = OutlinedButton.icon(
+      //     onPressed: () => onEditHttpMapping(ctxt, MappingEntry(key, path)),
+      //     label: Text("(old http edit)"),
+      //     icon: Icon(Icons.edit));
 
       final deleteButton = IconButton(
           onPressed: () => onRemoveMapping(ctxt, quotedKey),
-          icon: Icon(Icons.delete_forever));
+          icon: Icon(Icons.highlight_remove, color : Colors.red));
 
       final link = InkWell(
           child:
               Text('$key ($path)', style: const TextStyle(color: Colors.blue)),
           onTap: () => onEditMapping(ctxt, MappingEntry(key, path)));
 
-      final mappingButtons =
-          Row(children: [link, deleteButton, editHttpButton]);
+      final mappingButtons = Row(children: [deleteButton, link]);
+      // final mappingButtons = Row(children: [link, deleteButton, editHttpButton]);
 
       final entry = ListTile(
         dense: true,

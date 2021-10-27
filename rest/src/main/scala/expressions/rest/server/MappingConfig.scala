@@ -2,6 +2,7 @@ package expressions.rest.server
 
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.Unquote
+import expressions.franz.FranzConfig
 import zio.ZIO
 import zio.console.Console
 
@@ -95,10 +96,5 @@ object MappingConfig {
   import args4c.implicits._
   def apply(config: String, theRest: String*): MappingConfig = MappingConfig((config +: theRest).toArray.asConfig())
 
-  private def unquote(s: String): String = {
-    s.trim match {
-      case s""""${str}"""" => unquote(str)
-      case str             => s
-    }
-  }
+  def unquote(s: String): String = FranzConfig.unquote(s)
 }

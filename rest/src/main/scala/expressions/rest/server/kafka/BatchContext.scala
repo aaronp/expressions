@@ -139,7 +139,7 @@ object BatchContext {
 
     ZManaged.fromEffect(setup).flatMap {
       case (b, cacheRef, keys, values) =>
-        franzConfig.producer[K, V].map { producerIn =>
+        franzConfig.producer.map { producerIn =>
           new BatchContext {
             type Key   = K
             type Value = V

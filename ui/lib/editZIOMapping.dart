@@ -324,7 +324,7 @@ batch.foreach { msg =>
         Padding(
             padding: EdgeInsets.fromLTRB(0, 8, 16, 8),
             child: Container(
-              decoration: BoxDecoration(color: Colors.deepPurple),
+              decoration: BoxDecoration(color: Colors.black87),
               child: Scrollbar(
                   isAlwaysShown: true,
                   controller: _testInputScrollController,

@@ -18,7 +18,6 @@ import zio.{Task, ZEnv, ZIO}
   * You've got to have a little fun.
   */
 object RestRoutes {
-  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   type Resp = http4s.Response[Task]
 
   val taskDsl: Http4sDsl[Task] = Http4sDsl[Task]
@@ -37,7 +36,6 @@ object RestRoutes {
       diskService  <- Disk(defaultConfig)
       fsDir        = BatchContext.dataDir(defaultConfig)
       httpCompiler = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
-//      kafkaSink         <- KafkaSink(httpCompiler)
       batchSink         <- BatchSink.make
       kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
     } yield {
@@ -51,10 +49,8 @@ object RestRoutes {
       val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
       val configRoute                                              = ConfigRoute(diskService, defaultConfig)
       val batchRoute                                               = BatchRoute(loadCfg, batchSink, env)
-//      val kafkaRoute                                               = KafkaRoute(loadCfg, kafkaSink)
       val proxyRoute = ProxyRoute()
 
-      //kafkaRoute <+>
       batchRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute
     }
   }

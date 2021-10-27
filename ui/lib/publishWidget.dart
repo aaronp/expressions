@@ -141,8 +141,6 @@ class _PublishWidgetState extends State<PublishWidget> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text("w:${constraints.maxWidth}"),
-              Text("h:${constraints.maxHeight}"),
               Flexible(
                   child: FieldWidget(
                       "Repeat:",
