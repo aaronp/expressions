@@ -15,7 +15,7 @@ object Build {
   )
 
   val prometheus = List(
-    "io.prometheus" % "simpleclient_pushgateway" % "0.10.0"
+    "io.prometheus" % "simpleclient_pushgateway" % "0.12.0"
   )
 
   val circeVersion          = "0.14.1"
@@ -31,14 +31,14 @@ object Build {
 
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.1"
 
-  val logback      = "ch.qos.logback" % "logback-classic" % "1.2.3"
+  val logback      = "ch.qos.logback" % "logback-classic" % "1.2.6"
   val logging      = List(logback, "org.slf4j" % "slf4j-api" % "1.7.32")
 
   val scalaTest =  List ("org.scalactic" %% "scalactic" % "3.2.10" % Test,
   "org.scalatest" %% "scalatest" % "3.2.10" % Test,
   "org.pegdown" % "pegdown" % "1.6.0" % Test,
   "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test,
-  "junit" % "junit" % "4.13" % Test)
+  "junit" % "junit" % "4.13.2" % Test)
 
   def franz: List[ModuleID] = {
 
@@ -61,7 +61,7 @@ object Build {
       Seq(
         "dev.zio"           %% "zio-streams"             % zioVersion,
         "dev.zio"           %% "zio-kafka"               % "0.17.1",
-        "io.confluent"      % "kafka-streams-avro-serde" % "6.1.1",
+        "io.confluent"      % "kafka-streams-avro-serde" % "6.2.1",
         typesafeConfig,
       )
   }
@@ -71,11 +71,20 @@ object Build {
     "org.http4s" %% "http4s-blaze-client" % Http4sVersion
   )
 
+
+  val scalaJDBC = Seq(
+    "org.postgresql" % "postgresql" % "42.2.22" % "provided", // TODO - remove this puppy
+    "org.scalikejdbc" %% "scalikejdbc" % "4.0.0-RC1",
+    "org.scalikejdbc" %% "scalikejdbc-test" % "4.0.0-RC1" % Test
+  )
+
+
   def rest: List[ModuleID] = {
     zio ++
       logging ++
       circe ++
       scalaTest ++
+      scalaJDBC ++
       Seq(
         ("com.github.aaronp" %% "eie"    % "1.0.0").cross(CrossVersion.for3Use2_13),
         ("com.github.aaronp" %% "args4c" % "0.7.0").cross(CrossVersion.for3Use2_13),

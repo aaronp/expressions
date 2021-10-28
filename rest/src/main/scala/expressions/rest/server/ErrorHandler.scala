@@ -7,7 +7,7 @@ import cats.syntax.option._
 
 object ErrorHandler {
   def apply(routes: HttpRoutes[Task])(handler: (Request[Task], Throwable) => Task[Response[Task]]): HttpRoutes[Task] =
-    Kleisli { req => //: Request[Task] =>
+    Kleisli { req =>
       OptionT {
         val task: Task[Option[Response[Task]]] = routes.run(req).value
         task.catchAll(err => handler(req, err).map(_.some))

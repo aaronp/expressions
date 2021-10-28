@@ -156,15 +156,10 @@ lazy val client = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(scalaJSUseMainModuleInitializer in Global := true)
   .jsSettings(name := "client-js")
   .jsSettings(test := {}) // ignore JS tests - they're all done on the JVM
-//  .jsSettings(libraryDependencies ++= List(
-//    "org.scala-js"  %%% "scalajs-java-time" % "1.0.0",
-//    "com.lihaoyi"   %%% "scalatags"         % "0.9.2",
-//    "org.scala-js"  %%% "scalajs-dom"       % "1.1.0",
-//    "org.scalatest" %%% "scalatest"         % "3.1.2" % "test"
-//  ))
 
 lazy val clientJVM = client.jvm
 lazy val clientJS  = client.js
+
 
 lazy val rest = (project in file("rest"))
   .settings(commonSettings: _*)
