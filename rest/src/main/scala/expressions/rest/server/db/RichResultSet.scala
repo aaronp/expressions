@@ -1,12 +1,13 @@
 package expressions.rest.server.db
 
-import com.typesafe.scalalogging.StrictLogging
 import zio.stream._
 import zio.{UIO, ZIO}
-
+import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 
-case class RichResultSet(sql: String, results: ResultSet) extends AutoCloseable with StrictLogging {
+case class RichResultSet(sql: String, results: ResultSet) extends AutoCloseable {
+
+  private lazy val logger = LoggerFactory.getLogger(getClass)
 
   override def close() = {
     logger.info(s"closing result set for $sql")

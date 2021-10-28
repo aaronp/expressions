@@ -13,7 +13,21 @@ import io.circe.Json
 class BatchCheckTest extends BaseRouteTest {
 
   "BatchCheckRequest" should {
-    "be able to run a simple script" ignore {
+    "be able to write to a database" ignore {
+      val underTest = BatchCheck(testConfig(), zenv)
+      val request = BatchCheckRequest(
+        "",
+        messages(),
+        """batch.foreach { msg =>
+          |  val value = msg.content.value
+          |  for {
+          |    _ <- putStr(s"publishing ${value} to ${msg.topic}")
+          |  } yield ()
+          |}.orDie
+          |""".stripMargin
+      )
+    }
+    "be able to run a simple script" in {
       val underTest = BatchCheck(testConfig(), zenv)
       val request = BatchCheckRequest(
         "",

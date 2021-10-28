@@ -64,12 +64,13 @@ batch.foreach { msg =>
   for {
     _ <- putStr(s"publishing to \${msg.topic}")
     _ = org.slf4j.LoggerFactory.getLogger("test").info(s" P U B L I S H I N G \${msg.topic}")
-    r <- msg.key.id.asString.withValue(value).publishTo(msg.topic)
+    justinFiber <- msg.key.id.asString.withValue(value).publishTo(msg.topic).fork
+    updates <- sql"insert into Materialised (kind, id, version, record) values (\${msg.topic}, \${msg.key.asString}, \${msg.offset}, \${value.noSpaces})".run
     url = s"\$RestServer/\${msg.partition}/\${msg.offset}"
     postResponse <- post(url, msg.key.deepMerge(msg.content.value))
     _ <- putStr(s"published \${msg.key}")
     _ <- putStrErr(s"post to \$url returned \${postResponse}")
-  } yield r
+  } yield ()
 }.orDie
   ''';
 

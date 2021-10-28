@@ -24,9 +24,10 @@ object BatchTemplate {
          |import zio.console._
          |import io.circe.syntax._
          |import zio.duration.durationInt
+         |import scalikejdbc._
          |
          |(_batchInput: expressions.rest.server.kafka.BatchInput) => {
-         |  import _batchInput._
+         |  import _batchInput.{given, *}
          |  import context._
          |  $script
          |}

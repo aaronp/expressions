@@ -45,7 +45,7 @@ class PostgresTest extends AnyWordSpec with Matchers with Eventually with Before
 
         val Seq(count) = fetchRows.value()
         val got        = count.asMap("count")
-        got shouldBe (12)
+        got shouldBe Integer.valueOf(12)
 
       }
     }

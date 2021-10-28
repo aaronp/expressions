@@ -79,9 +79,10 @@ class _OpenFileWidgetState extends State<OpenFileWidget> {
 
   void _onDelete(BuildContext ctxt, String fileName) async {
     // TODO - confirm
-    if (await confirm(ctxt,
+    final future = confirm(ctxt,
       title: Text('Delete $fileName'),
-      content: Text('Are you sure you want delete configuration "$fileName"?'),)) {
+      content: Text('Are you sure you want delete configuration "$fileName"?'));
+    if (await future) {
       await DiskClient.remove("config/$fileName");
       // refresh
       setState(() {});

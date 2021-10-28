@@ -1,7 +1,7 @@
 package expressions.rest.server.db
 
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
+import org.slf4j.LoggerFactory
 
 import java.sql.DriverManager
 
@@ -12,11 +12,11 @@ import java.sql.DriverManager
   * @param username
   * @param password
   */
-case class PostgresConf(url: String) extends StrictLogging {
+case class PostgresConf(url: String) {
 
   def connect: RichConnect = {
     val conn = DriverManager.getConnection(url)
-    logger.info(s"Connecting postgres at >$url<")
+    LoggerFactory.getLogger(getClass).info(s"Connecting postgres at >$url<")
     RichConnect(conn)
   }
 }

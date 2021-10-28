@@ -2,15 +2,14 @@ package expressions.rest.server.db
 
 import scalikejdbc._
 import zio.{Task, UIO, ZManaged}
-
+import org.slf4j.LoggerFactory
 import java.sql.{Connection, PreparedStatement, ResultSet}
-import com.typesafe.scalalogging.StrictLogging
 
 import util.Try
 
-case class RichConnect(conn: Connection) extends AutoCloseable with StrictLogging {
+case class RichConnect(conn: Connection) extends AutoCloseable {
   override def close(): Unit = {
-    logger.info(s"Closing connection ${Try(conn.getMetaData.getURL).getOrElse("(metadata go boom)")}")
+    LoggerFactory.getLogger(getClass).info(s"Closing connection ${Try(conn.getMetaData.getURL).getOrElse("(metadata go boom)")}")
     conn.close()
   }
 
@@ -19,7 +18,7 @@ case class RichConnect(conn: Connection) extends AutoCloseable with StrictLoggin
   def metadata = conn.getMetaData()
 
   private def statementFor(sql: String) = {
-    logger.info(s"preparedStatement: $sql")
+    LoggerFactory.getLogger(getClass).info(s"preparedStatement: $sql")
     RichStatement(sql, conn.prepareStatement(sql))
   }
 

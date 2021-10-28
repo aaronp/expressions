@@ -27,6 +27,8 @@ object RestRoutes {
       |import io.circe.syntax._
       |import io.circe.Json
       |import expressions.client._
+      |import scalikejdbc._
+      |
       |""".stripMargin
 
   def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
