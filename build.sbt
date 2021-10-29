@@ -167,8 +167,6 @@ lazy val rest = (project in file("rest"))
     name := "rest",
     libraryDependencies ++= Build.rest,
     mainClass := Some("expressions.rest.Main"),
-
-//    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(commonSettings: _*)
   .settings(parallelExecution  := false)
@@ -243,6 +241,11 @@ clientBuild := {
   output
 }
 
+
+(Compile / unmanagedResourceDirectories) += {
+  baseDirectory.value / "ui" / "build"
+}
+
 lazy val assembleApp = taskKey[java.nio.file.Path]("Brings in all the disparate artifacts to one location in preparation for containerisation").withRank(KeyRanks.APlusTask)
 
 assembleApp := {
@@ -264,17 +267,11 @@ assembleApp := {
 
   val restResourceDir = (resourceDirectory in (rest, Compile)).value.toPath
 
-  val report =
-    s"""
-       |dockerTargetDir : $dockerTargetDir
-       |clientArtifacts : $clientArtifacts
-       |   restAssembly : $restAssembly
-       |    fullOptPath : $fullOptPath
-       |    jsArtifacts : ${jsArtifacts.mkString("\n")}
-       |
-       |""".stripMargin
-
-  sLog.value.info(report)
+  sLog.value.info(s"""
+                     |dockerTargetDir : $dockerTargetDir
+                     |restResourceDir : $restResourceDir
+                     |   restAssembly : $restAssembly
+                     |""".stripMargin)
 
   val versionPath = dockerTargetDir.resolve("version.txt").toFile
   sbt.io.IO.write(versionPath, version.value)

@@ -19,6 +19,7 @@ import zio.blocking.Blocking
 import zio.kafka.producer.Producer
 import zio.kafka.serde.Serde
 import zio.*
+import scala.language.implicitConversions
 
 import java.nio.charset.StandardCharsets
 
@@ -65,11 +66,14 @@ trait BatchContext {
 
   private implicit def jsonAsValue(jason: Json): Value = valueType.of(jason)
 
-  extension (query : SQL[Nothing, NoExtractor])
+  // format: off
+  extension(query: SQL[Nothing, NoExtractor]) {
     def run: Task[Int] = Task(runSync)
     def runSync: Int = db.fold(-1) { conn =>
       query.update.apply()(conn.session)
     }
+  }
+  // format: on
 
   /**
     * RichKey and its associated implicit 'richKey(...)' conversions support creating a 'RecordBuilder' which knows how to
@@ -125,8 +129,8 @@ trait BatchContext {
 }
 
 object BatchContext {
-  type ConfigPath = String
-  type HttpClient = HttpRequest => Task[HttpResponse]
+  type ConfigPath     = String
+  type HttpClient     = HttpRequest => Task[HttpResponse]
   type ProducerByName = ConfigPath => ZManaged[Any, Throwable, Producer]
 
   def dataDir(rootConfig: Config) = {
@@ -143,7 +147,6 @@ object BatchContext {
       Some(PostgresConf(rootConfig).connect)
     } else None
 
-
     val fileSystem: FileSystem = FileSystem(dataDir(rootConfig))
     val client: HttpClient = (r: HttpRequest) =>
       Task {
@@ -151,12 +154,12 @@ object BatchContext {
         val result = RestClient.sendSync(r)
         LoggerFactory.getLogger(classOf[BatchContext]).info(s"Reply from $r is $result")
         result
-      }
+    }
     franzConfig.producerKeyType match {
-      case t@RECORD(_) => withKey[GenericRecord](franzConfig, t.asInstanceOf[SupportedType[GenericRecord]], fileSystem, env, client, db)
-      case t@BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t.asInstanceOf[SupportedType[Array[Byte]]], fileSystem, env, client, db)
-      case t@STRING => withKey[String](franzConfig, t.asInstanceOf[SupportedType[String]], fileSystem, env, client, db)
-      case t@LONG => withKey[Long](franzConfig, t.asInstanceOf[SupportedType[Long]], fileSystem, env, client, db)
+      case t @ RECORD(_)  => withKey[GenericRecord](franzConfig, t.asInstanceOf[SupportedType[GenericRecord]], fileSystem, env, client, db)
+      case t @ BYTE_ARRAY => withKey[Array[Byte]](franzConfig, t.asInstanceOf[SupportedType[Array[Byte]]], fileSystem, env, client, db)
+      case t @ STRING     => withKey[String](franzConfig, t.asInstanceOf[SupportedType[String]], fileSystem, env, client, db)
+      case t @ LONG       => withKey[Long](franzConfig, t.asInstanceOf[SupportedType[Long]], fileSystem, env, client, db)
     }
   }
 
@@ -165,13 +168,12 @@ object BatchContext {
                          fs: FileSystem, //
                          env: Env, //
                          client: HttpClient, //
-                         db: Option[RichConnect]
-                        ): ZManaged[Blocking, Throwable, BatchContext] = {
+                         db: Option[RichConnect]): ZManaged[Blocking, Throwable, BatchContext] = {
     franzConfig.producerValueType match {
-      case t@RECORD(_) => managed[K, GenericRecord](franzConfig, keyType, t.asInstanceOf[SupportedType[GenericRecord]], fs, env, client, db)
-      case t@BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t.asInstanceOf[SupportedType[Array[Byte]]], fs, env, client, db)
-      case t@STRING => managed[K, String](franzConfig, keyType, t.asInstanceOf[SupportedType[String]], fs, env, client, db)
-      case t@LONG => managed[K, Long](franzConfig, keyType, t.asInstanceOf[SupportedType[Long]], fs, env, client, db)
+      case t @ RECORD(_)  => managed[K, GenericRecord](franzConfig, keyType, t.asInstanceOf[SupportedType[GenericRecord]], fs, env, client, db)
+      case t @ BYTE_ARRAY => managed[K, Array[Byte]](franzConfig, keyType, t.asInstanceOf[SupportedType[Array[Byte]]], fs, env, client, db)
+      case t @ STRING     => managed[K, String](franzConfig, keyType, t.asInstanceOf[SupportedType[String]], fs, env, client, db)
+      case t @ LONG       => managed[K, Long](franzConfig, keyType, t.asInstanceOf[SupportedType[Long]], fs, env, client, db)
     }
   }
 
@@ -181,33 +183,32 @@ object BatchContext {
                             fileSystem: FileSystem, //
                             envIn: Env, //
                             clientIn: HttpClient, //
-                            database: Option[RichConnect]
-                           ): ZManaged[Blocking, Throwable, BatchContext] = {
+                            database: Option[RichConnect]): ZManaged[Blocking, Throwable, BatchContext] = {
     val setup = for {
-      b <- ZIO.environment[Blocking]
+      b        <- ZIO.environment[Blocking]
       cacheRef <- Ref.make(Map[String, Any]())
-      keys <- franzConfig.keySerde[K]()
-      values <- franzConfig.valueSerde[V]()
+      keys     <- franzConfig.keySerde[K]()
+      values   <- franzConfig.valueSerde[V]()
     } yield (b, cacheRef, keys, values)
 
     val mngd = ZManaged.fromEffect(setup).flatMap {
       case (b, cacheRef, keys, values) =>
         franzConfig.producer.map { producerIn =>
           new BatchContext {
-            type Key = K
+            type Key   = K
             type Value = V
-            override val keySerde = keys
-            override val valueSerde = values
-            override val config: FranzConfig = franzConfig
-            override val env: Env = envIn
-            override val fs: FileSystem = fileSystem
-            override val cache: Ref[Map[String, Any]] = cacheRef
-            override val restClient: HttpClient = clientIn
-            override val blocking: Blocking = b
-            override val keyType: SupportedType[Key] = keyTypeIn
+            override val keySerde                        = keys
+            override val valueSerde                      = values
+            override val config: FranzConfig             = franzConfig
+            override val env: Env                        = envIn
+            override val fs: FileSystem                  = fileSystem
+            override val cache: Ref[Map[String, Any]]    = cacheRef
+            override val restClient: HttpClient          = clientIn
+            override val blocking: Blocking              = b
+            override val keyType: SupportedType[Key]     = keyTypeIn
             override val valueType: SupportedType[Value] = valueTypeIn
-            override val producer: Producer = producerIn
-            override val db = database
+            override val producer: Producer              = producerIn
+            override val db                              = database
           }
         }
     }
