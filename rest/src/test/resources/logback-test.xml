@@ -9,7 +9,7 @@
     <logger level="trace" name="expressions.rest.server" />
 -->
 
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

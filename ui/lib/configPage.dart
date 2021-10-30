@@ -76,19 +76,22 @@ class _ConfigPageState extends State<ConfigPage> {
   void initState() {
     super.initState();
     print('configPage::initState!');
-    _reload();
+    _reload(false);
   }
 
-  void _reload() {
+  void _reload(bool force) {
     print(
         "reload checking _lastLoadedFileName '${_lastLoadedFileName}' != _currentConfig.fileName '${_currentConfig.fileName}' = ${_lastLoadedFileName != _currentConfig.fileName}");
 
-    if (_lastLoadedFileName.isEmpty ||
+    if (force || _lastLoadedFileName.isEmpty ||
         _lastLoadedFileName != _currentConfig.fileName) {
       defaultConfig().then((value) {
         print("defaultConfig() returned (${!value.isEmpty()}) :  $value");
         _updateLoadedConfig(value);
       });
+    } else {
+      print(
+          "skipping reload: '${_lastLoadedFileName}' != _currentConfig.fileName '${_currentConfig.fileName}' = ${_lastLoadedFileName != _currentConfig.fileName}");
     }
   }
 
@@ -117,7 +120,7 @@ class _ConfigPageState extends State<ConfigPage> {
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
         child: TextButton.icon(
           icon: Icon(Icons.read_more_outlined, color: Colors.white),
-          label: Text('Start Batch Consumer'),
+          label: Text('Start Consumer'),
           onPressed: () {
             onStartBatchConsumer(context);
           },
@@ -149,7 +152,7 @@ class _ConfigPageState extends State<ConfigPage> {
                     child: Text('Franz', textAlign: TextAlign.start)),
                 actions: [
                   publishButton,
-                  startRestButton,
+                  // startRestButton,
                   startBatchButton,
                   runningButton
                 ]),
@@ -387,7 +390,7 @@ class _ConfigPageState extends State<ConfigPage> {
         ctxt, MaterialPageRoute(builder: (context) => page));
 
     // refresh
-    setState(() {});
+    _reload(true);
     return result;
   }
 

@@ -54,7 +54,7 @@ object BatchSink {
                               env: ZEnv)
       extends KafkaSink.Service {
     private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
-    private val counter = AlphaCounter.from(0)
+    private val counter = AlphaCounter.from(System.currentTimeMillis())
 
     override def running(): UIO[List[StartedConsumer]] = tasksById.get.map { map =>
       map.values.map(_._1).toList.sortBy(_.startedAtEpoch)

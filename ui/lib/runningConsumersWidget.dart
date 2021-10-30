@@ -18,7 +18,6 @@ class _RunningConsumersWidgetState extends State<RunningConsumersWidget> {
   PersistentBottomSheetController bottomSheet;
 
   static final BatchTitle = "Batch";
-  static final RESTTitle = "REST";
 
   @override
   Widget build(BuildContext context) {
@@ -30,21 +29,7 @@ class _RunningConsumersWidgetState extends State<RunningConsumersWidget> {
               alignment: Alignment.topLeft, child: Text("Running Consumers")),
           backgroundColor: Colors.grey[800],
           actions: []),
-      body: // This trailing comma makes auto-formatting nicer for build methods.
-          Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-              fit: FlexFit.tight,
-              child:
-                  listedWidget(_batchCount, BatchTitle, BatchClient.running())),
-          Flexible(
-              fit: FlexFit.tight,
-              child:
-                  listedWidget(_simpleCount, RESTTitle, KafkaClient.running())),
-        ],
-      ),
+      body: listedWidget(_batchCount, BatchTitle, BatchClient.running()),
     ));
   }
 
