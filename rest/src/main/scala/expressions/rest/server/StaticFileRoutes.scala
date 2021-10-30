@@ -61,6 +61,11 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
       HttpRoutes.of[F] {
         case request @ GET -> Root / "js" / path                                                 => getJS(path, request)
         case request @ GET -> Root / "css" / path                                                => getCSS(path, request)
+        case request@GET -> Root / "assets" / "fonts" / path => getAsset(s"fonts/$path", request)
+        case request@GET -> Root / "assets" / "AssetManifest.json" => getAsset("AssetManifest.json", request)
+        case request@GET -> Root / "assets" / "FontManifest.json" => getAsset("FontManifest.json", request)
+        case request@GET -> Root / "assets" / "MaterialIcons-Regular.otf" => getAsset("FontManifest.json", request)
+        case request@GET -> Root / "assets" / path => getAsset(s"assets/$path", request)
         case request @ GET -> Root / "assets" / "packages" / "cupertino_icons" / "assets" / path => getHTML(s"assets/packages/cupertino_icons/assets/$path", request)
         case request @ GET -> Root / "assets" / "fonts" / path                                   => getHTML(s"assets/fonts/$path", request)
         case request @ GET -> Root / "assets" / path                                             => getHTML(s"assets/$path", request)
