@@ -18,7 +18,8 @@ object Stats {
   sealed trait RecordBody
 
   case class Base64Body(base64Data: String) extends RecordBody
-  case class JasonBody(json: Json)          extends RecordBody
+
+  case class JasonBody(json: Json) extends RecordBody
 
   object RecordBody {
     def apply(record: CommittableRecord[_, _]) = {}
@@ -33,11 +34,12 @@ object Stats {
     )
     val errors = result match {
       case Failure(_) => summary +: consumerStats.errors
-      case _          => consumerStats.errors
+      case _ => consumerStats.errors
     }
     val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(20)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
   }
+
   def updateStats(consumerStats: ConsumerStats, batch: Batch, result: Try[Unit], now: Long): ConsumerStats = {
     val summary = batch.messages.map { record =>
       RecordSummary(
@@ -49,7 +51,7 @@ object Stats {
     }
     val errors = result match {
       case Failure(_) => summary ++: consumerStats.errors
-      case _          => consumerStats.errors
+      case _ => consumerStats.errors
     }
     val newRecords: Seq[RecordSummary] = summary ++: consumerStats.recentRecords.take(20)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
@@ -64,10 +66,11 @@ object Stats {
     )
     val errors = result match {
       case Failure(_) => List(summary)
-      case _          => Nil
+      case _ => Nil
     }
-    ConsumerStats(id, 1, List(summary), errors)
+    ConsumerStats(id, 1, Nil, Nil, List(summary), errors)
   }
+
   def createStats(id: RunningSinkId, records: Batch, result: Try[Unit], now: Long): ConsumerStats = {
     val summary =
       records.messages.map { record =>
@@ -80,13 +83,14 @@ object Stats {
       }
     val errors = result match {
       case Failure(_) => summary
-      case _          => Nil
+      case _ => Nil
     }
-    ConsumerStats(id, 1, summary, errors)
+    ConsumerStats(id, 1, Nil, Nil, summary, errors)
   }
 
   private def recordCoords(record: CommittableRecord[_, _]): RecordCoords = RecordCoords(record.record.topic(), record.offset.offset, record.partition, asString(record.key))
-  private def recordCoords(record: Message[_, _]): RecordCoords           = RecordCoords(record.topic, record.offset, record.partition, asString(record.key))
+
+  private def recordCoords(record: Message[_, _]): RecordCoords = RecordCoords(record.topic, record.offset, record.partition, asString(record.key))
 
   private def asMessage(request: HttpRequest, response: HttpResponse): String = {
     s"${request.url} yields ${response.statusCode}"
@@ -94,7 +98,7 @@ object Stats {
 
   private def asMessage(results: Try[Seq[(HttpRequest, HttpResponse)]]): String = {
     results match {
-      case Failure(err)                        => s"Error: $err"
+      case Failure(err) => s"Error: $err"
       case Success((request, response) :: Nil) => asMessage(request, response)
       case Success(list) =>
         list
@@ -107,7 +111,7 @@ object Stats {
 
   private def asJson(results: Try[Seq[(HttpRequest, HttpResponse)]]): Json = {
     results match {
-      case Failure(err)                        => Json.obj("error" -> s"${err}".asJson)
+      case Failure(err) => Json.obj("error" -> s"${err}".asJson)
       case Success((request, response) :: Nil) => asJson(request, response)
       case Success(list) =>
         val jsons = list.map {
@@ -119,7 +123,7 @@ object Stats {
 
   private def asJson(request: HttpRequest, response: HttpResponse): Json = {
     Map(
-      "request"  -> request.asJson,
+      "request" -> request.asJson,
       "response" -> asJson(response)
     ).asJson
   }
@@ -134,10 +138,10 @@ object Stats {
   @tailrec
   private def asString(value: Any): String = {
     value match {
-      case null                  => "NULL"
-      case jason: Json           => jason.asString.getOrElse(jason.noSpaces)
+      case null => "NULL"
+      case jason: Json => jason.asString.getOrElse(jason.noSpaces)
       case record: IndexedRecord => asString(SchemaGen.asJson(record))
-      case other                 => other.toString
+      case other => other.toString
     }
 
   }

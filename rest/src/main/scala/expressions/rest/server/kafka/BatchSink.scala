@@ -27,7 +27,7 @@ object BatchSink {
       env      <- ZIO.environment[ZEnv]
       statsMap <- Ref.make(Map[String, ConsumerStats]())
       makeSink <- BatchProcessor.make
-      byId     <- Ref.make(Map[String, (StartedConsumer, Fiber[_, _])]())
+      byId     <- Ref.make(Map[String, RunningTask]())
     } yield
       RunnablePipeline(
         byId,
@@ -51,7 +51,10 @@ object BatchSink {
   /**
     * An instance which uses 'makeSink' to construct a [[CommittableRecord[K,V]]] sink which can be started/stopped
     */
-  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, RunningTask]], statsMap: Ref[Map[RunningSinkId, ConsumerStats]], makeSink: SinkInput => SinkIO, env: ZEnv)
+  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, RunningTask]],
+                              statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
+                              makeSink: SinkInput => SinkIO,
+                              env: ZEnv)
       extends KafkaSink.Service {
     private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
     private val counter = AlphaCounter.from(System.currentTimeMillis())
@@ -117,9 +120,7 @@ object BatchSink {
           val fiber = map.get(key)
           fiber -> map.removed(key)
         }
-        _ <- ZIO.foreach_(fiber) { x =>
-          x.runninkgSink.interrupt
-        }
+        _ <- ZIO.foreach_(fiber)(_.runningSink.interrupt)
       } yield fiber.isDefined
 
     override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = {

@@ -34,7 +34,7 @@ object BatchCheck {
                     def wrapped(batch: BatchInput): BatchResult = {
                       for {
                         _   <- ZIO(println(s"DEBUG: STARTING BATCH ${batch}"))
-                        res <- handler(batch).either
+                        res <- handler(batch)
                         _   <- ZIO(println(s"DEBUG: DONE WITH BATCH ${batch}"))
                       } yield res
                     }
