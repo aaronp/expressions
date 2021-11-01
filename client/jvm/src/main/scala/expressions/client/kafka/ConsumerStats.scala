@@ -15,7 +15,12 @@ object RecordSummary {
   given codec : Codec[RecordSummary] = io.circe.generic.semiauto.deriveCodec[RecordSummary]
 }
 
-case class ConsumerStats(id: String, totalRecords: Long = 0L, recentRecords: Seq[RecordSummary] = Nil, errors: Seq[RecordSummary] = Nil) {
+case class ConsumerStats(id: String,
+                         totalRecords: Long = 0L,
+                         stdout :Seq[String] = Nil,
+                         stderr :Seq[String] = Nil,
+                         recentRecords: Seq[RecordSummary] = Nil,
+                         errors: Seq[RecordSummary] = Nil) {
   def ++(batch: Seq[RecordSummary]): ConsumerStats = {
     copy(recentRecords = (batch ++ recentRecords).take(100), totalRecords = totalRecords + batch.size)
   }

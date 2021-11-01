@@ -7,7 +7,8 @@ import expressions.franz.{BatchedStream, FranzConfig}
 import expressions.rest.Main
 import io.circe.Json
 import zio.kafka.consumer.CommittableRecord
-import zio.{Fiber, Ref, Task, UIO, ZEnv, ZIO}
+import zio.{Fiber, Ref, Task, UIO, ZEnv, ZIO, Has}
+import zio.console.Console
 
 /**
   * We have (separate to the kafka config) a list of:
@@ -45,19 +46,18 @@ object BatchSink {
       .unit
   }
 
+  case class RunningTask(consumer: StartedConsumer, output: BufferConsole, runningSink: Fiber[_, _])
+
   /**
     * An instance which uses 'makeSink' to construct a [[CommittableRecord[K,V]]] sink which can be started/stopped
     */
-  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, (StartedConsumer, Fiber[_, _])]],
-                              statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
-                              makeSink: SinkInput => SinkIO,
-                              env: ZEnv)
+  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, RunningTask]], statsMap: Ref[Map[RunningSinkId, ConsumerStats]], makeSink: SinkInput => SinkIO, env: ZEnv)
       extends KafkaSink.Service {
     private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
     private val counter = AlphaCounter.from(System.currentTimeMillis())
 
     override def running(): UIO[List[StartedConsumer]] = tasksById.get.map { map =>
-      map.values.map(_._1).toList.sortBy(_.startedAtEpoch)
+      map.values.map(_.consumer).toList.sortBy(_.startedAtEpoch)
     }
 
     def asCoords(r: CommittableRecord[_, _]): RecordCoords = RecordCoords(r.record.topic(), r.offset.offset, r.partition, r.key.toString)
@@ -69,31 +69,34 @@ object BatchSink {
     }
 
     override def start(rootConfig: Config): Task[RunningSinkId] = {
-      val startIO = for {
-        id                     <- ZIO(counter.next())
-        _                      = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
-        _                      <- statsMap.update(_.updated(id, ConsumerStats(id)))
-        sink                   <- makeSink(id, rootConfig)
-        franzConfig            = FranzConfig.fromRootConfig(rootConfig)
-        batcher: Batch.ByTopic = Batch.ByTopic(franzConfig)
-        batchedStream          <- BatchedStream(franzConfig)
-        kafkaFeed = batchedStream.run { records =>
-          for {
-            _ <- statsMap.update { map =>
-              val consumerStats: ConsumerStats = map.getOrElse(id, ConsumerStats(id))
-              map.updated(id, consumerStats ++ asSummary(records))
-            }
-            _ <- persist(records, batcher, sink)
-          } yield ()
-        }
-        fiber <- kafkaFeed.runCount.fork
-        _ <- tasksById.update { map =>
-          val consumer = startedConsumerFor(rootConfig, id)
-          map.updated(id, (consumer, fiber))
-        }
-      } yield id
+      BufferConsole.make.flatMap { buffer =>
+        val startIO = for {
+          id                     <- ZIO(counter.next())
+          _                      = logger.info(s"\nStarting $id using:\n${Main.configSummary(rootConfig)}\n")
+          _                      <- statsMap.update(_.updated(id, ConsumerStats(id)))
+          sink                   <- makeSink(id, rootConfig)
+          franzConfig            = FranzConfig.fromRootConfig(rootConfig)
+          batcher: Batch.ByTopic = Batch.ByTopic(franzConfig)
+          batchedStream          <- BatchedStream(franzConfig)
+          kafkaFeed = batchedStream.run { records =>
+            for {
+              _ <- statsMap.update { map =>
+                val consumerStats: ConsumerStats = map.getOrElse(id, ConsumerStats(id))
+                map.updated(id, consumerStats ++ asSummary(records))
+              }
+              _ <- persist(records, batcher, sink)
+            } yield ()
+          }
+          fiber <- kafkaFeed.runCount.fork
+          _ <- tasksById.update { map =>
+            val consumer = startedConsumerFor(rootConfig, id)
+            map.updated(id, RunningTask(consumer, buffer, fiber))
+          }
+        } yield id
 
-      startIO.provide(env)
+        startIO.provide(env ++ Has[Console.Service](buffer))
+      }
+
     }
 
     def startedConsumerFor(rootConfig: Config, id: RunningSinkId): StartedConsumer = {
@@ -114,7 +117,9 @@ object BatchSink {
           val fiber = map.get(key)
           fiber -> map.removed(key)
         }
-        _ <- ZIO.foreach_(fiber)(_._2.interrupt)
+        _ <- ZIO.foreach_(fiber) { x =>
+          x.runninkgSink.interrupt
+        }
       } yield fiber.isDefined
 
     override def stats(taskId: RunningSinkId): Task[Option[ConsumerStats]] = {
