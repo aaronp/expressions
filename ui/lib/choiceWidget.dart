@@ -30,7 +30,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _saveForm() {
-    FormState? form = formKey.currentState;
+    var form = formKey.currentState;
     if (form != null) {
       if (form.validate()) {
         form.save();
