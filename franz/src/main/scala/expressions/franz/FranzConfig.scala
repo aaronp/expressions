@@ -92,6 +92,8 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
       .mkString("\n")
   }
 
+  def defaultSeed = System.currentTimeMillis()
+
   def withOverrides(conf: String, theRest: String*): FranzConfig = withOverrides(FranzConfig.asConfig(conf, theRest: _*))
 
   def withOverrides(newConfig: Config): FranzConfig = {

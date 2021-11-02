@@ -41,9 +41,9 @@ object KafkaPublishRoute {
     case class SubjectData(subject: String, version: Int, schema: Json, testData: Json)
 
     object SubjectData {
-      def forSchema(subject: String, schema: SchemaMetadata): Option[SubjectData] = {
+      def forSchema(seed :Long)(subject: String, schema: SchemaMetadata): Option[SubjectData] = {
         SchemaGen.parseSchema(schema.getSchema).toOption.flatMap { s =>
-          val d8a = DataGen.forSchema(s)
+          val d8a = DataGen.forSchema(s, seed)
           io.circe.parser.parse(schema.getSchema).toOption.map { parsedSchema =>
             SubjectData(subject, schema.getVersion, parsedSchema, d8a)
           }
@@ -58,19 +58,20 @@ object KafkaPublishRoute {
     object TopicData {
       type NamedSchema = (String, SchemaMetadata)
 
-      def forNamedSchemas(keyOpt: Option[NamedSchema], valueOpt: Option[NamedSchema], otherOpt: Option[NamedSchema]): TopicData = {
+      def forNamedSchemas(seed : Long, keyOpt: Option[NamedSchema], valueOpt: Option[NamedSchema], otherOpt: Option[NamedSchema]): TopicData = {
         TopicData(
-          keyOpt.flatMap(SubjectData.forSchema),
-          valueOpt.flatMap(SubjectData.forSchema),
-          otherOpt.flatMap(SubjectData.forSchema)
+          keyOpt.flatMap(SubjectData.forSchema(seed)),
+          valueOpt.flatMap(SubjectData.forSchema(seed)),
+          otherOpt.flatMap(SubjectData.forSchema(seed))
         )
       }
 
       given codec: Codec[TopicData] = io.circe.generic.semiauto.deriveCodec[TopicData]
     }
   }
-
   import model.*
+
+  object OptionalSeed extends OptionalQueryParamDecoderMatcher[Long]("seed")
 
   def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = fromFranzConfig(rootConfig.getConfig("app.franz"))
 
@@ -121,7 +122,7 @@ object KafkaPublishRoute {
 
   def topic(defaultConfig: FranzConfig): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case GET -> Root / "kafka" / "topic" / rawTopic =>
+      case GET -> Root / "kafka" / "topic" / rawTopic :? OptionalSeed(seedOpt) =>
         val topic = rawTopic match {
           case s"${x}-key" => x
           case s"${x}-value" => x
@@ -136,6 +137,7 @@ object KafkaPublishRoute {
           key <- keySchemaF.join
           value <- valueSchemaF.join
           result = TopicData.forNamedSchemas(
+            seedOpt.getOrElse(defaultConfig.defaultSeed),
             key.toOption.map(keySubject -> _),
             value.toOption.map(valueSubject -> _),
             vanilla.toOption.map(topic -> _)
