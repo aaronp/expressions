@@ -18,8 +18,8 @@ class PostRecord {
   String config;
   dynamic key;
   int repeat;
-  int partition = null;
-  String topicOverride = null;
+  int partition = 0;
+  String topicOverride = '';
   Map<String,String> headers;
 
   Future<int> publish() async {

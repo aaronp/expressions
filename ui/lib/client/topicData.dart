@@ -10,9 +10,9 @@ class TopicData {
       this.other
       );
 
-  List<SubjectData> key = null;
-  List<SubjectData> value = null;
-  List<SubjectData> other = null;
+  List<SubjectData> key = [];
+  List<SubjectData> value = [];
+  List<SubjectData> other = [];
 
 
   static Future<TopicData> get(String topic) async {
