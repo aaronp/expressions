@@ -9,8 +9,14 @@ object ToDart {
 
   def main(a: Array[String]) = {
 
+//    Seq(
+//      """case class Subjects(keys: List[String], values: List[String], other: List[String])
+//        |case class SubjectData(subject: String, version: Int, schema: Json, testData: Json)
+//        |case class TopicData(key: Option[SubjectData], value: Option[SubjectData], other: Option[SubjectData])
+//        |""".stripMargin
+//    ).map(asDart).foreach(println)
     Seq(
-      """case class Output(stdOut: Seq[String], stdErr: Seq[String])
+      """case class TopicData(key: Option[SubjectData], value: Option[SubjectData], other: Option[SubjectData])
         |""".stripMargin
     ).map(asDart).foreach(println)
   }

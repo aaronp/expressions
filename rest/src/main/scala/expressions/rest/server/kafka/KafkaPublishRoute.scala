@@ -22,20 +22,20 @@ object KafkaPublishRoute {
 
   object model {
 
-    case class Subjects(keys: List[String], values: List[String], other: List[String])
+    case class Topics(keys: List[String], values: List[String], other: List[String])
 
-    object Subjects {
-      def apply(all: Iterable[String]): Subjects = {
+    object Topics {
+      def apply(all: Iterable[String]): Topics = {
         val e = List[String]()
         val (keys, values, other) = all.foldLeft((e, e, e)) {
           case ((keys, values, other), s"${subject}-key") => (subject :: keys, values, other)
           case ((keys, values, other), s"${subject}-value") => (keys, subject :: values, other)
           case ((keys, values, other), topic) => (keys, values, topic :: other)
         }
-        Subjects(keys.sorted, values.sorted, other.sorted)
+        Topics(keys.sorted, values.sorted, other.sorted)
       }
 
-      given codec: Codec[Subjects] = io.circe.generic.semiauto.deriveCodec[Subjects]
+      given codec: Codec[Topics] = io.circe.generic.semiauto.deriveCodec[Topics]
     }
 
     case class SubjectData(subject: String, version: Int, schema: Json, testData: Json)
@@ -107,7 +107,7 @@ object KafkaPublishRoute {
           configOverrides <- req.as[String]
           config = defaultConfig.withOverrides(configOverrides)
           all = config.schemaRegistryClient.subjects
-        } yield Response[Task](Status.Ok).withEntity(Subjects(all))
+        } yield Response[Task](Status.Ok).withEntity(Topics(all))
     }
   }
 
@@ -116,7 +116,7 @@ object KafkaPublishRoute {
       case GET -> Root / "kafka" / "topics" =>
         for {
           all <- Task(defaultConfig.schemaRegistryClient.subjects)
-        } yield Response[Task](Status.Ok).withEntity(Subjects(all))
+        } yield Response[Task](Status.Ok).withEntity(Topics(all))
     }
   }
 
