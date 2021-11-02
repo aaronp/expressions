@@ -2,7 +2,7 @@ package expressions.franz
 
 import io.circe.{Json, JsonNumber}
 import org.apache.avro.Schema
-import org.apache.avro.Schema.Type._
+import org.apache.avro.Schema.Type.*
 import org.apache.avro.Schema.{Field, Type}
 import org.apache.avro.generic.{GenericDatumReader, GenericRecord, IndexedRecord}
 import org.apache.avro.io.DecoderFactory
@@ -10,9 +10,15 @@ import org.apache.avro.io.DecoderFactory
 import java.io.{ByteArrayInputStream, DataInputStream}
 import java.util
 import scala.collection.immutable.Map
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 object SchemaGen {
+
+  def parseSchema(schemaText : String): Try[Schema] = {
+    val parser = new org.apache.avro.Schema.Parser
+    scala.util.Try(parser.parse(schemaText))
+  }
 
   def apply(record: Json, namespace: String = "gen"): Schema = TypeInst(record).schema(None, namespace)
 

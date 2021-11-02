@@ -19,7 +19,7 @@ package object server {
     * pimped out the schema client
     * @param client
     */
-  implicit class RichSchemaClient(val client: SchemaRegistryClient) extends AnyVal {
+  extension (client: SchemaRegistryClient) {
     def subjects: Iterable[String]             = client.getAllSubjects.asScala
     def versionsFor(subject: String): Set[Int] = client.getAllVersions(subject).asScala.map(_.intValue()).toSet
     def subjectVersions: Map[String, Set[Int]] =
@@ -57,7 +57,7 @@ package object server {
 
     def diffMetadata(subject: String): Option[(SchemaMetadata, SchemaMetadata)] = diffMetadata(subject, versionsFor(subject))
 
-    def diffMetadata(subject: String, versions: Set[Int]) = {
+    def diffMetadata(subject: String, versions: Set[Int]) : Option[(SchemaMetadata, SchemaMetadata)] = {
       versions match {
         case set if set.size > 1 =>
           val latest       = set.max

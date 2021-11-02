@@ -31,6 +31,8 @@ object DataGen {
     def map[A](f: Y => A): (X, A) = (pear._1, f(pear._2))
   }
 
+  def forSchema(schema: Schema): Json = recordForSchema(schema)._2
+
   def recordForSchema(schema: Schema, seed: Seed = Seed(), gen: Seed => (Seed, Gen) = Gen.forSeed): (Seed, Json) = {
     schema.getType match {
       case RECORD =>
