@@ -117,6 +117,8 @@ a new project which has your e.g. AVRO schemas/test records, opinionated/hard-co
 
 # Development
 
+The board is [here][https://trello.com/b/fDO4N3JL/expressions]
+
 The expressions themselves are meant to be shippable as a library, though in practice they work well as part
 of a larger ecosystems, such as Kafka sink transformations.
 
