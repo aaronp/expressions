@@ -51,10 +51,7 @@ object BatchSink {
   /**
     * An instance which uses 'makeSink' to construct a [[CommittableRecord[K,V]]] sink which can be started/stopped
     */
-  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, RunningTask]],
-                              statsMap: Ref[Map[RunningSinkId, ConsumerStats]],
-                              makeSink: SinkInput => SinkIO,
-                              env: ZEnv)
+  case class RunnablePipeline(tasksById: Ref[Map[RunningSinkId, RunningTask]], statsMap: Ref[Map[RunningSinkId, ConsumerStats]], makeSink: SinkInput => SinkIO, env: ZEnv)
       extends KafkaSink.Service {
     private val logger  = org.slf4j.LoggerFactory.getLogger(getClass)
     private val counter = AlphaCounter.from(System.currentTimeMillis())
@@ -66,7 +63,7 @@ object BatchSink {
     def asCoords(r: CommittableRecord[_, _]): RecordCoords = RecordCoords(r.record.topic(), r.offset.offset, r.partition, r.key.toString)
 
     def asSummary(records: Array[CommittableRecord[_, _]]): Seq[RecordSummary] = {
-      records.map { r =>
+      records.toIndexedSeq.map { r =>
         RecordSummary(asCoords(r), r.value.toString, Json.fromString(r.value.toString), r.timestamp)
       }
     }

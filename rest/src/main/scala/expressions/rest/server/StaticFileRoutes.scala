@@ -70,6 +70,8 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
         case request @ GET -> Root / "assets" / "fonts" / path                                   => getHTML(s"assets/fonts/$path", request)
         case request @ GET -> Root / "assets" / path                                             => getHTML(s"assets/$path", request)
         case request @ GET -> Root / "icons" / path                                              => getHTML(s"icons/$path", request)
+        case request @ GET -> Root / "#" / path                                                              =>
+          getHTML(landingPage, request)
         case request @ GET -> Root                                                               => getHTML(landingPage, request)
         case request @ GET -> Root / path                                                        => getHTML(path, request)
       }

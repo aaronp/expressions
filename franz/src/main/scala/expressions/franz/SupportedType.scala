@@ -10,6 +10,7 @@ import org.apache.kafka.common.serialization.{Serde, StringDeserializer, StringS
 import zio.kafka.consumer.CommittableRecord
 
 import java.lang
+import scala.annotation.nowarn
 import scala.util.Try
 
 /**
@@ -164,6 +165,8 @@ object SupportedType {
         (record: CommittableRecord[_, _]) =>
           JsonSupport.anyToJson.format(record.key)
     }
+
+    @nowarn
     def valueToJson(supportedType: SupportedType[_]): CommittableRecord[_, _] => Json = supportedType match {
       case STRING =>
         (_: CommittableRecord[_, _]) match {

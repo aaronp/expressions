@@ -34,7 +34,7 @@ object Stats {
     )
     val errors = result match {
       case Failure(_) => summary +: consumerStats.errors
-      case _ => consumerStats.errors
+      case _          => consumerStats.errors
     }
     val newRecords: Seq[RecordSummary] = summary +: consumerStats.recentRecords.take(20)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
@@ -51,7 +51,7 @@ object Stats {
     }
     val errors = result match {
       case Failure(_) => summary ++: consumerStats.errors
-      case _ => consumerStats.errors
+      case _          => consumerStats.errors
     }
     val newRecords: Seq[RecordSummary] = summary ++: consumerStats.recentRecords.take(20)
     consumerStats.copy(totalRecords = consumerStats.totalRecords + 1, recentRecords = newRecords, errors = errors.take(20))
@@ -66,7 +66,7 @@ object Stats {
     )
     val errors = result match {
       case Failure(_) => List(summary)
-      case _ => Nil
+      case _          => Nil
     }
     ConsumerStats(id, 1, Nil, Nil, List(summary), errors)
   }
@@ -83,7 +83,7 @@ object Stats {
       }
     val errors = result match {
       case Failure(_) => summary
-      case _ => Nil
+      case _          => Nil
     }
     ConsumerStats(id, 1, Nil, Nil, summary, errors)
   }
@@ -98,7 +98,7 @@ object Stats {
 
   private def asMessage(results: Try[Seq[(HttpRequest, HttpResponse)]]): String = {
     results match {
-      case Failure(err) => s"Error: $err"
+      case Failure(err)                        => s"Error: $err"
       case Success((request, response) :: Nil) => asMessage(request, response)
       case Success(list) =>
         list
@@ -111,7 +111,7 @@ object Stats {
 
   private def asJson(results: Try[Seq[(HttpRequest, HttpResponse)]]): Json = {
     results match {
-      case Failure(err) => Json.obj("error" -> s"${err}".asJson)
+      case Failure(err)                        => Json.obj("error" -> s"${err}".asJson)
       case Success((request, response) :: Nil) => asJson(request, response)
       case Success(list) =>
         val jsons = list.map {
@@ -123,7 +123,7 @@ object Stats {
 
   private def asJson(request: HttpRequest, response: HttpResponse): Json = {
     Map(
-      "request" -> request.asJson,
+      "request"  -> request.asJson,
       "response" -> asJson(response)
     ).asJson
   }
@@ -138,10 +138,10 @@ object Stats {
   @tailrec
   private def asString(value: Any): String = {
     value match {
-      case null => "NULL"
-      case jason: Json => jason.asString.getOrElse(jason.noSpaces)
+      case null                  => "NULL"
+      case jason: Json           => jason.asString.getOrElse(jason.noSpaces)
       case record: IndexedRecord => asString(SchemaGen.asJson(record))
-      case other => other.toString
+      case other                 => other.toString
     }
 
   }

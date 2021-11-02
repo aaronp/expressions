@@ -1,6 +1,5 @@
 package expressions.franz
 
-
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -37,7 +36,7 @@ object Seed {
     nextDouble.map(_ < percentile)
   }
 
-  val nextLong: State[Seed, Long] = State(seed => (seed.long,seed.next))
+  val nextLong: State[Seed, Long] = State(seed => (seed.long, seed.next))
 
   /**
     * a state which returns a double between 0.0 and 1.0

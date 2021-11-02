@@ -9,12 +9,12 @@ import org.apache.kafka.common.header.Headers
 import org.apache.kafka.common.serialization.*
 import org.slf4j.LoggerFactory
 import zio.blocking.Blocking
-import zio.{RIO, RManaged, Task, ZIO, ZManaged}
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.{ConsumerSettings, Subscription}
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde
 import zio.kafka.serde.Serde
+import zio.{RIO, RManaged, Task, ZIO, ZManaged}
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
@@ -66,7 +66,7 @@ object FranzConfig {
   }
 
   def asConfig(conf: String, theRest: String*) = {
-    import args4c.implicits._
+    import args4c.implicits.*
     (conf +: theRest).toArray.asConfig().getConfig("app.franz")
   }
 
@@ -83,7 +83,7 @@ object FranzConfig {
 
 final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfig("app.franz")) {
   override def toString: String = {
-    import args4c.implicits._
+    import args4c.implicits.*
     franzConfig
       .summaryEntries()
       .map { e =>
@@ -187,6 +187,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   def producer: RManaged[Blocking, Producer] = Producer.make(producerSettings)
 
   private def baseUrls = consumerConfig.asList("schema.registry.url").asJava
+
   lazy val schemaRegistryClient: SchemaRegistryClient = {
     val identityMapCapacity = consumerConfig.getInt("identityMapCapacity")
     new CachedSchemaRegistryClient(baseUrls, identityMapCapacity)
@@ -206,6 +207,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
     case "<random>" => randomValue
     case name       => name
   }
+
   def producerNamespace = franzConfig.getString("producer.namespace") match {
     case "<random>" => randomValue
     case name       => name
@@ -214,6 +216,7 @@ final case class FranzConfig(franzConfig: Config = ConfigFactory.load().getConfi
   def typeOf(serdeConfig: Config, defaultAvroNamespace: => String): SupportedType[_] = {
     val serializerName = serdeConfig.getString("serializer")
     serializerName.toLowerCase match {
+      case ""                     => SupportedType.STRING
       case "string" | "strings"   => SupportedType.STRING
       case "long" | "longs"       => SupportedType.LONG
       case "bytes" | "byte array" => SupportedType.BYTE_ARRAY
