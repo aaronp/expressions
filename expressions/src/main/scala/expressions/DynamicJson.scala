@@ -1,7 +1,7 @@
 package expressions
 
 import io.circe.{Decoder, Encoder, Json}
-
+import scala.language.implicitConversions
 import scala.language.dynamics
 import scala.util.Try
 

@@ -33,16 +33,6 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
     require(htmlRootDir.exists(), s"htmlRootDir '$htmlRootDir' doesn't exist (working dir is ${(Paths.get(".").toAbsolutePath)})")
   }
 
-  jsRootDirs.foreach { jsRootDir =>
-    def baseErr = s"jsRootDir '$jsRootDir' doesn't exist"
-
-    def error =
-      if (jsRootDir.toString.contains("js/target/scala-")) {
-        s"""$baseErr: You have to compile clientJS first (e.g. sbt "project clientJS" fastOptJS)"""
-      } else baseErr
-
-    require(jsRootDir.exists(), error)
-  }
   cssRootDirs.foreach { cssRootDir => //: JPath
     require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist (${cssRootDir.toAbsolutePath})")
   }
@@ -71,6 +61,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
         case request @ GET -> Root / "assets" / path                                             => getHTML(s"assets/$path", request)
         case request @ GET -> Root / "icons" / path                                              => getHTML(s"icons/$path", request)
         case request @ GET -> Root / "#" / path                                                              =>
+          println(s"Ignoring $path, returning $landingPage")
           getHTML(landingPage, request)
         case request @ GET -> Root                                                               => getHTML(landingPage, request)
         case request @ GET -> Root / path                                                        => getHTML(path, request)
