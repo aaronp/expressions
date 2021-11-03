@@ -77,15 +77,26 @@ object ToDart {
 
   case class Definition(className: String, params: Seq[Parameter]) {
     def asDartCode: String = {
-      s"""class $className {
+      s"""import 'dart:convert';
+         |class $className {
          |  ${params.map(p => s"this.${p.name}").mkString(s"${className}(\n\t", ",\n\t", "\n\t);")}
          |${params.map(p => s"${p.dartType} ${p.name}${p.dartInitializer};").mkString("\n    ", "\n    ", "")}
          |
-         |  Map<String, Object> get asJson {
+         |
+         |  bool operator ==(o) => o is $className && asJson == o.asJson;
+         |  int get hashCode => asJson.hashCode;
+         |
+         |  Map<String, Object> get asMap {
          |    return {
          |${params.map(p => s"        '${p.name}': ${p.name}").mkString(",\n")}
          |    };
          |  }
+         |
+         |  dynamic get asJson {
+         |    return jsonEncode(asMap);
+         |  }
+         |
+         |  @override String toString() => asMap.toString();
          |
          |  static ${className} fromJson(Map<String, dynamic> json) {
          |    return ${className}(

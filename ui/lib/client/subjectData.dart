@@ -15,7 +15,16 @@ class SubjectData {
   dynamic schema;
   dynamic testData;
 
-  Map<String, Object> get asJson {
+  bool operator ==(o) => o is SubjectData && asJson == o.asJson;
+  int get hashCode => asJson.hashCode;
+
+  dynamic get asJson {
+    return jsonEncode(asMap);
+  }
+
+  @override String toString() => asMap.toString();
+
+  Map<String, Object> get asMap {
     return {
       'subject': subject,
       'version': version,

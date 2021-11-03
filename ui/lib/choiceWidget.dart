@@ -12,6 +12,64 @@ class MyApp extends StatelessWidget {
   }
 }
 
+
+@immutable
+class User {
+  const User({this.email, this.name});
+
+  final String email;
+  final String name;
+
+  @override
+  String toString() {
+    return '$name, $email';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other.runtimeType != runtimeType) {
+      return false;
+    }
+    return other is User && other.name == name && other.email == email;
+  }
+
+  @override
+  int get hashCode => hashValues(email, name);
+}
+
+
+class AutocompleteBasicUserExample extends StatelessWidget {
+  const AutocompleteBasicUserExample({Key key = null}) : super(key: key);
+
+  static const List<User> _userOptions = <User>[
+    User(name: 'Alice', email: 'alice@example.com'),
+    User(name: 'Bob', email: 'bob@example.com'),
+    User(name: 'Charlie', email: 'charlie123@gmail.com'),
+  ];
+
+  static String _displayStringForOption(User option) => option.name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<User>(
+      displayStringForOption: _displayStringForOption,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text == '') {
+          return const Iterable<User>.empty();
+        }
+        return _userOptions.where((User option) {
+          return option
+              .toString()
+              .contains(textEditingValue.text.toLowerCase());
+        });
+      },
+      onSelected: (User selection) {
+        print('You just selected ${_displayStringForOption(selection)}');
+      },
+    );
+  }
+}
+
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -41,6 +99,59 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Widget example() {
+    return                   Container(
+      padding: EdgeInsets.all(16),
+      child: DropDownFormField(
+        titleText: 'My workout',
+        hintText: 'Please choose one',
+        value: _myActivity,
+        onSaved: (value) {
+          setState(() {
+            _myActivity = value;
+          });
+        },
+        onChanged: (value) {
+          setState(() {
+            _myActivity = value;
+          });
+        },
+        dataSource: [
+          {
+            "display": "Running",
+            "value": "Running",
+          },
+          {
+            "display": "Climbing",
+            "value": "Climbing",
+          },
+          {
+            "display": "Walking",
+            "value": "Walking",
+          },
+          {
+            "display": "Swimming",
+            "value": "Swimming",
+          },
+          {
+            "display": "Soccer Practice",
+            "value": "Soccer Practice",
+          },
+          {
+            "display": "Baseball Practice",
+            "value": "Baseball Practice",
+          },
+          {
+            "display": "Football Practice",
+            "value": "Football Practice",
+          },
+        ],
+        textField: 'display',
+        valueField: 'value',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,56 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-              Container(
-                padding: EdgeInsets.all(16),
-                child: DropDownFormField(
-                  titleText: 'My workout',
-                  hintText: 'Please choose one',
-                  value: _myActivity,
-                  onSaved: (value) {
-                    setState(() {
-                      _myActivity = value;
-                    });
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      _myActivity = value;
-                    });
-                  },
-                  dataSource: [
-                    {
-                      "display": "Running",
-                      "value": "Running",
-                    },
-                    {
-                      "display": "Climbing",
-                      "value": "Climbing",
-                    },
-                    {
-                      "display": "Walking",
-                      "value": "Walking",
-                    },
-                    {
-                      "display": "Swimming",
-                      "value": "Swimming",
-                    },
-                    {
-                      "display": "Soccer Practice",
-                      "value": "Soccer Practice",
-                    },
-                    {
-                      "display": "Baseball Practice",
-                      "value": "Baseball Practice",
-                    },
-                    {
-                      "display": "Football Practice",
-                      "value": "Football Practice",
-                    },
-                  ],
-                  textField: 'display',
-                  valueField: 'value',
-                ),
-              ),
+              AutocompleteBasicUserExample(),
               Container(
                 padding: EdgeInsets.all(8),
                 child: RaisedButton(

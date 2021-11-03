@@ -75,7 +75,6 @@ class _ConfigPageState extends State<ConfigPage> {
   @override
   void initState() {
     super.initState();
-    print('configPage::initState!');
     _reload(false);
   }
 
@@ -107,7 +106,6 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
-    // _reload();
 
     final runningButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),

@@ -15,6 +15,23 @@ class TopicData {
   List<SubjectData> other = [];
 
 
+  bool operator ==(o) => o is TopicData && asJson == o.asJson;
+  int get hashCode => asJson.hashCode;
+
+  dynamic get asJson {
+    return jsonEncode(asMap);
+  }
+
+  @override String toString() => asMap.toString();
+
+  Map<String, Object> get asMap {
+    return {
+      'key': key,
+      'value': value,
+      'other': other
+    };
+  }
+
   static Future<TopicData> get(String topic) async {
     var httpRequest = rc.Request(
         method: rc.RequestMethod.get,
@@ -23,14 +40,6 @@ class TopicData {
         headers: Rest.HttpHeaders);
     final response = await Rest.client.execute(request: httpRequest);
     return TopicData.fromJson(response.body);
-  }
-
-  Map<String, Object> get asJson {
-    return {
-      'key': key,
-      'value': value,
-      'other': other
-    };
   }
 
   static TopicData fromJson(Map<String, dynamic> json) {
