@@ -10,6 +10,8 @@ class SubjectData {
       this.testData
       );
 
+  static SubjectData empty() => SubjectData("", 0, {}, {});
+
   String subject;
   int version;
   dynamic schema;

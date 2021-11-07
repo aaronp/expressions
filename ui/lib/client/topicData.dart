@@ -10,10 +10,30 @@ class TopicData {
       this.other
       );
 
+  static TopicData empty() => TopicData([],[],[]);
+
   List<SubjectData> key = [];
   List<SubjectData> value = [];
   List<SubjectData> other = [];
 
+
+  bool hasKeySchema() => key.isNotEmpty;
+  SubjectData keyData() => hasKeySchema() ? key.first : SubjectData.empty();
+
+  bool hasValueSchema() => value.isNotEmpty;
+  SubjectData valueData() => hasValueSchema() ? value.first : SubjectData.empty();
+
+  SubjectData data() {
+    final List<SubjectData> all = [
+      ...key,
+      ...value,
+      ...other
+    ];
+    if (all.length > 1) {
+      throw new Exception("${all.length} topic data found");
+    }
+    return all.isEmpty ? SubjectData.empty() : all.first;
+  }
 
   bool operator ==(o) => o is TopicData && asJson == o.asJson;
   int get hashCode => asJson.hashCode;
@@ -39,6 +59,7 @@ class TopicData {
         url: '${Rest.HostPort}/rest/kafka/topic/$topic',
         headers: Rest.HttpHeaders);
     final response = await Rest.client.execute(request: httpRequest);
+    print("Topic $topic got $response");
     return TopicData.fromJson(response.body);
   }
 

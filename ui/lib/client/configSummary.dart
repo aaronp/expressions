@@ -31,6 +31,10 @@ class ConfigSummary {
   String producerKeyType;
   String producerValueType;
 
+  bool keyIsAvro() => keyType.trim().toLowerCase().startsWith("avro");
+
+  bool valueIsAvro() => valueType.trim().toLowerCase().startsWith("avro");
+
   String brokersAsString() {
     if (brokers.length == 1) {
       return brokers.first;

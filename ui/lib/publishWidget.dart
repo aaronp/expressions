@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'Consts.dart';
 import 'client/configSummary.dart';
 import 'client/postRecord.dart';
+import 'client/topicData.dart';
 import 'client/topics.dart';
 import 'fieldWidget.dart';
 
@@ -41,6 +42,7 @@ class _PublishWidgetState extends State<PublishWidget> {
   final _valueTextController = TextEditingController();
   final _keyTextController = TextEditingController();
   Topics _topics = Topics([], [], []);
+  TopicData _topic = TopicData.empty();
 
   @override
   void dispose() {
@@ -48,23 +50,36 @@ class _PublishWidgetState extends State<PublishWidget> {
     _valueTextController.dispose();
   }
 
+  String testDataForType(String t ) {
+    final safe = t.toLowerCase().trim();
+    if (safe == "string") {
+      return "text-${(DateTime.now().millisecondsSinceEpoch % 337).toString()}";
+    } else if (safe == "long") {
+      return (DateTime.now().millisecondsSinceEpoch % 337).toString();
+    } else {
+      return "dunno for $t";
+    }
+  }
   @override
   void initState() {
     super.initState();
     _summary = widget.summary;
-    _keyTextController.text = "record-{{i}}";
-    _valueTextController.text = '''{
-      "data" : "value-{{i}}",
-      "nested" : {
-         "numbers" : [1,2,3]
-       },
-      "flag" :  true
-    }''';
+    _keyTextController.text = _topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
+    _valueTextController.text = _topic.hasValueSchema() ? _topic.valueData().testData.toString() : testDataForType(_summary.valueType);
 
     _reload(false);
   }
 
+
+  void reloadTopic() {
+    TopicData.get(_summary.topic).then((value) {
+      setState(() {
+        _topic = value;
+      });
+    });
+  }
   void _reload(bool force) {
+    reloadTopic();
     Topics.get().then((found) {
       setState(() {
         _topics = found;
@@ -147,6 +162,13 @@ class _PublishWidgetState extends State<PublishWidget> {
       final suggestedRows = 4 + (heightAvailableForCode ~/ 20);
       final numRows = max(4, min(40, suggestedRows));
       final valueHeight = max(100, constraints.maxHeight - 315);
+
+      final knownAvroKey = _topics.keys.contains(_summary.topic);
+      final knownAvroValue =
+      _topics.values.contains(_summary.topic);
+
+      final showNamespace = !knownAvroValue && _summary.keyIsAvro();
+
       return Container(
         // constraints: BoxConstraints(maxHeight: 200),
         margin: EdgeInsets.all(16),
@@ -177,16 +199,24 @@ class _PublishWidgetState extends State<PublishWidget> {
                       textOk)),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
                     child: Container(
                       width: 200,
-                      height: 300,
+                      height: showNamespace ? 150 : 100,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text("Key:"),
-                          Text("${_summary.keyType}"),
+                          typeWidget("Key", _summary.keyType, knownAvroKey, (value) {
+                            setState(() {
+                              _summary.keyType = value;
+                            });
+                          }),
+                          if (showNamespace) Text("Namespace:"),
                           OutlinedButton.icon(onPressed: _onReloadKey, icon: Icon(Icons.refresh), label: Text("(refresh)")),
                         ],
                       ),
@@ -219,7 +249,8 @@ class _PublishWidgetState extends State<PublishWidget> {
                     ),
                   ),
                 ],
-              )
+              ),
+              Flexible(child: Container())
             ],
           ),
         ),
