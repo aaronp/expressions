@@ -3,7 +3,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'Consts.dart';
+import 'client/configSummary.dart';
 import 'client/postRecord.dart';
+import 'client/topics.dart';
 import 'fieldWidget.dart';
 
 void main() {
@@ -13,14 +16,15 @@ void main() {
       darkTheme: ThemeData(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
-      home: PublishWidget("foo", "bar", "")));
+      home: PublishWidget("foo", ConfigSummary(
+        "bar", {}, [] , "string" , "string" , "string" , "string"), "")));
 }
 
 class PublishWidget extends StatefulWidget {
-  PublishWidget(this.title, this.topic, this.configuration, {Key key})
+  PublishWidget(this.title, this.summary, this.configuration, {Key key})
       : super(key: key);
   final String title;
-  final String topic;
+  final ConfigSummary summary;
   final String configuration;
 
   @override
@@ -31,11 +35,12 @@ class _PublishWidgetState extends State<PublishWidget> {
   final _formKey = GlobalKey<FormState>();
 
   int _repeat = 1;
-  String _topicOverride;
+  ConfigSummary _summary;
   String _partitionOverride = "";
 
   final _valueTextController = TextEditingController();
   final _keyTextController = TextEditingController();
+  Topics _topics = Topics([], [], []);
 
   @override
   void dispose() {
@@ -46,7 +51,7 @@ class _PublishWidgetState extends State<PublishWidget> {
   @override
   void initState() {
     super.initState();
-    _topicOverride = widget.topic;
+    _summary = widget.summary;
     _keyTextController.text = "record-{{i}}";
     _valueTextController.text = '''{
       "data" : "value-{{i}}",
@@ -55,14 +60,24 @@ class _PublishWidgetState extends State<PublishWidget> {
        },
       "flag" :  true
     }''';
+
+    _reload(false);
   }
 
-  @override
+  void _reload(bool force) {
+    Topics.get().then((found) {
+      setState(() {
+        _topics = found;
+      });
+    });
+  }
+
+    @override
   Widget build(BuildContext context) {
     return SafeArea(
         child: Scaffold(
       appBar: AppBar(
-          title: Align(alignment: Alignment.topLeft, child: Text("Publish")),
+          title: Align(alignment: Alignment.topLeft, child: Text("Publish to '${this.widget.summary.topic}'")),
           backgroundColor: Colors.grey[800],
           actions: []),
       floatingActionButton: FloatingActionButton(
@@ -82,7 +97,7 @@ class _PublishWidgetState extends State<PublishWidget> {
           key,
           _repeat,
           isNumber(_partitionOverride) ? int.parse(_partitionOverride) : null,
-          _topicOverride,
+          _summary.topic,
           Map());
     } else {
       return null;
@@ -148,13 +163,10 @@ class _PublishWidgetState extends State<PublishWidget> {
                       "1",
                           (value) => _repeat = int.parse(value),
                       validateNumber)),
+
               Flexible(
-                  child: FieldWidget(
-                      "Topic:", "The topic to publish to", _topicOverride,
-                          (value) {
-                        _topicOverride = value;
-                      }, textOk)),
-              Flexible(
+                // see https://stackoverflow.com/questions/49577781/how-to-create-number-input-field-in-flutter
+                //keyboardType: TextInputType.number
                   child: FieldWidget(
                       "Partition:",
                       "A specific partition to publish to, if specified",
@@ -168,7 +180,17 @@ class _PublishWidgetState extends State<PublishWidget> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
-                    child: Text("Key:"),
+                    child: Container(
+                      width: 200,
+                      height: 300,
+                      child: Column(
+                        children: [
+                          Text("Key:"),
+                          Text("${_summary.keyType}"),
+                          OutlinedButton.icon(onPressed: _onReloadKey, icon: Icon(Icons.refresh), label: Text("(refresh)")),
+                        ],
+                      ),
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -204,5 +226,44 @@ class _PublishWidgetState extends State<PublishWidget> {
       );
 
     });
+  }
+
+  Widget typeWidget(
+      String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
+    final List<String> values = [...Consts.SupportedTypes];
+    if (!values.contains(currentValue)) {
+      values.insert(values.length, currentValue);
+    }
+
+    final child = isAvro
+        ? Text("Avro")
+        : DropdownButton<String>(
+      items: values.map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      value: currentValue,
+      onChanged: onUpdate,
+    );
+
+    return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          width: 600,
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 8.0, 0),
+                child: Text("$label :"),
+              ),
+              child,
+            ],
+          ),
+        ));
+  }
+  void _onReloadKey() {
+
   }
 }

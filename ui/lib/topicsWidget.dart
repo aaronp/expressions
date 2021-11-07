@@ -9,6 +9,34 @@ void main() => runApp(MaterialApp(
 
 typedef OnTopicSelected = void Function(String value);
 
+class AutoCompleteFld extends StatelessWidget {
+  const AutoCompleteFld({
+    this.focusNode,
+    this.textEditingController,
+    this.onFieldSubmitted,
+    Key key,
+  }) : super(key: key);
+
+  final FocusNode focusNode;
+
+  final VoidCallback onFieldSubmitted;
+
+  final TextEditingController textEditingController;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: textEditingController,
+      focusNode: focusNode,
+      onFieldSubmitted: (String value) {
+        onFieldSubmitted();
+      },
+    );
+  }
+}
+
+
+
 class TopicsWidget extends StatefulWidget {
   TopicsWidget({this.topics, this.onSelected, this.selectedTopic, Key key}) : super(key: key);
 
@@ -38,6 +66,17 @@ class _TopicsWidgetState extends State<TopicsWidget> {
             width: 200,
             child: Autocomplete<String>(
               displayStringForOption: RawAutocomplete.defaultStringForOption,
+              fieldViewBuilder: (BuildContext c, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+                VoidCallback onSubmitted = () {
+                  onFieldSubmitted();
+                  widget.onSelected(textEditingController.text);
+                };
+
+                if (textEditingController.text.isEmpty) {
+                  textEditingController.text = this.widget.selectedTopic;
+                }
+                return AutoCompleteFld(textEditingController: textEditingController, focusNode:focusNode, onFieldSubmitted: onSubmitted);
+              },
               optionsMaxHeight: 400,
               initialValue: this.widget.selectedTopic == null ? null : TextEditingValue(text : this.widget.selectedTopic),
               optionsBuilder: (TextEditingValue textEditingValue) {

@@ -7,6 +7,7 @@ import 'package:ui/publishWidget.dart';
 import 'package:ui/runningConsumersWidget.dart';
 import 'package:ui/topicsWidget.dart';
 
+import 'Consts.dart';
 import 'client/batchClient.dart';
 import 'client/configClient.dart';
 import 'client/configSummary.dart';
@@ -186,15 +187,17 @@ class _ConfigPageState extends State<ConfigPage> {
               selectedTopic: _currentConfig.summary.topic,
               onSelected: (newValue) => _onNewTopic(newValue)),
           typeWidget(
-              "Key Type ($knownAvroKey)",
+              "Key Type",
               _currentConfig.summary.keyType,
               knownAvroKey,
-              (newValue) => _currentConfig.summary.keyType = newValue),
+              (newValue) => setState(() {
+                _currentConfig.summary.keyType = newValue;
+              })),
           typeWidget(
-              "Value Type ($knownAvroValue)",
+              "Value Type",
               _currentConfig.summary.valueType,
               knownAvroValue,
-              (newValue) => _currentConfig.summary.valueType = newValue),
+              (newValue) => setState(() {_currentConfig.summary.valueType = newValue;})),
           Container(
             height: 400.0,
             alignment: Alignment.topLeft,
@@ -278,40 +281,40 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  Widget typeWidget(String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
-    final List<String> values = ['String', 'Long', 'Avro'];
+  Widget typeWidget(
+      String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
+    final List<String> values = [...Consts.SupportedTypes];
     if (!values.contains(currentValue)) {
       values.insert(values.length, currentValue);
     }
 
-
     final child = isAvro
         ? Text("Avro")
-        : Container(
-            width: 80,
-            child: DropdownButton<String>(
-              items: values.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-        value : currentValue,
-              onChanged: onUpdate,
-            ));
+        : DropdownButton<String>(
+      items: values.map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      value: currentValue,
+      onChanged: onUpdate,
+    );
 
-    return Padding(padding: const EdgeInsets.all(8.0), child: Container(
-      width: 600,
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0,0,8.0,0),
-            child: Text("$label:"),
+    return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          width: 600,
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 8.0, 0),
+                child: Text("$label :"),
+              ),
+              child,
+            ],
           ),
-          child,
-        ],
-      ),
-    ));
+        ));
   }
 
   Widget mappingsWidget(BuildContext ctxt) {
@@ -362,7 +365,8 @@ class _ConfigPageState extends State<ConfigPage> {
 
   void onPublish(BuildContext ctxt) => _push(
       ctxt,
-      PublishWidget(_currentConfig.fileName, _currentConfig.summary.topic,
+      PublishWidget(_currentConfig.fileName,
+          _currentConfig.summary,
           _currentConfig.loadedContent));
 
   void onEditConfig(BuildContext ctxt) async {
