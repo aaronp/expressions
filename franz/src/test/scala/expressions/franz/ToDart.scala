@@ -25,7 +25,7 @@ object ToDart {
   case class Question(text: String, values: List[Choice], kind: String, required: Boolean, weight: Double)
   case class Choice(text: String, score: Int)
 
-  implicit class Tap[A](val value: A) extends AnyVal {
+  extension [A](value: A) {
     def tap(f: A => Unit): A = {
       f(value)
       value

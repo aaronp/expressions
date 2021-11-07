@@ -10,10 +10,11 @@ void main() => runApp(MaterialApp(
 typedef OnTopicSelected = void Function(String value);
 
 class TopicsWidget extends StatefulWidget {
-  TopicsWidget({this.topics, this.onSelected, Key key}) : super(key: key);
+  TopicsWidget({this.topics, this.onSelected, this.selectedTopic, Key key}) : super(key: key);
 
   OnTopicSelected onSelected;
   Topics topics;
+  String selectedTopic;
 
   @override
   State<TopicsWidget> createState() => _TopicsWidgetState();
@@ -22,18 +23,36 @@ class TopicsWidget extends StatefulWidget {
 class _TopicsWidgetState extends State<TopicsWidget> {
   @override
   Widget build(BuildContext context) {
-    return Autocomplete<String>(
-      displayStringForOption: (option) => option,
-      optionsMaxHeight: 400,
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.trim() == '') {
-          return widget.topics.all;
-        }
-        return widget.topics.all.where((String topic) {
-          return topic.contains(textEditingValue.text.toLowerCase());
-        });
-      },
-      onSelected: widget.onSelected,
+    return Container(
+      width: 400,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text("Topic (${this.widget.selectedTopic}):"),
+          ),
+          Container(
+            width: 200,
+            child: Autocomplete<String>(
+              displayStringForOption: RawAutocomplete.defaultStringForOption,
+              optionsMaxHeight: 400,
+              initialValue: this.widget.selectedTopic == null ? null : TextEditingValue(text : this.widget.selectedTopic),
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.trim() == '') {
+                  return widget.topics.all;
+                }
+                return widget.topics.all.where((String topic) {
+                  return topic.contains(textEditingValue.text.toLowerCase());
+                });
+              },
+              onSelected: widget.onSelected,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

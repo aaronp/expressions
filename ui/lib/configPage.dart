@@ -5,12 +5,14 @@ import 'package:ui/editTopicMapping.dart';
 import 'package:ui/editZIOMapping.dart';
 import 'package:ui/publishWidget.dart';
 import 'package:ui/runningConsumersWidget.dart';
+import 'package:ui/topicsWidget.dart';
 
 import 'client/batchClient.dart';
 import 'client/configClient.dart';
 import 'client/configSummary.dart';
 import 'client/diskClient.dart';
 import 'client/mappingEntry.dart';
+import 'client/topics.dart';
 import 'fieldWidget.dart';
 import 'openFileWidget.dart';
 
@@ -41,6 +43,7 @@ class ConfigPage extends StatefulWidget {
 
 class _ConfigPageState extends State<ConfigPage> {
   LoadedConfig _currentConfig = LoadedConfig("", "", ConfigSummary.empty());
+  Topics _topics = Topics([], [], []);
   String _lastLoadedFileName = "";
   final _formKey = GlobalKey<FormState>();
 
@@ -55,7 +58,6 @@ class _ConfigPageState extends State<ConfigPage> {
     //   _lastLoadedFileName = "application.conf";
     // });
     return loaded;
-
   }
 
   Future<LoadedConfig> defaultConfig() async {
@@ -82,7 +84,14 @@ class _ConfigPageState extends State<ConfigPage> {
     print(
         "reload checking _lastLoadedFileName '${_lastLoadedFileName}' != _currentConfig.fileName '${_currentConfig.fileName}' = ${_lastLoadedFileName != _currentConfig.fileName}");
 
-    if (force || _lastLoadedFileName.isEmpty ||
+    Topics.get().then((found) {
+      setState(() {
+        _topics = found;
+      });
+    });
+
+    if (force ||
+        _lastLoadedFileName.isEmpty ||
         _lastLoadedFileName != _currentConfig.fileName) {
       defaultConfig().then((value) {
         print("defaultConfig() returned (${!value.isEmpty()}) :  $value");
@@ -106,7 +115,6 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
-
     final runningButton = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 2, 8.0, 2.0),
         child: TextButton.icon(
@@ -160,6 +168,11 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   Widget configColumn(BuildContext ctxt) {
+    // if this topic is known to the schema regitry, then we know the type,
+    // and so should display it as read-only
+    final knownAvroKey = _topics.keys.contains(_currentConfig.summary.topic);
+    final knownAvroValue =
+        _topics.values.contains(_currentConfig.summary.topic);
     return Container(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -168,11 +181,19 @@ class _ConfigPageState extends State<ConfigPage> {
         children: [
           configEntry("Brokers", _currentConfig.summary.brokersAsString(),
               (newValue) => _currentConfig.summary.brokers = [newValue]),
-          configEntry("Topic", _currentConfig.summary.topic,
-              (newValue) => _currentConfig.summary.topic = newValue),
-          configEntry("Key Type", _currentConfig.summary.keyType,
+          TopicsWidget(
+              topics: _topics,
+              selectedTopic: _currentConfig.summary.topic,
+              onSelected: (newValue) => _onNewTopic(newValue)),
+          typeWidget(
+              "Key Type ($knownAvroKey)",
+              _currentConfig.summary.keyType,
+              knownAvroKey,
               (newValue) => _currentConfig.summary.keyType = newValue),
-          configEntry("Value Type", _currentConfig.summary.valueType,
+          typeWidget(
+              "Value Type ($knownAvroValue)",
+              _currentConfig.summary.valueType,
+              knownAvroValue,
               (newValue) => _currentConfig.summary.valueType = newValue),
           Container(
             height: 400.0,
@@ -255,6 +276,42 @@ class _ConfigPageState extends State<ConfigPage> {
           child: FieldWidget(
               label, "$label config", value, onUpdate, (newValue) => null)),
     );
+  }
+
+  Widget typeWidget(String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
+    final List<String> values = ['String', 'Long', 'Avro'];
+    if (!values.contains(currentValue)) {
+      values.insert(values.length, currentValue);
+    }
+
+
+    final child = isAvro
+        ? Text("Avro")
+        : Container(
+            width: 80,
+            child: DropdownButton<String>(
+              items: values.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+        value : currentValue,
+              onChanged: onUpdate,
+            ));
+
+    return Padding(padding: const EdgeInsets.all(8.0), child: Container(
+      width: 600,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0,0,8.0,0),
+            child: Text("$label:"),
+          ),
+          child,
+        ],
+      ),
+    ));
   }
 
   Widget mappingsWidget(BuildContext ctxt) {
@@ -405,7 +462,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
       final deleteButton = IconButton(
           onPressed: () => onRemoveMapping(ctxt, quotedKey),
-          icon: Icon(Icons.highlight_remove, color : Colors.red));
+          icon: Icon(Icons.highlight_remove, color: Colors.red));
 
       final link = InkWell(
           child:
@@ -466,5 +523,11 @@ class _ConfigPageState extends State<ConfigPage> {
       loadConfig(fileName).then((value) async => _updateLoadedConfig(value));
     }
     return fileName;
+  }
+
+  void _onNewTopic(String newValue) {
+    setState(() {
+      _currentConfig.summary.topic = newValue;
+    });
   }
 }
