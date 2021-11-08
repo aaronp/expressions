@@ -64,6 +64,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.4"
+  drop_zone:
+    dependency: "direct main"
+    description:
+      name: drop_zone
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.2"
   dropdown_formfield:
     dependency: "direct main"
     description:

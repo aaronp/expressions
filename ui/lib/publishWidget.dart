@@ -56,6 +56,9 @@ class _PublishWidgetState extends State<PublishWidget> {
       return "text-${(DateTime.now().millisecondsSinceEpoch % 337).toString()}";
     } else if (safe == "long") {
       return (DateTime.now().millisecondsSinceEpoch % 337).toString();
+    } else if (safe.startsWith("avro")) {
+      //TopicData.get(t)
+      return "some avro...";
     } else {
       return "dunno for $t";
     }

@@ -19,6 +19,7 @@ dependencies:
   pretty_json:
   confirm_dialog: ^1.0.0
   flutter_spinbox: ^0.6.0
+  drop_zone: ^1.0.2
 
 dev_dependencies:
   flutter_test:
