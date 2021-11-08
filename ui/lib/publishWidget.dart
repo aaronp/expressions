@@ -1,7 +1,13 @@
 import 'dart:convert';
+// import 'dart:html';
 import 'dart:math';
+import 'dart:html' as darthtml;
+import 'package:http/http.dart';
+import 'dart:typed_data';
 
+import 'package:drop_zone/drop_zone.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinbox/material.dart';
 
 import 'Consts.dart';
 import 'client/configSummary.dart';
@@ -17,9 +23,22 @@ void main() {
       darkTheme: ThemeData(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
-      home: PublishWidget("foo", ConfigSummary(
-        "bar", {}, [] , "string" , "string" , "string" , "string"), "")));
+      home: PublishWidget(
+          "foo",
+          ConfigSummary(
+              "bar",
+              {},
+              [],
+              "string",
+              "string",
+              "string",
+              "string"),
+          "")));
 }
+
+typedef OnTabChange = void Function(int value);
+typedef OnUpdateValue = void Function(dynamic jason);
+typedef OnUpload = void Function(Uint8List data);
 
 class PublishWidget extends StatefulWidget {
   PublishWidget(this.title, this.summary, this.configuration, {Key key})
@@ -35,27 +54,29 @@ class PublishWidget extends StatefulWidget {
 class _PublishWidgetState extends State<PublishWidget> {
   final _formKey = GlobalKey<FormState>();
 
+  int _selectedIndex = 0;
   int _repeat = 1;
   ConfigSummary _summary;
   String _partitionOverride = "";
 
-  final _valueTextController = TextEditingController();
-  final _keyTextController = TextEditingController();
+  int _keyTabIndex = 0;
+  dynamic _latestKeyValue = "";
+  dynamic _latestValueValue = "";
+  int _valueTabIndex = 0;
+
   Topics _topics = Topics([], [], []);
   TopicData _topic = TopicData.empty();
 
-  @override
-  void dispose() {
-    super.dispose();
-    _valueTextController.dispose();
-  }
-
-  String testDataForType(String t ) {
+  String testDataForType(String t) {
     final safe = t.toLowerCase().trim();
     if (safe == "string") {
-      return "text-${(DateTime.now().millisecondsSinceEpoch % 337).toString()}";
+      return "text-${(DateTime
+          .now()
+          .millisecondsSinceEpoch % 337).toString()}";
     } else if (safe == "long") {
-      return (DateTime.now().millisecondsSinceEpoch % 337).toString();
+      return (DateTime
+          .now()
+          .millisecondsSinceEpoch % 337).toString();
     } else if (safe.startsWith("avro")) {
       //TopicData.get(t)
       return "some avro...";
@@ -63,16 +84,72 @@ class _PublishWidgetState extends State<PublishWidget> {
       return "dunno for $t";
     }
   }
+
   @override
   void initState() {
     super.initState();
+
     _summary = widget.summary;
-    _keyTextController.text = _topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
-    _valueTextController.text = _topic.hasValueSchema() ? _topic.valueData().testData.toString() : testDataForType(_summary.valueType);
+    // _keyTextController.text = _topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
+    // _valueTextController.text = _topic.hasValueSchema() ? _topic.valueData().testData.toString() : testDataForType(_summary.valueType);
 
     _reload(false);
   }
 
+  void doit() {
+    var request = new http.MultipartRequest("POST", url);
+    request.fields['user'] = 'someone@somewhere.com';
+    request.files.add(http.MultipartFile.fromPath(
+      'package',
+      'build/package.tar.gz',
+      contentType: new MediaType('application', 'x-tar'),
+    ));
+    request.send().then((response) {
+      if (response.statusCode == 200) print("Uploaded!");
+    });
+  }
+
+  void uploadSelectedFile(String topic, String fileName, Uint8List data) async {
+    //---Create http package multipart request object
+    final request = new MultipartRequest(
+      "POST",
+      Uri.parse("Your API URL"),
+    );
+
+    request.fields["topic"] = topic;
+    request.files.add(MultipartFile.fromBytes("file", data, filename : fileName));
+
+    //-------Send request
+    var resp = await request.send();
+
+    //------Read response
+    String result = await resp.stream.bytesToString();
+
+    //-------Your response
+    print(result);
+  }
+
+  Widget keyWidget() {
+    return TabbedWidget(_keyTabIndex, _latestKeyValue, true, (idx) {
+      _keyTabIndex = idx;
+    }, (newValue) {
+      print(" >>>> Key is $newValue");
+      _latestKeyValue = newValue;
+    }, (uploadData) {
+      uploadSelectedFile(this.widget.summary.topic);
+    },key: Key("key$_keyTabIndex"));
+  }
+
+  Widget valueWidget() {
+    return TabbedWidget(_valueTabIndex, _latestValueValue, false, (idx) {
+      _valueTabIndex = idx;
+    }, (newValue) {
+      print(" >>>> Value is $newValue");
+      _latestValueValue = newValue;
+    }, (uploadData) {
+
+    }, key: Key("value$_valueTabIndex"));
+  }
 
   void reloadTopic() {
     TopicData.get(_summary.topic).then((value) {
@@ -81,6 +158,7 @@ class _PublishWidgetState extends State<PublishWidget> {
       });
     });
   }
+
   void _reload(bool force) {
     reloadTopic();
     Topics.get().then((found) {
@@ -90,20 +168,24 @@ class _PublishWidgetState extends State<PublishWidget> {
     });
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
         child: Scaffold(
-      appBar: AppBar(
-          title: Align(alignment: Alignment.topLeft, child: Text("Publish to '${this.widget.summary.topic}'")),
-          backgroundColor: Colors.grey[800],
-          actions: []),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.publish),
-        onPressed: onPublish,
-      ),
-      body: publishFormWidget(),
-    ));
+          appBar: AppBar(
+              title: Align(
+                  alignment: Alignment.topLeft,
+                  child: Text("Publish to '${this.widget.summary.topic}'")),
+              backgroundColor: Colors.grey[800],
+              actions: []),
+          floatingActionButton: FloatingActionButton.extended(
+            label: Text('Publish'),
+            icon: Icon(Icons.publish),
+            backgroundColor: Colors.orange,
+            onPressed: onPublish,
+          ),
+          body: publishLayout(context), //publishFormWidget()
+        ));
   }
 
   PostRecord asPostRecord(dynamic key, dynamic value) {
@@ -126,24 +208,24 @@ class _PublishWidgetState extends State<PublishWidget> {
     final dontShootMe = ScaffoldMessenger.of(context);
     dynamic value;
     try {
-      value = jsonDecode(_valueTextController.text);
+      // value = jsonDecode(_valueTextController.text);
     } catch (e) {
       dontShootMe
           .showSnackBar(SnackBar(content: Text("Invalid value jason: $e")));
       return;
     }
     dynamic key;
-    try {
-      key = jsonDecode(_keyTextController.text);
-    } catch (e1) {
-      try {
-        key = jsonDecode("\"${_keyTextController.text}\"");
-      } catch (e) {
-        dontShootMe
-            .showSnackBar(SnackBar(content: Text("Invalid key jason: $e")));
-        return;
-      }
-    }
+    // try {
+    //   key = jsonDecode(_keyTextController.text);
+    // } catch (e1) {
+    //   try {
+    //     key = jsonDecode("\"${_keyTextController.text}\"");
+    //   } catch (e) {
+    //     dontShootMe
+    //         .showSnackBar(SnackBar(content: Text("Invalid key jason: $e")));
+    //     return;
+    //   }
+    // }
 
     final post = asPostRecord(key, value);
     if (post != null) {
@@ -151,12 +233,45 @@ class _PublishWidgetState extends State<PublishWidget> {
         final numPublished = await post.publish();
         dontShootMe.showSnackBar(SnackBar(
             content:
-                Text("Published ${numPublished} to ${post.topicOverride}")));
+            Text("Published ${numPublished} to ${post.topicOverride}")));
       } catch (e) {
         dontShootMe.showSnackBar(
             SnackBar(content: Text("Failed to publish $post: $e")));
       }
     }
+  }
+
+  Widget publishLayout(BuildContext c) {
+    return Row(
+      children: <Widget>[
+        NavigationRail(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (int index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          labelType: NavigationRailLabelType.all,
+          destinations: const <NavigationRailDestination>[
+            NavigationRailDestination(
+              icon: Icon(Icons.polymer),
+              selectedIcon: Icon(Icons.polymer),
+              label: Text('Keys'),
+            ),
+            NavigationRailDestination(
+              icon: Icon(Icons.message),
+              selectedIcon: Icon(Icons.message),
+              label: Text('Values'),
+            )
+          ],
+        ),
+        const VerticalDivider(thickness: 1, width: 1),
+        // This is the main content.
+        Expanded(
+          child: _selectedIndex == 0 ? keyWidget() : valueWidget(),
+        )
+      ],
+    );
   }
 
   Widget publishFormWidget() {
@@ -167,10 +282,14 @@ class _PublishWidgetState extends State<PublishWidget> {
       final valueHeight = max(100, constraints.maxHeight - 315);
 
       final knownAvroKey = _topics.keys.contains(_summary.topic);
-      final knownAvroValue =
-      _topics.values.contains(_summary.topic);
+      final knownAvroValue = _topics.values.contains(_summary.topic);
 
       final showNamespace = !knownAvroValue && _summary.keyIsAvro();
+
+      double screenHeight = MediaQuery
+          .of(context)
+          .size
+          .height;
 
       return Container(
         // constraints: BoxConstraints(maxHeight: 200),
@@ -178,7 +297,7 @@ class _PublishWidgetState extends State<PublishWidget> {
         child: Form(
           key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Flexible(
@@ -188,7 +307,6 @@ class _PublishWidgetState extends State<PublishWidget> {
                       "1",
                           (value) => _repeat = int.parse(value),
                       validateNumber)),
-
               Flexible(
                 // see https://stackoverflow.com/questions/49577781/how-to-create-number-input-field-in-flutter
                 //keyboardType: TextInputType.number
@@ -196,74 +314,20 @@ class _PublishWidgetState extends State<PublishWidget> {
                       "Partition:",
                       "A specific partition to publish to, if specified",
                       "",
-                          (value) => isNumber(value)
+                          (value) =>
+                      isNumber(value)
                           ? _partitionOverride = value
                           : _partitionOverride = "",
                       textOk)),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
-                    child: Container(
-                      width: 200,
-                      height: showNamespace ? 150 : 100,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          typeWidget("Key", _summary.keyType, knownAvroKey, (value) {
-                            setState(() {
-                              _summary.keyType = value;
-                            });
-                          }),
-                          if (showNamespace) Text("Namespace:"),
-                          OutlinedButton.icon(onPressed: _onReloadKey, icon: Icon(Icons.refresh), label: Text("(refresh)")),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    constraints: BoxConstraints(maxWidth: 400, maxHeight: 200),
-                    child: TextField(
-                      controller: _keyTextController,
-                      maxLines: 4,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 16, 8, 0),
-                    child: Text("Value:"),
-                  ),
-                  Container(
-                    // decoration: BoxDecoration(color: Colors.blueGrey),
-                    padding: const EdgeInsets.all(8),
-                    constraints: BoxConstraints(maxWidth: 400, maxHeight: valueHeight),
-                    child: TextField(
-                      controller: _valueTextController,
-                      maxLines: numRows,
-                    ),
-                  ),
-                ],
-              ),
-              Flexible(child: Container())
             ],
           ),
         ),
       );
-
     });
   }
 
-  Widget typeWidget(
-      String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
+  Widget typeWidget(String label, String currentValue, bool isAvro,
+      OnUpdate onUpdate) {
     final List<String> values = [...Consts.SupportedTypes];
     if (!values.contains(currentValue)) {
       values.insert(values.length, currentValue);
@@ -297,7 +361,207 @@ class _PublishWidgetState extends State<PublishWidget> {
           ),
         ));
   }
-  void _onReloadKey() {
 
+  void _onReloadKey() {}
+}
+
+class TabbedWidget extends StatefulWidget {
+  TabbedWidget(this.tabIndex, this.initialValue, this.isKey, this.onTabChange,
+      this.onValueChange,
+      this.onUpload,
+      {Key key})
+      : super(key: key);
+
+  OnTabChange onTabChange;
+  OnUpdateValue onValueChange;
+  OnUpload onUpload;
+  bool isKey;
+  int tabIndex;
+  dynamic initialValue;
+
+  @override
+  _TabbedWidgetState createState() => _TabbedWidgetState();
+}
+
+class _TabbedWidgetState extends State<TabbedWidget>
+    with TickerProviderStateMixin {
+  final _textController = TextEditingController();
+  TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = new TabController(
+        initialIndex: this.widget.tabIndex, length: 4, vsync: this);
+    _tabController.addListener(() {
+      this.widget.onTabChange(_tabController.index);
+    });
+    _textController.text = this.widget.initialValue.toString();
+    //""; //_topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _textController.dispose();
+    _tabController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return contentWidget(context);
+  }
+
+  Widget contentWidget(BuildContext c) {
+    double screenHeight = MediaQuery
+        .of(c)
+        .size
+        .height;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: <Widget>[
+        TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.orange,
+          labelColor: Colors.orange,
+          unselectedLabelColor: Theme
+              .of(c)
+              .primaryTextTheme
+              .caption
+              .color,
+          isScrollable: true,
+          tabs: <Widget>[
+            Tab(text: "String"),
+            Tab(text: "Long"),
+            Tab(text: "Json"),
+            Tab(text: "Avro"),
+          ],
+        ),
+        Container(
+          height: screenHeight * 0.80,
+          margin: EdgeInsets.only(left: 16.0, right: 16.0),
+          child: TabBarView(
+            controller: _tabController,
+            children: <Widget>[
+              stringInputWidget(c),
+              numericWidget(c),
+              inputWidget(c, "Json"),
+              inputWidget(c, "Avro"),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  Container stringInputWidget(BuildContext c) {
+    String hint = this.widget.isKey ? 'String key' : 'String value';
+    return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: TextField(
+          controller: _textController,
+          onSubmitted: (newValue) => this.widget.onValueChange(newValue),
+          decoration:
+          InputDecoration(border: OutlineInputBorder(), hintText: hint),
+        ));
+  }
+
+  void parseFiles(BuildContext c, List<darthtml.File> files) {
+    if (files.length == 1) {
+      final file = files[0];
+      darthtml.FileReader reader = darthtml.FileReader();
+
+      reader.onLoadEnd.listen((e) {
+        this.widget.onUpload(reader.result);
+        // parseFiles(c, reader.result)
+        // Uint8List
+        // setState(() {
+        //   droppedFile = ;
+        // });
+      });
+
+      reader.onError.listen((fileEvent) {
+        setState(() {
+          ScaffoldMessenger.of(c).showSnackBar(
+              SnackBar(content: Text("Error parsing file '${file.name}': $e")));
+        });
+      });
+
+      reader.readAsArrayBuffer(file);
+    }
+  }
+
+  Widget inputWidget(BuildContext c, String label) {
+    // double screenHeight = MediaQuery.of(c).size.height;
+    return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
+      final rows = max(10, constraints.maxHeight ~/ 10);
+      // print("ROWS => $rows");
+      return DropZone(
+          onDragEnter: () { },
+          onDragExit: () { },
+          onDrop: (List<html.File> files) {
+            parseFiles(c, files);
+          },
+          child: Container(
+              height: constraints.maxHeight * 0.7,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8.0),
+                // color: Colors.blueGrey[300],
+              ),
+              child: Card(
+                  color: Colors.grey,
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: TextField(
+                      maxLines: rows,
+                      decoration: InputDecoration.collapsed(
+                          hintText: "Enter (or drag & drop) $label here"),
+                    ),
+                  )
+              )));
+    });
+  }
+
+  double initialIntValue() {
+    try {
+      return double.parse(this.widget.initialValue.toString());
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Container numericWidget(BuildContext c) {
+    return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.0),
+          // color: Colors.blueGrey[300],
+        ),
+        child: SpinBox(
+          min: 0,
+          max: double.maxFinite,
+          value: initialIntValue(),
+          spacing: 24,
+          direction: Axis.vertical,
+          onChanged: (newValue) {
+            try {
+              var jason = jsonDecode(newValue.toString());
+              this.widget.onValueChange(jason);
+            } catch (e) {
+              ScaffoldMessenger.of(c).showSnackBar(
+                  SnackBar(content: Text("Invalid numeric jason: $e")));
+              return;
+            }
+          },
+          textStyle: TextStyle(fontSize: 24),
+          incrementIcon: Icon(Icons.keyboard_arrow_up, size: 32),
+          decrementIcon: Icon(Icons.keyboard_arrow_down, size: 32),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: const EdgeInsets.all(24),
+          ),
+        ));
   }
 }

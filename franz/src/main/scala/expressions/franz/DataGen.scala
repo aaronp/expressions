@@ -5,10 +5,19 @@ import org.apache.avro.Schema.Type.*
 import io.circe.Json
 
 import scala.collection.mutable
+import scala.util.Try
 
+/**
+  * Code which knows how to create test json from an avro schema
+  */
 object DataGen {
 
   import scala.jdk.CollectionConverters.{given, *}
+
+  def parseAvro(avro : String): Try[Schema] = {
+    val parser = new org.apache.avro.Schema.Parser
+    Try(parser.parse(avro))
+  }
 
   extension(x: Long) {
     def isOdd = x % 2 == 0

@@ -73,15 +73,15 @@ object KafkaPublishRoute {
 
   object OptionalSeed extends OptionalQueryParamDecoderMatcher[Long]("seed")
 
-  def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = fromFranzConfig(rootConfig.getConfig("app.franz"))
+  def apply(rootConfig: Config = ConfigFactory.load()): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] =
+    fromFranzConfig(FranzConfig(rootConfig.getConfig("app.franz")))
 
-  def fromFranzConfig(conf: Config): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = {
-    val franzConfig = FranzConfig(conf)
+  def fromFranzConfig(franzConfig : FranzConfig): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = {
     for {
       env <- ZIO.environment[Clock with Blocking]
     } yield {
       val publisher: PostRecord => UIO[Int] = KafkaPublishService(franzConfig).andThen(_.provide(env))
-      publish(publisher) <+> getDefault(franzConfig) <+> topicsGet(franzConfig) <+> topicsPost(franzConfig) <+> topic(franzConfig)
+      publish(publisher) <+> topicsGet(franzConfig) <+> topicsPost(franzConfig) <+> topic(franzConfig)
     }
   }
 
@@ -143,23 +143,6 @@ object KafkaPublishRoute {
             vanilla.toOption.map(topic -> _)
           )
         } yield Response[Task](Status.Ok).withEntity(result)
-    }
-  }
-
-  def getDefault(franzConfig: FranzConfig): HttpRoutes[Task] = {
-    val configJson = franzConfig.franzConfig.root.render(ConfigRenderOptions.concise())
-    val example = (Json.obj(
-      "example" -> Json.obj("nested" -> Json.obj("array" -> List(1, 2, 3).asJson)),
-      "boolean" -> true.asJson,
-      "number" -> 123.asJson
-    ))
-    getDefault(PostRecord(example, config = configJson))
-  }
-
-  def getDefault(default: PostRecord): HttpRoutes[Task] = {
-    val response = UIO(Response[Task](Status.Ok).withEntity(default))
-    HttpRoutes.of[Task] {
-      case GET -> Root / "kafka" / "publish" => response
     }
   }
 

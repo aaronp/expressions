@@ -4,10 +4,7 @@ import org.apache.avro.Schema
 
 object Schemas {
 
-  def exampleSchema: Schema = {
-    val parser = new org.apache.avro.Schema.Parser
-    parser.parse(exampleSchemaString)
-  }
+  def exampleSchema: Schema = DataGen.parseAvro(exampleSchemaString).get
 
   def exampleSchemaString = """[
               |{

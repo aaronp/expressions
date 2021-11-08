@@ -1,17 +1,18 @@
 package expressions.rest.server
 
-import cats.implicits._
+import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.StringTemplate.StringExpression
 import expressions.client.HttpRequest
-import expressions.rest.server.kafka._
+import expressions.franz.FranzConfig
+import expressions.rest.server.kafka.*
 import expressions.{Cache, CodeTemplate, DynamicJson, StringTemplate}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.http4s
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
-import zio.interop.catz._
+import zio.interop.catz.*
 import zio.{Task, ZEnv, ZIO}
 
 /**
@@ -39,7 +40,9 @@ object RestRoutes {
       fsDir             = BatchContext.dataDir(defaultConfig)
       httpCompiler      = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
       batchSink         <- BatchSink.make
-      kafkaPublishRoute <- KafkaPublishRoute(defaultConfig)
+      franzConfig = FranzConfig(defaultConfig.getConfig("app.franz"))
+      kafkaPublishRoute <- KafkaPublishRoute.fromFranzConfig(franzConfig)
+      dataRoute <- DataGenRoute.fromFranzConfig(franzConfig)
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
         StringTemplate.newCache[DynamicJson, DynamicJson]()
@@ -53,7 +56,7 @@ object RestRoutes {
       val batchRoute                                               = BatchRoute(loadCfg, batchSink, env)
       val proxyRoute                                               = ProxyRoute()
 
-      batchRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute
+      batchRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> dataRoute <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute
     }
   }
 }

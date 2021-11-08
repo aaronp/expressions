@@ -24,7 +24,7 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   def zenv = rt.environment
 
-  def testTimeout: Duration = 10.seconds
+  def testTimeout: Duration = 1000.seconds
 
   def shortTimeoutJava = 200.millis
 
@@ -70,8 +70,9 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
     val uri: Uri = asUri(url, queryParams: _*)
     Request[Task](method = Method.POST, uri = uri).withEntity(body)
   }
+  def post(url: String): Request[Task] = Request[Task](method = Method.POST, uri = asUri(url))
 
-  private def asUri(url: String, queryParams: (String, String)*) = {
+  def asUri(url: String, queryParams: (String, String)*) = {
     val encoded = Uri.encode(url)
     val uri = if (queryParams.isEmpty) {
       Uri.unsafeFromString(encoded)
@@ -85,4 +86,68 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
     val x = UUID.randomUUID().toString.filter(_.isLetterOrDigit).toLowerCase()
     s"${prefix}$x"
   }
+
+  def exampleAvro = """[
+                      |{
+                      |  "namespace": "example",
+                      |  "type": "record",
+                      |  "name": "Example",
+                      |  "fields": [
+                      |    {
+                      |      "name": "id",
+                      |      "type": "string",
+                      |      "default" : ""
+                      |    },
+                      |    {
+                      |      "name": "addresses",
+                      |      "type": {
+                      |          "type": "array",
+                      |          "items":{
+                      |              "name":"Address",
+                      |              "type":"record",
+                      |              "fields":[
+                      |                  { "name":"name", "type":"string" },
+                      |                  { "name":"lines", "type": { "type": "array", "items" : "string"} }
+                      |              ]
+                      |          }
+                      |      }
+                      |    },
+                      |    {
+                      |      "name": "someText",
+                      |      "type": "string",
+                      |      "default" : ""
+                      |    },
+                      |    {
+                      |      "name": "someLong",
+                      |      "type": "long",
+                      |      "default" : 0
+                      |    },
+                      |    {
+                      |      "name": "someDouble",
+                      |      "type": "double",
+                      |      "default" : 1.23
+                      |    },
+                      |    {
+                      |      "name": "someInt",
+                      |      "type": "int",
+                      |      "default" : 123
+                      |    },
+                      |    {
+                      |      "name": "someFloat",
+                      |      "type": "float",
+                      |      "default" : 1.0
+                      |    },
+                      |    {
+                      |      "name": "day",
+                      |      "type": {
+                      |        "name": "daysOfTheWeek",
+                      |        "type": "enum",
+                      |        "symbols": [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ]
+                      |      },
+                      |      "default" : "MONDAY"
+                      |    }
+                      |  ]
+                      |}
+                      |
+                      |]""".stripMargin
 }
