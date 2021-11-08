@@ -69,36 +69,135 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             Text(dropzoneState),
-            DropZone(
-              onDragEnter: () {
-                print('drag enter');
-                setState(() {
-                  dropzoneState2 = 'drag enter';
-                });
-              },
-              onDragExit: () {
-                print('drag exit');
-                setState(() {
-                  dropzoneState2 = 'drag exit';
-                });
-              },
-              onDrop: (List<html.File> files) {
-                print('files dropped');
-                print(files);
-                setState(() {
-                  dropzoneState2 = 'files dropped $files';
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(border: Border.all()),
+            Container(
                 width: 300,
                 height: 300,
-              ),
-            ),
-            Text(dropzoneState2),
+                child: Locationstat()),
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class Locationstat extends StatefulWidget {
+  @override
+  _LocationstatState createState() => _LocationstatState();
+}
+
+class _LocationstatState extends State<Locationstat>
+    with SingleTickerProviderStateMixin {
+  TabController _tabController;
+  @override
+  void initState() {
+    super.initState();
+    _tabController = new TabController(length: 2, vsync: this);
+  }
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text('Statistics'),
+
+        bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.orange,
+            labelColor: Colors.orange,
+            unselectedLabelColor: Colors.black54,
+            tabs: <Widget>[
+              Tab(
+                text:('Pokhara Lekhnath'),
+              ),
+              Tab(
+                text:('Outside Pokhara-Lekhnath'),
+              ),
+            ]),
+      ),
+      body: TabBarView(
+        children: <Widget>[
+          NestedTabBar(),
+          NestedTabBar(),
+
+        ],
+        controller: _tabController,
+      ),
+    );
+  }
+}
+
+
+
+
+class NestedTabBar extends StatefulWidget {
+  @override
+  _NestedTabBarState createState() => _NestedTabBarState();
+}
+class _NestedTabBarState extends State<NestedTabBar>
+    with TickerProviderStateMixin {
+  TabController _nestedTabController;
+  @override
+  void initState() {
+    super.initState();
+    _nestedTabController = new TabController(length: 2, vsync: this);
+  }
+  @override
+  void dispose() {
+    super.dispose();
+    _nestedTabController.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: <Widget>[
+        TabBar(
+          controller: _nestedTabController,
+          indicatorColor: Colors.orange,
+          labelColor: Colors.orange,
+          unselectedLabelColor: Colors.black54,
+          isScrollable: true,
+          tabs: <Widget>[
+            Tab(
+              text: "Inside Pokhara",
+            ),
+            Tab(
+              text: "Outside Pokhara",
+            ),
+
+          ],
+        ),
+        Container(
+          height: screenHeight * 0.70,
+          margin: EdgeInsets.only(left: 16.0, right: 16.0),
+          child: TabBarView(
+            controller: _nestedTabController,
+            children: <Widget>[
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.0),
+                  color: Colors.blueGrey[300],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.0),
+                  color: Colors.blueGrey[300],
+                ),
+              ),
+
+            ],
+          ),
+        )
+      ],
     );
   }
 }
