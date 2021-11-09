@@ -10,6 +10,24 @@ import 'package:ui/client/http.dart';
 
 class DataGenClient {
 
+  static String pretty(String content) {
+    try {
+      return prettyJson(jsonDecode(content));
+    } catch (e) {
+      print("pretty threw  $e for >$content<");
+      return content;
+    }
+  }
+  static String prettyJson(dynamic content) {
+    JsonEncoder encoder = new JsonEncoder.withIndent('  ');
+    try {
+      return encoder.convert(content);
+    } catch (e) {
+      print("prettyJson threw $e for >${content}< w/ type $content");
+      return content;
+    }
+  }
+
   static Future<dynamic> contentAsJson(String data) async {
     var httpRequest = rc.Request(
         method: rc.RequestMethod.post,
@@ -17,7 +35,11 @@ class DataGenClient {
         body: data,
         headers: Rest.HttpHeaders);
     final response = await Rest.client.execute(request: httpRequest);
-    return jsonDecode(response.body);
+    try {
+      return jsonDecode(response.body);
+    } catch (e) {
+      return response.body;
+    }
   }
 
   static Future<dynamic> dataAsJson(Uint8List data) async {

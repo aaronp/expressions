@@ -162,55 +162,27 @@ class _PublishWidgetState extends State<PublishWidget> {
   }
 
   PostRecord asPostRecord(dynamic key, dynamic value) {
-    if (_formKey.currentState.validate()) {
-      _formKey.currentState.save();
-      return PostRecord(
-          value,
-          widget.configuration,
-          key,
-          _repeat,
-          isNumber(_partitionOverride) ? int.parse(_partitionOverride) : null,
-          _summary.topic,
-          Map());
-    } else {
-      return null;
-    }
+    return PostRecord(
+        value,
+        widget.configuration,
+        key,
+        _repeat,
+        isNumber(_partitionOverride) ? int.parse(_partitionOverride) : null,
+        _summary.topic,
+        Map());
   }
 
   void onPublish() async {
     final dontShootMe = ScaffoldMessenger.of(context);
-    dynamic value;
+    final post = asPostRecord(_latestKeyValue, _latestValueValue);
+
     try {
-      // value = jsonDecode(_valueTextController.text);
+      final numPublished = await post.publish();
+      dontShootMe.showSnackBar(SnackBar(
+          content: Text("Published $numPublished to ${post.topicOverride}")));
     } catch (e) {
       dontShootMe
-          .showSnackBar(SnackBar(content: Text("Invalid value jason: $e")));
-      return;
-    }
-    dynamic key;
-    // try {
-    //   key = jsonDecode(_keyTextController.text);
-    // } catch (e1) {
-    //   try {
-    //     key = jsonDecode("\"${_keyTextController.text}\"");
-    //   } catch (e) {
-    //     dontShootMe
-    //         .showSnackBar(SnackBar(content: Text("Invalid key jason: $e")));
-    //     return;
-    //   }
-    // }
-
-    final post = asPostRecord(key, value);
-    if (post != null) {
-      try {
-        final numPublished = await post.publish();
-        dontShootMe.showSnackBar(SnackBar(
-            content:
-                Text("Published ${numPublished} to ${post.topicOverride}")));
-      } catch (e) {
-        dontShootMe.showSnackBar(
-            SnackBar(content: Text("Failed to publish $post: $e")));
-      }
+          .showSnackBar(SnackBar(content: Text("Failed to publish $post: $e")));
     }
   }
 
@@ -229,12 +201,12 @@ class _PublishWidgetState extends State<PublishWidget> {
             NavigationRailDestination(
               icon: Icon(Icons.polymer),
               selectedIcon: Icon(Icons.polymer),
-              label: Text('Keys'),
+              label: Text('Key'),
             ),
             NavigationRailDestination(
               icon: Icon(Icons.message),
               selectedIcon: Icon(Icons.message),
-              label: Text('Values'),
+              label: Text('Value'),
             )
           ],
         ),
@@ -367,20 +339,14 @@ class _TabbedWidgetState extends State<TabbedWidget>
       this.widget.onTabChange(_tabController.index);
     });
 
-    String prettyprint = this.widget.initialValue.toString();
-    try {
-      JsonEncoder encoder = new JsonEncoder.withIndent('  ');
-      prettyprint = encoder.convert(this.widget.initialValue);
-    } catch (e) {
-      print("pretty print threw $e for >${this.widget.initialValue.toString()}<");
-    }
-
+    String prettyprint =
+        DataGenClient.pretty(this.widget.initialValue.toString());
 
     print("this.widget.tabIndex is ${this.widget.tabIndex}");
     switch (this.widget.tabIndex) {
       case 0:
         {
-          _stringController.text = prettyprint;
+          _stringController.text = this.widget.initialValue.toString();
           break;
         }
       case 1:
@@ -489,6 +455,15 @@ class _TabbedWidgetState extends State<TabbedWidget>
     }
   }
 
+  void _onRefreshContent(TextEditingController textController) {
+    DataGenClient.contentAsJson(textController.text).then((value) {
+      this.widget.onValueChange(value);
+      setState(() {
+        textController.text = DataGenClient.prettyJson(value);
+      });
+    });
+  }
+
   Widget inputWidget(
       BuildContext c, String label, TextEditingController textController) {
     // double screenHeight = MediaQuery.of(c).size.height;
@@ -513,9 +488,7 @@ class _TabbedWidgetState extends State<TabbedWidget>
                     alignment: MainAxisAlignment.start,
                     children: [
                       OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {});
-                          },
+                          onPressed: () => _onRefreshContent(textController),
                           icon: Icon(Icons.refresh),
                           label: Text("refresh"))
                     ],
