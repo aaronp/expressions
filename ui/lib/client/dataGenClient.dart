@@ -13,7 +13,7 @@ class DataGenClient {
   static Future<dynamic> contentAsJson(String data) async {
     var httpRequest = rc.Request(
         method: rc.RequestMethod.post,
-        url: '${Rest.HostPort}/rest/data/gen',
+        url: '${Rest.HostPort}/rest/data/parse',
         body: data,
         headers: Rest.HttpHeaders);
     final response = await Rest.client.execute(request: httpRequest);
@@ -23,7 +23,7 @@ class DataGenClient {
   static Future<dynamic> dataAsJson(Uint8List data) async {
     final request = new MultipartRequest(
       "POST",
-      Uri.parse('${Rest.HostPort}/rest/data/gen'),
+      Uri.parse('${Rest.HostPort}/rest/data/parse'),
     );
 
     request.files.add(MultipartFile.fromBytes("file", data, filename : "this.is.ignored"));

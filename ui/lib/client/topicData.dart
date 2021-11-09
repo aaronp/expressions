@@ -59,8 +59,13 @@ class TopicData {
         url: '${Rest.HostPort}/rest/kafka/topic/$topic',
         headers: Rest.HttpHeaders);
     final response = await Rest.client.execute(request: httpRequest);
-    print("Topic $topic got $response");
-    return TopicData.fromJson(response.body);
+
+    try {
+      return TopicData.fromJson(response.body);
+    } catch(e) {
+      print("Error getting parsing response from: >${response.body}<");
+      return TopicData.empty();
+    }
   }
 
   static TopicData fromJson(Map<String, dynamic> json) {

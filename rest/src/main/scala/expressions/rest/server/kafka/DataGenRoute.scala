@@ -30,47 +30,6 @@ import scala.util.Try
   * $ a kafka topic (keys and values if either are strings)
   */
 object DataGenRoute {
-//
-//  final case class DataGenRequest(body: String)
-//
-//  object DataGenRequest {
-//    given codec: Codec[DataGenRequest] = io.circe.generic.semiauto.deriveCodec[DataGenRequest]
-//  }
-//
-//  enum DataGenResponse:
-//    case ParsedResponse(parsedInput: String, jsonResult: Option[Json])
-//    case TopicResponse(keyJson: Json, valueJson: Json)
-//  end DataGenResponse
-//
-//  object DataGenResponse {
-//    object decoder extends Decoder[DataGenResponse] {
-//      def asTopicResponse(cursor: HCursor) = {
-//        for {
-//          keyJson <- cursor.downField("keyJson").as[Json]
-//          valueJson <- cursor.downField("valueJson").as[Json]
-//        } yield DataGenResponse.TopicResponse(keyJson, valueJson)
-//      }
-//
-//      def asParsedResponse(cursor: HCursor) = {
-//        for {
-//          parsedInput <- cursor.downField("parsedInput").as[String]
-//          jsonResult <- cursor.downField("jsonResult").as[Option[Json]]
-//        } yield DataGenResponse.ParsedResponse(parsedInput, jsonResult)
-//      }
-//
-//      override def apply(cursor: HCursor) = asTopicResponse(cursor).orElse(asTopicResponse(cursor))
-//    }
-//
-//    object encoder extends Encoder[DataGenResponse] {
-//      override def apply(r: DataGenResponse) = r match {
-//        case ParsedResponse(parsedInput, json) =>
-//          Json.obj("parsedInput" -> parsedInput.asJson, "jsonResult" -> json.asJson)
-//        case TopicResponse(key, value) => Json.obj("key" -> key, "value" -> value)
-//      }
-//    }
-//
-//    given code: Codec[DataGenResponse] = Codec.from(decoder, encoder)
-//  }
 
 
   def apply() = parseUpload()
@@ -122,9 +81,10 @@ object DataGenRoute {
   def parseAsMultipartRequest(req: Request[zio.Task], seed: Long) = {
     req.decode[Multipart[Task]] { m => {
       val filePart = m.parts.find(_.name == Some("file"))
+      val msg = m.parts.flatMap(_.name).mkString("Multipart request did not contain 'file'. Parts included : [", ",", "]")
+      println(msg)
       filePart match {
         case None =>
-          val msg = m.parts.flatMap(_.name).mkString("Multipart request did not contain 'file'. Parts included : [", ",", "]")
           BadRequest(msg)
         case Some(part) =>
           val catsIO = part.body.through(fs2.text.utf8Decode[Task]).foldMonoid.compile.string
@@ -137,12 +97,6 @@ object DataGenRoute {
           }
       }
     }
-    }
-  }
-
-  def handleAsRestRequest(req: Request[zio.Task]) = {
-    req.as[DataGenRequest].flatMap { request =>
-      ???
     }
   }
 

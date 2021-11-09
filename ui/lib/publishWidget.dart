@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'dart:html' as darthtml;
+
 // import 'dart:html';
 import 'dart:math';
-import 'dart:html' as darthtml;
-import 'package:http/http.dart';
 import 'dart:typed_data';
 
 import 'package:drop_zone/drop_zone.dart';
@@ -26,14 +26,7 @@ void main() {
       debugShowCheckedModeBanner: false,
       home: PublishWidget(
           "foo",
-          ConfigSummary(
-              "bar",
-              {},
-              [],
-              "string",
-              "string",
-              "string",
-              "string"),
+          ConfigSummary("bar", {}, [], "string", "string", "string", "string"),
           "")));
 }
 
@@ -71,13 +64,9 @@ class _PublishWidgetState extends State<PublishWidget> {
   String testDataForType(String t) {
     final safe = t.toLowerCase().trim();
     if (safe == "string") {
-      return "text-${(DateTime
-          .now()
-          .millisecondsSinceEpoch % 337).toString()}";
+      return "text-${(DateTime.now().millisecondsSinceEpoch % 337).toString()}";
     } else if (safe == "long") {
-      return (DateTime
-          .now()
-          .millisecondsSinceEpoch % 337).toString();
+      return (DateTime.now().millisecondsSinceEpoch % 337).toString();
     } else if (safe.startsWith("avro")) {
       //TopicData.get(t)
       return "some avro...";
@@ -98,17 +87,27 @@ class _PublishWidgetState extends State<PublishWidget> {
   }
 
   Widget keyWidget() {
+    print("Creating keyWidget w/ >$_latestKeyValue<");
     return TabbedWidget(_keyTabIndex, _latestKeyValue, true, (idx) {
       _keyTabIndex = idx;
     }, (newValue) {
       print(" >>>> Key is $newValue");
       _latestKeyValue = newValue;
     }, (uploadData) async {
-      final jason = await DataGenClient.dataAsJson(uploadData);
-      setState(() {
-        _latestKeyValue = jason;
+      DataGenClient.dataAsJson(uploadData).then((jason) async {
+        print("GOT: $jason");
+        _latestKeyValue = jason.toString();
+        final Future<Null> ok =
+            Future.delayed(const Duration(milliseconds: 100), () {
+          print("setting (1) _latestKeyValue to $jason");
+          setState(() {
+            _latestKeyValue = jason;
+            print("setting (2) _latestKeyValue to $_latestKeyValue");
+          });
+        });
+        await ok;
       });
-    },key: Key("key$_keyTabIndex"));
+    }, key: Key("key$_keyTabIndex${_latestKeyValue.hashCode}"));
   }
 
   Widget valueWidget() {
@@ -122,7 +121,7 @@ class _PublishWidgetState extends State<PublishWidget> {
       setState(() {
         _latestValueValue = jason;
       });
-    }, key: Key("value$_valueTabIndex"));
+    }, key: Key("value$_valueTabIndex${_latestValueValue.hashCode}"));
   }
 
   void reloadTopic() {
@@ -146,20 +145,20 @@ class _PublishWidgetState extends State<PublishWidget> {
   Widget build(BuildContext context) {
     return SafeArea(
         child: Scaffold(
-          appBar: AppBar(
-              title: Align(
-                  alignment: Alignment.topLeft,
-                  child: Text("Publish to '${this.widget.summary.topic}'")),
-              backgroundColor: Colors.grey[800],
-              actions: []),
-          floatingActionButton: FloatingActionButton.extended(
-            label: Text('Publish'),
-            icon: Icon(Icons.publish),
-            backgroundColor: Colors.orange,
-            onPressed: onPublish,
-          ),
-          body: publishLayout(context), //publishFormWidget()
-        ));
+      appBar: AppBar(
+          title: Align(
+              alignment: Alignment.topLeft,
+              child: Text("Publish to '${this.widget.summary.topic}'")),
+          backgroundColor: Colors.grey[800],
+          actions: []),
+      floatingActionButton: FloatingActionButton.extended(
+        label: Text('Publish'),
+        icon: Icon(Icons.publish),
+        backgroundColor: Colors.orange,
+        onPressed: onPublish,
+      ),
+      body: publishLayout(context), //publishFormWidget()
+    ));
   }
 
   PostRecord asPostRecord(dynamic key, dynamic value) {
@@ -207,7 +206,7 @@ class _PublishWidgetState extends State<PublishWidget> {
         final numPublished = await post.publish();
         dontShootMe.showSnackBar(SnackBar(
             content:
-            Text("Published ${numPublished} to ${post.topicOverride}")));
+                Text("Published ${numPublished} to ${post.topicOverride}")));
       } catch (e) {
         dontShootMe.showSnackBar(
             SnackBar(content: Text("Failed to publish $post: $e")));
@@ -260,10 +259,7 @@ class _PublishWidgetState extends State<PublishWidget> {
 
       final showNamespace = !knownAvroValue && _summary.keyIsAvro();
 
-      double screenHeight = MediaQuery
-          .of(context)
-          .size
-          .height;
+      double screenHeight = MediaQuery.of(context).size.height;
 
       return Container(
         // constraints: BoxConstraints(maxHeight: 200),
@@ -279,17 +275,16 @@ class _PublishWidgetState extends State<PublishWidget> {
                       "Repeat:",
                       "The number of records to submit",
                       "1",
-                          (value) => _repeat = int.parse(value),
+                      (value) => _repeat = int.parse(value),
                       validateNumber)),
               Flexible(
-                // see https://stackoverflow.com/questions/49577781/how-to-create-number-input-field-in-flutter
-                //keyboardType: TextInputType.number
+                  // see https://stackoverflow.com/questions/49577781/how-to-create-number-input-field-in-flutter
+                  //keyboardType: TextInputType.number
                   child: FieldWidget(
                       "Partition:",
                       "A specific partition to publish to, if specified",
                       "",
-                          (value) =>
-                      isNumber(value)
+                      (value) => isNumber(value)
                           ? _partitionOverride = value
                           : _partitionOverride = "",
                       textOk)),
@@ -300,8 +295,8 @@ class _PublishWidgetState extends State<PublishWidget> {
     });
   }
 
-  Widget typeWidget(String label, String currentValue, bool isAvro,
-      OnUpdate onUpdate) {
+  Widget typeWidget(
+      String label, String currentValue, bool isAvro, OnUpdate onUpdate) {
     final List<String> values = [...Consts.SupportedTypes];
     if (!values.contains(currentValue)) {
       values.insert(values.length, currentValue);
@@ -310,15 +305,15 @@ class _PublishWidgetState extends State<PublishWidget> {
     final child = isAvro
         ? Text("Avro")
         : DropdownButton<String>(
-      items: values.map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      value: currentValue,
-      onChanged: onUpdate,
-    );
+            items: values.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            value: currentValue,
+            onChanged: onUpdate,
+          );
 
     return Padding(
         padding: const EdgeInsets.all(8.0),
@@ -341,8 +336,7 @@ class _PublishWidgetState extends State<PublishWidget> {
 
 class TabbedWidget extends StatefulWidget {
   TabbedWidget(this.tabIndex, this.initialValue, this.isKey, this.onTabChange,
-      this.onValueChange,
-      this.onUpload,
+      this.onValueChange, this.onUpload,
       {Key key})
       : super(key: key);
 
@@ -359,7 +353,9 @@ class TabbedWidget extends StatefulWidget {
 
 class _TabbedWidgetState extends State<TabbedWidget>
     with TickerProviderStateMixin {
-  final _textController = TextEditingController();
+  final _stringController = TextEditingController();
+  final _jasonController = TextEditingController();
+  final _avroController = TextEditingController();
   TabController _tabController;
 
   @override
@@ -370,14 +366,51 @@ class _TabbedWidgetState extends State<TabbedWidget>
     _tabController.addListener(() {
       this.widget.onTabChange(_tabController.index);
     });
-    _textController.text = this.widget.initialValue.toString();
+
+    String prettyprint = this.widget.initialValue.toString();
+    try {
+      JsonEncoder encoder = new JsonEncoder.withIndent('  ');
+      prettyprint = encoder.convert(this.widget.initialValue);
+    } catch (e) {
+      print("pretty print threw $e for >${this.widget.initialValue.toString()}<");
+    }
+
+
+    print("this.widget.tabIndex is ${this.widget.tabIndex}");
+    switch (this.widget.tabIndex) {
+      case 0:
+        {
+          _stringController.text = prettyprint;
+          break;
+        }
+      case 1:
+        {
+          break;
+        }
+      case 2:
+        {
+          _jasonController.text = prettyprint;
+          break;
+        }
+      case 3:
+        {
+          _avroController.text = prettyprint;
+          break;
+        }
+    }
+
+    print("- - - - - - - - - - - - - - - - - - - - ");
+    print(_jasonController.text);
+    print("- - - - - - - - - - - - - - - - - - - - ");
     //""; //_topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
   }
 
   @override
   void dispose() {
     super.dispose();
-    _textController.dispose();
+    _stringController.dispose();
+    _jasonController.dispose();
+    _avroController.dispose();
     _tabController.dispose();
   }
 
@@ -387,10 +420,7 @@ class _TabbedWidgetState extends State<TabbedWidget>
   }
 
   Widget contentWidget(BuildContext c) {
-    double screenHeight = MediaQuery
-        .of(c)
-        .size
-        .height;
+    double screenHeight = MediaQuery.of(c).size.height;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -399,11 +429,7 @@ class _TabbedWidgetState extends State<TabbedWidget>
           controller: _tabController,
           indicatorColor: Colors.orange,
           labelColor: Colors.orange,
-          unselectedLabelColor: Theme
-              .of(c)
-              .primaryTextTheme
-              .caption
-              .color,
+          unselectedLabelColor: Theme.of(c).primaryTextTheme.caption.color,
           isScrollable: true,
           tabs: <Widget>[
             Tab(text: "String"),
@@ -420,8 +446,8 @@ class _TabbedWidgetState extends State<TabbedWidget>
             children: <Widget>[
               stringInputWidget(c),
               numericWidget(c),
-              inputWidget(c, "Json"),
-              inputWidget(c, "Avro"),
+              inputWidget(c, "Json", _jasonController),
+              inputWidget(c, "Avro", _avroController),
             ],
           ),
         )
@@ -436,10 +462,10 @@ class _TabbedWidgetState extends State<TabbedWidget>
           borderRadius: BorderRadius.circular(8.0),
         ),
         child: TextField(
-          controller: _textController,
+          controller: _stringController,
           onSubmitted: (newValue) => this.widget.onValueChange(newValue),
           decoration:
-          InputDecoration(border: OutlineInputBorder(), hintText: hint),
+              InputDecoration(border: OutlineInputBorder(), hintText: hint),
         ));
   }
 
@@ -450,11 +476,6 @@ class _TabbedWidgetState extends State<TabbedWidget>
 
       reader.onLoadEnd.listen((e) {
         this.widget.onUpload(reader.result);
-        // parseFiles(c, reader.result)
-        // Uint8List
-        // setState(() {
-        //   droppedFile = ;
-        // });
       });
 
       reader.onError.listen((fileEvent) {
@@ -468,19 +489,19 @@ class _TabbedWidgetState extends State<TabbedWidget>
     }
   }
 
-  Widget inputWidget(BuildContext c, String label) {
+  Widget inputWidget(
+      BuildContext c, String label, TextEditingController textController) {
     // double screenHeight = MediaQuery.of(c).size.height;
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
-      final rows = 10 ; //max(10, constraints.maxHeight ~/ 10);
-      // print("constraints.maxHeight:${constraints.maxHeight} yields $rows ROWS");
+      final rows = max(10, constraints.maxHeight ~/ 30);
       return DropZone(
-          onDragEnter: () { },
-          onDragExit: () { },
+          onDragEnter: () {},
+          onDragExit: () {},
           onDrop: (List<darthtml.File> files) {
             parseFiles(c, files);
           },
           child: Container(
-              height: 100, //constraints.maxHeight * 0.1,
+              height: 200, //constraints.maxHeight * 0.1,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
                 // color: Colors.blueGrey[300],
@@ -491,20 +512,24 @@ class _TabbedWidgetState extends State<TabbedWidget>
                   ButtonBar(
                     alignment: MainAxisAlignment.start,
                     children: [
-                      OutlinedButton.icon(onPressed: () {}, icon: Icon(Icons.refresh), label: Text("refresh"))
+                      OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {});
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text("refresh"))
                     ],
                   ),
                   Card(
                       color: Colors.grey[700],
                       child: Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: TextField(
-                          maxLines: rows,
-                          decoration: InputDecoration.collapsed(
-                              hintText: "Enter (or drag & drop) $label here"),
-                        )
-                      )
-                  ),
+                          padding: EdgeInsets.all(8.0),
+                          child: TextField(
+                            controller: textController,
+                            maxLines: rows,
+                            decoration: InputDecoration.collapsed(
+                                hintText: "Enter (or drag & drop) $label here"),
+                          ))),
                 ],
               )));
     });
