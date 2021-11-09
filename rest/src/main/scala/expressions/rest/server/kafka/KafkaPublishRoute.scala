@@ -8,7 +8,7 @@ import expressions.rest.server.*
 import expressions.rest.server.RestRoutes.taskDsl.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Json}
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata
+import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.{HttpRoutes, Response, Status}
 import zio.blocking.Blocking
@@ -57,6 +57,25 @@ object KafkaPublishRoute {
 
     object TopicData {
       type NamedSchema = (String, SchemaMetadata)
+
+      def forTopic(client: SchemaRegistryClient, rawTopic :String, seed : Long) = {
+        val StripTopic(topic) = rawTopic
+        val keySubject = s"$topic-key"
+        val valueSubject = s"$topic-value"
+        for {
+          keySchemaF <- Task(client.schemaMetadata(keySubject)).either.fork
+          valueSchemaF <- Task(client.schemaMetadata(valueSubject)).either.fork
+          vanilla <- Task(client.schemaMetadata(topic)).either
+          key <- keySchemaF.join
+          value <- valueSchemaF.join
+          result = TopicData.forNamedSchemas(
+            seed,
+            key.toOption.map(keySubject -> _),
+            value.toOption.map(valueSubject -> _),
+            vanilla.toOption.map(topic -> _)
+          )
+        } yield result
+      }
 
       def forNamedSchemas(seed : Long, keyOpt: Option[NamedSchema], valueOpt: Option[NamedSchema], otherOpt: Option[NamedSchema]): TopicData = {
         TopicData(
@@ -122,26 +141,10 @@ object KafkaPublishRoute {
 
   def topic(defaultConfig: FranzConfig): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case GET -> Root / "kafka" / "topic" / rawTopic :? OptionalSeed(seedOpt) =>
-        val topic = rawTopic match {
-          case s"${x}-key" => x
-          case s"${x}-value" => x
-          case x => x
-        }
-        val keySubject = s"$topic-key"
-        val valueSubject = s"$topic-value"
+      case GET -> Root / "kafka" / "topic" / topic :? OptionalSeed(seedOpt) =>
+        val seed = seedOpt.getOrElse(defaultConfig.defaultSeed)
         for {
-          keySchemaF <- Task(defaultConfig.schemaRegistryClient.schemaMetadata(keySubject)).either.fork
-          valueSchemaF <- Task(defaultConfig.schemaRegistryClient.schemaMetadata(valueSubject)).either.fork
-          vanilla <- Task(defaultConfig.schemaRegistryClient.schemaMetadata(topic)).either
-          key <- keySchemaF.join
-          value <- valueSchemaF.join
-          result = TopicData.forNamedSchemas(
-            seedOpt.getOrElse(defaultConfig.defaultSeed),
-            key.toOption.map(keySubject -> _),
-            value.toOption.map(valueSubject -> _),
-            vanilla.toOption.map(topic -> _)
-          )
+          result <- TopicData.forTopic(defaultConfig.schemaRegistryClient, topic, seed)
         } yield Response[Task](Status.Ok).withEntity(result)
     }
   }

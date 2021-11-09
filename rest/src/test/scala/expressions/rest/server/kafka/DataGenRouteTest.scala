@@ -46,10 +46,10 @@ class DataGenRouteTest extends BaseRouteTest {
           ))
 
         And("Our DataGenRoute under test")
+        val underTest = DataGenRoute()
+        When("We squirt a multipart request in w/ some avro")
+        val request = post("/data/parse?seed=456").withEntity(multipart).withHeaders(multipart.headers)
         val testCase = for {
-          underTest: HttpRoutes[Task] <- DataGenRoute.fromFranzConfig(FranzConfig())
-          _ = When("We squirt a multipart request in w/ some avro")
-          request = post("/data/parse?seed=456").withEntity(multipart).withHeaders(multipart.headers)
           Some(response) <- underTest(request).value
           _ = Then("we should get back some sample json")
           _ = response.status.code shouldBe 200
@@ -63,38 +63,55 @@ class DataGenRouteTest extends BaseRouteTest {
       }
     }
     "be able to parse POSTed avro REST requests" in {
-        Given("Our DataGenRoute under test")
-        val testCase = for {
-          underTest: HttpRoutes[Task] <- DataGenRoute.fromFranzConfig(FranzConfig())
-          _ = When("We squirt a some avro in ")
-          Some(response) <- underTest(post("/data/parse?seed=456", exampleAvro)).value
-          _ = Then("we should get back some sample json")
-          _ = response.status.code shouldBe 200
-          body = response.bodyAs[Json]
-        } yield body
+      Given("Our DataGenRoute under test")
+      val underTest = DataGenRoute()
+      When("We squirt a some avro in ")
+      val testCase = for {
+        Some(response) <- underTest(post("/data/parse?seed=456", exampleAvro)).value
+        _ = Then("we should get back some sample json")
+        _ = response.status.code shouldBe 200
+        body = response.bodyAs[Json]
+      } yield body
 
-        val result = testCase.value()
-        withClue(result.spaces2) {
-          result.hcursor.downField("day").as[String].toTry shouldBe Success("SATURDAY")
-        }
+      val result = testCase.value()
+      withClue(result.spaces2) {
+        result.hcursor.downField("day").as[String].toTry shouldBe Success("SATURDAY")
+      }
     }
     "be able to parse POSTed hocon REST requests" in {
-        Given("Our DataGenRoute under test")
-        val testCase = for {
-          underTest: HttpRoutes[Task] <- DataGenRoute.fromFranzConfig(FranzConfig())
-          _ = When("We squirt some hocon in ")
-          Some(response) <- underTest(post("/data/parse?seed=456",
-            """ho : con
-              |rocks : true""".stripMargin)).value
-          _ = Then("we should get back some sample json")
-          _ = response.status.code shouldBe 200
-          body = response.bodyAs[Json]
-        } yield body
+      Given("Our DataGenRoute under test")
+      val underTest = DataGenRoute()
+      When("We squirt some hocon in ")
+      val testCase = for {
+        Some(response) <- underTest(post("/data/parse?seed=456",
+          """ho : con
+            |rocks : true""".stripMargin)).value
+        _ = Then("we should get back some sample json")
+        _ = response.status.code shouldBe 200
+        body = response.bodyAs[Json]
+      } yield body
 
-        val result = testCase.value()
-        withClue(result.spaces2) {
-          result.hcursor.downField("ho").as[String].toTry shouldBe Success("con")
-        }
+      val result = testCase.value()
+      withClue(result.spaces2) {
+        result.hcursor.downField("ho").as[String].toTry shouldBe Success("con")
+      }
+    }
+    "be able to parse POSTed jason REST requests" in {
+      Given("Our DataGenRoute under test")
+      val underTest = DataGenRoute()
+      When("We squirt some hocon in ")
+      val testCase = for {
+        Some(response) <- underTest(post("/data/parse?seed=456",
+          """{ "jay" : "son" }""".stripMargin)).value
+        _ = Then("we should get back some sample json")
+        _ = response.status.code shouldBe 200
+        body = response.bodyAs[Json]
+      } yield body
+
+      val result = testCase.value()
+      withClue(result.spaces2) {
+        result.hcursor.downField("jay").as[String].toTry shouldBe Success("son")
+      }
     }
   }
 }

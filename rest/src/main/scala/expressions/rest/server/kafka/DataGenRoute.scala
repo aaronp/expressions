@@ -9,7 +9,7 @@ import expressions.rest.server.RestRoutes.taskDsl.*
 import expressions.rest.server.kafka.KafkaPublishRoute.OptionalSeed
 import io.circe.*
 import io.circe.syntax.*
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata
+import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import org.apache.avro.Schema
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.multipart.Multipart
@@ -24,9 +24,9 @@ import scala.util.Try
 
 /**
   * Use cases are to create test data from:
-  * $ an avro file update - covered by ```POST /data/parse``` an avro file
-  * $ a json file upload (just echo the json back)
-  * $ hocon text (e.g. parse the config and return it as json)
+  * $ an avro file update - covered by ```POST /data/parse``` an avro file or content
+  * $ a json file upload (just echo the json back) - covered by ```POST /data/parse``` a hocon file or content
+  * $ hocon text (e.g. parse the config and return it as json) - covered by ```POST /data/parse``` a json file or content
   * $ a kafka topic (keys and values if either are strings)
   */
 object DataGenRoute {
@@ -73,15 +73,7 @@ object DataGenRoute {
   }
 
 
-  def fromFranzConfig(franzConfig: FranzConfig): ZIO[Clock with Blocking, Nothing, HttpRoutes[Task]] = {
-
-    for {
-      env <- ZIO.environment[Clock with Blocking]
-    } yield {
-      //val publisher: PostRecord => UIO[Int] = KafkaPublishService(franzConfig).andThen(_.provide(env))
-      parseUpload() <+> dataGenPost()
-    }
-  }
+  def apply() = parseUpload()
 
   def parseUpload(): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
@@ -92,21 +84,6 @@ object DataGenRoute {
           case Right(result) if result.status.code != 200 => parseAsRestRequest(req, seed)
           case Right(result) => UIO(result)
         }
-    }
-  }
-
-  def dataGenPost(): HttpRoutes[Task] = {
-    HttpRoutes.of[Task] {
-      case req@(POST -> Root / "data" / "gen") =>
-        parseAsMultipartRequest(req, 1).orElse(parseAsRestRequest(req, 1))
-    }
-  }
-
-  def dataGenGet(): HttpRoutes[Task] = {
-    HttpRoutes.of[Task] {
-      case req@(GET -> Root / "data" / "gen" / topic) =>
-
-        ???
     }
   }
 

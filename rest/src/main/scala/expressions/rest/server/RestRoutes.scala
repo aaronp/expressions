@@ -42,7 +42,7 @@ object RestRoutes {
       batchSink         <- BatchSink.make
       franzConfig = FranzConfig(defaultConfig.getConfig("app.franz"))
       kafkaPublishRoute <- KafkaPublishRoute.fromFranzConfig(franzConfig)
-      dataRoute <- DataGenRoute.fromFranzConfig(franzConfig)
+      dataRoute = DataGenRoute()
     } yield {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
         StringTemplate.newCache[DynamicJson, DynamicJson]()
