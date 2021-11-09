@@ -11,6 +11,7 @@ import 'package:flutter_spinbox/material.dart';
 
 import 'Consts.dart';
 import 'client/configSummary.dart';
+import 'client/dataGenClient.dart';
 import 'client/postRecord.dart';
 import 'client/topicData.dart';
 import 'client/topics.dart';
@@ -96,47 +97,17 @@ class _PublishWidgetState extends State<PublishWidget> {
     _reload(false);
   }
 
-  void doit() {
-    var request = new http.MultipartRequest("POST", url);
-    request.fields['user'] = 'someone@somewhere.com';
-    request.files.add(http.MultipartFile.fromPath(
-      'package',
-      'build/package.tar.gz',
-      contentType: new MediaType('application', 'x-tar'),
-    ));
-    request.send().then((response) {
-      if (response.statusCode == 200) print("Uploaded!");
-    });
-  }
-
-  void uploadSelectedFile(String topic, String fileName, Uint8List data) async {
-    //---Create http package multipart request object
-    final request = new MultipartRequest(
-      "POST",
-      Uri.parse("Your API URL"),
-    );
-
-    request.fields["topic"] = topic;
-    request.files.add(MultipartFile.fromBytes("file", data, filename : fileName));
-
-    //-------Send request
-    var resp = await request.send();
-
-    //------Read response
-    String result = await resp.stream.bytesToString();
-
-    //-------Your response
-    print(result);
-  }
-
   Widget keyWidget() {
     return TabbedWidget(_keyTabIndex, _latestKeyValue, true, (idx) {
       _keyTabIndex = idx;
     }, (newValue) {
       print(" >>>> Key is $newValue");
       _latestKeyValue = newValue;
-    }, (uploadData) {
-      uploadSelectedFile(this.widget.summary.topic);
+    }, (uploadData) async {
+      final jason = await DataGenClient.dataAsJson(uploadData);
+      setState(() {
+        _latestKeyValue = jason;
+      });
     },key: Key("key$_keyTabIndex"));
   }
 
@@ -146,8 +117,11 @@ class _PublishWidgetState extends State<PublishWidget> {
     }, (newValue) {
       print(" >>>> Value is $newValue");
       _latestValueValue = newValue;
-    }, (uploadData) {
-
+    }, (uploadData) async {
+      final jason = await DataGenClient.dataAsJson(uploadData);
+      setState(() {
+        _latestValueValue = jason;
+      });
     }, key: Key("value$_valueTabIndex"));
   }
 
@@ -497,30 +471,41 @@ class _TabbedWidgetState extends State<TabbedWidget>
   Widget inputWidget(BuildContext c, String label) {
     // double screenHeight = MediaQuery.of(c).size.height;
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
-      final rows = max(10, constraints.maxHeight ~/ 10);
-      // print("ROWS => $rows");
+      final rows = 10 ; //max(10, constraints.maxHeight ~/ 10);
+      // print("constraints.maxHeight:${constraints.maxHeight} yields $rows ROWS");
       return DropZone(
           onDragEnter: () { },
           onDragExit: () { },
-          onDrop: (List<html.File> files) {
+          onDrop: (List<darthtml.File> files) {
             parseFiles(c, files);
           },
           child: Container(
-              height: constraints.maxHeight * 0.7,
+              height: 100, //constraints.maxHeight * 0.1,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
                 // color: Colors.blueGrey[300],
               ),
-              child: Card(
-                  color: Colors.grey,
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: TextField(
-                      maxLines: rows,
-                      decoration: InputDecoration.collapsed(
-                          hintText: "Enter (or drag & drop) $label here"),
-                    ),
-                  )
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ButtonBar(
+                    alignment: MainAxisAlignment.start,
+                    children: [
+                      OutlinedButton.icon(onPressed: () {}, icon: Icon(Icons.refresh), label: Text("refresh"))
+                    ],
+                  ),
+                  Card(
+                      color: Colors.grey[700],
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: TextField(
+                          maxLines: rows,
+                          decoration: InputDecoration.collapsed(
+                              hintText: "Enter (or drag & drop) $label here"),
+                        )
+                      )
+                  ),
+                ],
               )));
     });
   }
