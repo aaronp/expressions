@@ -429,7 +429,10 @@ class _TabbedWidgetState extends State<TabbedWidget>
         ),
         child: TextField(
           controller: _stringController,
-          onSubmitted: (newValue) => this.widget.onValueChange(newValue),
+          onSubmitted: (newValue) => this.widget.onValueChange(jsonDecode(newValue)),
+          onEditingComplete: () {
+            this.widget.onValueChange(jsonDecode("\"${_stringController.text}\""));
+          },
           decoration:
               InputDecoration(border: OutlineInputBorder(), hintText: hint),
         ));
