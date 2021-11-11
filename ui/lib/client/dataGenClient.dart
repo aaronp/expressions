@@ -11,6 +11,9 @@ import 'package:ui/client/http.dart';
 class DataGenClient {
 
   static String pretty(String content) {
+    if (content.isEmpty) {
+      return "";
+    }
     try {
       return prettyJson(jsonDecode(content));
     } catch (e) {

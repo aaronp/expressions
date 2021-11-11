@@ -41,6 +41,13 @@ class PublishWidget extends StatefulWidget {
   final ConfigSummary summary;
   final String configuration;
 
+  static const TabNames = [
+    "Avro",
+    "Json",
+    "String",
+    "Long",
+  ];
+
   @override
   _PublishWidgetState createState() => _PublishWidgetState();
 }
@@ -48,7 +55,7 @@ class PublishWidget extends StatefulWidget {
 class _PublishWidgetState extends State<PublishWidget> {
   final _formKey = GlobalKey<FormState>();
 
-  int _selectedIndex = 0;
+  int _selectedTabIndex = 0;
   int _repeat = 1;
   ConfigSummary _summary;
   String _partitionOverride = "";
@@ -75,9 +82,24 @@ class _PublishWidgetState extends State<PublishWidget> {
     }
   }
 
+  // don't judge me
+  int tabIndexForType(String type) {
+    final clean = type.trim().toLowerCase();
+    final index = PublishWidget.TabNames.indexWhere(
+        (tabName) => clean.startsWith(tabName.toLowerCase()));
+    if (index < 0) {
+      return 0;
+    } else {
+      return index;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    _keyTabIndex = tabIndexForType(this.widget.summary.keyType);
+    _valueTabIndex = tabIndexForType(this.widget.summary.valueType);
 
     _summary = widget.summary;
     // _keyTextController.text = _topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
@@ -87,22 +109,17 @@ class _PublishWidgetState extends State<PublishWidget> {
   }
 
   Widget keyWidget() {
-    print("Creating keyWidget w/ >$_latestKeyValue<");
-    return TabbedWidget(_keyTabIndex, _latestKeyValue, true, (idx) {
+    return TabbedWidget(_topics, _keyTabIndex, _latestKeyValue, true, (idx) {
       _keyTabIndex = idx;
     }, (newValue) {
-      print(" >>>> Key is $newValue");
       _latestKeyValue = newValue;
     }, (uploadData) async {
       DataGenClient.dataAsJson(uploadData).then((jason) async {
-        print("GOT: $jason");
         _latestKeyValue = jason.toString();
         final Future<Null> ok =
             Future.delayed(const Duration(milliseconds: 100), () {
-          print("setting (1) _latestKeyValue to $jason");
           setState(() {
             _latestKeyValue = jason;
-            print("setting (2) _latestKeyValue to $_latestKeyValue");
           });
         });
         await ok;
@@ -111,10 +128,11 @@ class _PublishWidgetState extends State<PublishWidget> {
   }
 
   Widget valueWidget() {
-    return TabbedWidget(_valueTabIndex, _latestValueValue, false, (idx) {
+    return TabbedWidget(_topics, _valueTabIndex, _latestValueValue, false,
+        (idx) {
       _valueTabIndex = idx;
     }, (newValue) {
-      print(" >>>> Value is $newValue");
+      print("onValueChange >>>> Value is $newValue");
       _latestValueValue = newValue;
     }, (uploadData) async {
       final jason = await DataGenClient.dataAsJson(uploadData);
@@ -190,10 +208,10 @@ class _PublishWidgetState extends State<PublishWidget> {
     return Row(
       children: <Widget>[
         NavigationRail(
-          selectedIndex: _selectedIndex,
+          selectedIndex: _selectedTabIndex,
           onDestinationSelected: (int index) {
             setState(() {
-              _selectedIndex = index;
+              _selectedTabIndex = index;
             });
           },
           labelType: NavigationRailLabelType.all,
@@ -213,7 +231,7 @@ class _PublishWidgetState extends State<PublishWidget> {
         const VerticalDivider(thickness: 1, width: 1),
         // This is the main content.
         Expanded(
-          child: _selectedIndex == 0 ? keyWidget() : valueWidget(),
+          child: _selectedTabIndex == 0 ? keyWidget() : valueWidget(),
         )
       ],
     );
@@ -302,22 +320,28 @@ class _PublishWidgetState extends State<PublishWidget> {
           ),
         ));
   }
-
-  void _onReloadKey() {}
 }
 
 class TabbedWidget extends StatefulWidget {
-  TabbedWidget(this.tabIndex, this.initialValue, this.isKey, this.onTabChange,
-      this.onValueChange, this.onUpload,
+  TabbedWidget(this._topics, this.tabIndex, this.initialValue, this.isKey,
+      this.onTabChange, this.onValueChange, this.onUpload,
       {Key key})
       : super(key: key);
-
+  Topics _topics;
   OnTabChange onTabChange;
   OnUpdateValue onValueChange;
   OnUpload onUpload;
   bool isKey;
   int tabIndex;
   dynamic initialValue;
+
+  List<String> topics() {
+    if (isKey) {
+      return _topics.keys;
+    } else {
+      return _topics.values;
+    }
+  }
 
   @override
   _TabbedWidgetState createState() => _TabbedWidgetState();
@@ -329,6 +353,7 @@ class _TabbedWidgetState extends State<TabbedWidget>
   final _jasonController = TextEditingController();
   final _avroController = TextEditingController();
   TabController _tabController;
+  String _selectedTopic;
 
   @override
   void initState() {
@@ -339,36 +364,24 @@ class _TabbedWidgetState extends State<TabbedWidget>
       this.widget.onTabChange(_tabController.index);
     });
 
-    String prettyprint =
+    print(
+        "TabbedWidget ${this.widget.isKey} index:${this.widget.tabIndex} w/ ${this.widget.initialValue}");
+
+    final prettyJson =
         DataGenClient.pretty(this.widget.initialValue.toString());
 
-    print("this.widget.tabIndex is ${this.widget.tabIndex}");
     switch (this.widget.tabIndex) {
       case 0:
-        {
-          _stringController.text = this.widget.initialValue.toString();
-          break;
-        }
+        _avroController.text = prettyJson;
+        break;
       case 1:
-        {
-          break;
-        }
+        _jasonController.text = prettyJson;
+        break;
       case 2:
-        {
-          _jasonController.text = prettyprint;
-          break;
-        }
+        _stringController.text = this.widget.initialValue.toString();
+        break;
       case 3:
-        {
-          _avroController.text = prettyprint;
-          break;
-        }
     }
-
-    print("- - - - - - - - - - - - - - - - - - - - ");
-    print(_jasonController.text);
-    print("- - - - - - - - - - - - - - - - - - - - ");
-    //""; //_topic.hasKeySchema() ? _topic.keyData().testData.toString() : testDataForType(_summary.keyType);
   }
 
   @override
@@ -397,12 +410,7 @@ class _TabbedWidgetState extends State<TabbedWidget>
           labelColor: Colors.orange,
           unselectedLabelColor: Theme.of(c).primaryTextTheme.caption.color,
           isScrollable: true,
-          tabs: <Widget>[
-            Tab(text: "String"),
-            Tab(text: "Long"),
-            Tab(text: "Json"),
-            Tab(text: "Avro"),
-          ],
+          tabs: PublishWidget.TabNames.map((name) => Tab(text: name)).toList(),
         ),
         Container(
           height: screenHeight * 0.80,
@@ -410,10 +418,10 @@ class _TabbedWidgetState extends State<TabbedWidget>
           child: TabBarView(
             controller: _tabController,
             children: <Widget>[
+              inputWidget(c, PublishWidget.TabNames[0], _avroController),
+              inputWidget(c, PublishWidget.TabNames[1], _jasonController),
               stringInputWidget(c),
               numericWidget(c),
-              inputWidget(c, "Json", _jasonController),
-              inputWidget(c, "Avro", _avroController),
             ],
           ),
         )
@@ -429,13 +437,22 @@ class _TabbedWidgetState extends State<TabbedWidget>
         ),
         child: TextField(
           controller: _stringController,
-          onSubmitted: (newValue) => this.widget.onValueChange(jsonDecode(newValue)),
-          onEditingComplete: () {
-            this.widget.onValueChange(jsonDecode("\"${_stringController.text}\""));
+          onChanged: (newValue) {
+            // this.widget.onValueChange(jsonDecode("\"${newValue}\""));
+            this.widget.onValueChange(newValue);
           },
           decoration:
               InputDecoration(border: OutlineInputBorder(), hintText: hint),
         ));
+  }
+
+  void _onLoadFromTopic(String newTopic) async {
+    TopicData.get(newTopic).then((topicData) {
+      final testJson = topicData.data().testData;
+      final jason = testJson.toString();
+      final jsonBytes = Uint8List.fromList(jason.codeUnits);
+      this.widget.onUpload(jsonBytes);
+    });
   }
 
   void parseFiles(BuildContext c, List<darthtml.File> files) {
@@ -460,18 +477,20 @@ class _TabbedWidgetState extends State<TabbedWidget>
 
   void _onRefreshContent(TextEditingController textController) {
     DataGenClient.contentAsJson(textController.text).then((value) {
-      this.widget.onValueChange(value);
+      final pretty = DataGenClient.prettyJson(value);
+      this.widget.onValueChange(pretty);
       setState(() {
-        textController.text = DataGenClient.prettyJson(value);
+        textController.text = pretty;
       });
     });
   }
 
   Widget inputWidget(
       BuildContext c, String label, TextEditingController textController) {
-    // double screenHeight = MediaQuery.of(c).size.height;
     return LayoutBuilder(builder: (ctxt, BoxConstraints constraints) {
-      final rows = max(10, constraints.maxHeight ~/ 30);
+      final height = constraints.maxHeight - 200;
+      final rows = max(4, height ~/ 30);
+
       return DropZone(
           onDragEnter: () {},
           onDragExit: () {},
@@ -490,6 +509,38 @@ class _TabbedWidgetState extends State<TabbedWidget>
                   ButtonBar(
                     alignment: MainAxisAlignment.start,
                     children: [
+                      Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            width: 600,
+                            height: 180,
+                            child: Row(
+                              // crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(0, 0, 8.0, 0),
+                                  child: Text("Load from topic:"),
+                                ),
+                                DropdownButton<String>(
+                                  items:
+                                      this.widget.topics().map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                  value: _selectedTopic,
+                                  onChanged: (newTopic) {
+                                    _onLoadFromTopic(newTopic);
+                                    setState(() {
+                                      _selectedTopic = newTopic;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          )),
                       OutlinedButton.icon(
                           onPressed: () => _onRefreshContent(textController),
                           icon: Icon(Icons.refresh),
@@ -503,6 +554,9 @@ class _TabbedWidgetState extends State<TabbedWidget>
                           child: TextField(
                             controller: textController,
                             maxLines: rows,
+                            onChanged: (v) {
+                              this.widget.onValueChange(v);
+                            },
                             decoration: InputDecoration.collapsed(
                                 hintText: "Enter (or drag & drop) $label here"),
                           ))),
