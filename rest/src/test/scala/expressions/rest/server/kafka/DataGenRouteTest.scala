@@ -30,6 +30,15 @@ class DataGenRouteTest extends BaseRouteTest {
       val parsed = DataGenRoute.parseContentAsJson(exampleAvro, 123).value()
       parsed.hcursor.downField("day").as[String].toTry shouldBe Success("MONDAY")
     }
+    "be able to parse some hocon" in {
+      val parsed = DataGenRoute.parseContentAsJson(
+        """bar : true
+          |num : ber
+          |a : [1,2,3]""".stripMargin, 123).value()
+      parsed.hcursor.downField("bar").as[Boolean].toTry shouldBe Success(true)
+      parsed.hcursor.downField("num").as[String].toTry shouldBe Success("ber")
+      parsed.hcursor.downField("a").as[List[Int]].toTry shouldBe Success(List(1,2,3))
+    }
   }
 
   "DataGen POST data/parse" should {

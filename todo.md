@@ -2,11 +2,11 @@
 
 # Done:
 * default tab to be of the topic type
+* return the key/value types from the publish page to the config page
 
 
 ## finish publish page
  * add `from topic` drop-down
- * return the key/value types from the publish page to the config page
  * implement --refresh-- (or 'randomize'?) to:
     * randomize json values for uploaded json
  * clean up UI interactions

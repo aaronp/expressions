@@ -41,12 +41,7 @@ class PublishWidget extends StatefulWidget {
   final ConfigSummary summary;
   final String configuration;
 
-  static const TabNames = [
-    "Avro",
-    "Json",
-    "String",
-    "Long",
-  ];
+  static const TabNames = Consts.SupportedTypes;
 
   @override
   _PublishWidgetState createState() => _PublishWidgetState();
@@ -161,6 +156,23 @@ class _PublishWidgetState extends State<PublishWidget> {
 
   @override
   Widget build(BuildContext context) {
+    return WillPopScope(
+        onWillPop: () => onBack(context), child: buildInner(context));
+  }
+
+  String _typeForIndex(int idx) => PublishWidget.TabNames[idx];
+
+  // if the user changed the publish type, we should reflex that in the config page
+  Future<bool> onBack(BuildContext context) async {
+    final String newKeyType = _typeForIndex(this._keyTabIndex);
+    final String newValueType = _typeForIndex(this._valueTabIndex);
+    final newSummary = this.widget.summary.withTypes(newKeyType, newValueType);
+    Navigator.pop(context, newSummary);
+    return false;
+  }
+
+
+  Widget buildInner(BuildContext context) {
     return SafeArea(
         child: Scaffold(
       appBar: AppBar(
@@ -370,18 +382,21 @@ class _TabbedWidgetState extends State<TabbedWidget>
     final prettyJson =
         DataGenClient.pretty(this.widget.initialValue.toString());
 
-    switch (this.widget.tabIndex) {
-      case 0:
-        _avroController.text = prettyJson;
-        break;
-      case 1:
-        _jasonController.text = prettyJson;
-        break;
-      case 2:
-        _stringController.text = this.widget.initialValue.toString();
-        break;
-      case 3:
-    }
+    // switch (this.widget.tabIndex) {
+    //   case 0:
+    //     _avroController.text = prettyJson;
+    //     break;
+    //   case 1:
+    //     _jasonController.text = prettyJson;
+    //     break;
+    //   case 2:
+    //     _stringController.text = this.widget.initialValue.toString();
+    //     break;
+    //   case 3:
+    // }
+    _avroController.text = prettyJson;
+    _jasonController.text = prettyJson;
+    _stringController.text = this.widget.initialValue.toString();
   }
 
   @override

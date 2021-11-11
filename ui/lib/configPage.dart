@@ -174,6 +174,7 @@ class _ConfigPageState extends State<ConfigPage> {
     final knownAvroKey = _topics.keys.contains(_currentConfig.summary.topic);
     final knownAvroValue =
         _topics.values.contains(_currentConfig.summary.topic);
+
     return Container(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -191,13 +192,15 @@ class _ConfigPageState extends State<ConfigPage> {
               _currentConfig.summary.keyType,
               knownAvroKey,
               (newValue) => setState(() {
-                _currentConfig.summary.keyType = newValue;
-              })),
+                    _currentConfig.summary.keyType = newValue;
+                  })),
           typeWidget(
               "Value Type",
               _currentConfig.summary.valueType,
               knownAvroValue,
-              (newValue) => setState(() {_currentConfig.summary.valueType = newValue;})),
+              (newValue) => setState(() {
+                    _currentConfig.summary.valueType = newValue;
+                  })),
           Container(
             height: 400.0,
             alignment: Alignment.topLeft,
@@ -291,15 +294,15 @@ class _ConfigPageState extends State<ConfigPage> {
     final child = isAvro
         ? Text("Avro")
         : DropdownButton<String>(
-      items: values.map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      value: currentValue,
-      onChanged: onUpdate,
-    );
+            items: values.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            value: currentValue,
+            onChanged: onUpdate,
+          );
 
     return Padding(
         padding: const EdgeInsets.all(8.0),
@@ -363,11 +366,21 @@ class _ConfigPageState extends State<ConfigPage> {
   void onListRunning(BuildContext ctxt) =>
       _push(ctxt, RunningConsumersWidget());
 
-  void onPublish(BuildContext ctxt) => _push(
-      ctxt,
-      PublishWidget(_currentConfig.fileName,
-          _currentConfig.summary,
-          _currentConfig.loadedContent));
+  void onPublish(BuildContext ctxt) async {
+    final newSummary = await _push(
+        ctxt,
+        PublishWidget(_currentConfig.fileName, _currentConfig.summary,
+            _currentConfig.loadedContent));
+
+    if (newSummary != _currentConfig.summary) {
+      await saveConfig(newSummary);
+      ScaffoldMessenger.of(ctxt)
+          .showSnackBar(SnackBar(content: Text("Popped $newSummary")));
+      setState(() {
+        _currentConfig.summary = newSummary;
+      });
+    }
+  }
 
   void onEditConfig(BuildContext ctxt) async {
     final editedConfig = await _push(
@@ -385,9 +398,7 @@ class _ConfigPageState extends State<ConfigPage> {
     if (_formKey.currentState.validate()) {
       _formKey.currentState.save();
 
-      DiskClient.setLastSaved(_currentConfig.fileName);
-      final result = await ConfigClient.save(
-          _currentConfig.fileName, _currentConfig.summary);
+      final result = await saveConfig(_currentConfig.summary);
 
       setState(() {
         _currentConfig.fileName = _currentConfig.fileName;
@@ -395,6 +406,11 @@ class _ConfigPageState extends State<ConfigPage> {
 
       return result;
     }
+  }
+
+  Future<bool> saveConfig(ConfigSummary value) async {
+    DiskClient.setLastSaved(_currentConfig.fileName);
+    return await ConfigClient.save(_currentConfig.fileName, value);
   }
 
   void onStartBatchConsumer(BuildContext ctxt) async {
@@ -448,7 +464,6 @@ class _ConfigPageState extends State<ConfigPage> {
     final result = await Navigator.push(
         ctxt, MaterialPageRoute(builder: (context) => page));
 
-    // refresh
     _reload(true);
     return result;
   }

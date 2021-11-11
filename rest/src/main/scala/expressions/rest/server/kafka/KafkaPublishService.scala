@@ -30,7 +30,7 @@ object KafkaPublishService {
     val vt           = newConfig.consumerValueType
     val kafkaRecords = asRecords(kt, vt, post, newConfig)
     ForeachPublisher
-      .publishAll(newConfig, kafkaRecords)
+      .publishAll(newConfig, kafkaRecords).timeout(java.time.Duration.ofSeconds(10))
       .map(_.size)
       .tapEither {
         case Left(res)  => zio.UIO(logger.error(s"PUBLISH RETURNED $res", res))

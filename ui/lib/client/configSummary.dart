@@ -12,10 +12,16 @@ class ConfigSummary {
       this.producerValueType,
       );
 
+  ConfigSummary withTypes(String newKeyType, String newValueType) {
+    return ConfigSummary(topic, mappings, brokers, newKeyType, newValueType, producerKeyType, producerValueType);
+  }
   static empty() {
     Map<String, List<String>> empty = {};
     return ConfigSummary("", empty, [], "", "", "", "");
   }
+
+  bool operator ==(o) => o is ConfigSummary && asJson == o.asJson;
+  int get hashCode => asJson.hashCode;
 
   bool isEmpty() {
     return topic == "";

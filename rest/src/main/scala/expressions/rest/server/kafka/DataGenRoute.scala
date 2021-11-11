@@ -66,11 +66,17 @@ object DataGenRoute {
     val justAsJson: Task[Json] = Task(io.circe.parser.parse(content).toTry.get)
 
     asAvroJson.either.flatMap {
-      case Left(_) =>
+      case Left(e1) =>
         jsonFromHocon.either.flatMap {
-          case Left(_) =>
+          case Left(e2) =>
             justAsJson.orElse {
-              ZIO.fail(new IllegalArgumentException(s"Couldn't parse content as avro, hocon or json: >${content}<"))
+              ZIO.fail(new IllegalArgumentException(
+                s"""Couldn't parse content as avro, hocon or json: >${content}<
+                   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                   |avro error : $e1
+                   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                   |hocon error : $e2
+                   |""".stripMargin))
             }
           case Right(result) => UIO(result)
         }

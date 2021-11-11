@@ -1,3 +1,3 @@
 class Consts {
-  static final SupportedTypes = ["Avro", "Json", "String", "Long"];
+  static const SupportedTypes = ["Avro", "Json", "String", "Long"];
 }
