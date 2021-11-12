@@ -25,19 +25,17 @@ case class ConfigSummary(topic: String,
                          producerKeyType: String,
                          producerValueType: String) {
 
-  def keySerde(keyTypeStr: String): (String, String) =
+  private def keySerde(keyTypeStr: String): (String, String) =
     SupportedType
-      .serdeForName(keyTypeStr)
-      .fold(keyTypeStr -> keyTypeStr)(serde =>
+      .serdeForName(keyTypeStr).map(serde =>
         serde.serializer().getClass.getName ->
-          serde.deserializer().getClass.getName)
+          serde.deserializer().getClass.getName).getOrElse(sys.error(s"Unrecognized/unsupported key type '${keyTypeStr}'"))
 
-  def valueSerde(valueTypeStr: String): (String, String) =
+  private def valueSerde(valueTypeStr: String): (String, String) =
     SupportedType
-      .serdeForName(valueTypeStr)
-      .fold(valueTypeStr -> valueTypeStr)(serde =>
+      .serdeForName(valueTypeStr).map(serde =>
         serde.serializer().getClass.getName ->
-          serde.deserializer().getClass.getName)
+          serde.deserializer().getClass.getName).getOrElse(sys.error(s"Unrecognized/unsupported value type '${valueTypeStr}'"))
 
   def asConfigJson(): Json = ConfigSummary.asJson(asConfig())
 
