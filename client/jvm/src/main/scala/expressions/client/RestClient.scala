@@ -1,6 +1,6 @@
 package expressions.client
 
-import cats.effect.{ConcurrentEffect, ExitCode, IO, IOApp}
+import cats.effect.*
 import org.http4s.client.Client
 import org.http4s.{Header, Headers, Uri}
 import org.typelevel.ci.CIString

@@ -1,10 +1,11 @@
 package expressions.rest.server
 
-import cats.implicits._
+import cats.implicits.{given, *}
+//import cats.implicits.{given, *}
 import io.circe.Json
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.{HttpRoutes, Request, Response, Status}
-import zio.interop.catz._
+import zio.interop.catz.{given, *}
 import zio.{Ref, Task, ZIO}
 
 /**
@@ -12,16 +13,17 @@ import zio.{Ref, Task, ZIO}
   */
 object CacheRoute {
 
+
   import RestRoutes.taskDsl._
 
-  def apply(): ZIO[Any, Nothing, HttpRoutes[Task]] = Ref.make(Map.empty[String, Json]).map { cache =>
+  def apply()(using env : RouteEnv): ZIO[Any, Nothing, HttpRoutes[Task]] = Ref.make(Map.empty[String, Json]).map { cache =>
     postRoute(cache) <+> getRoute(cache)
   }
 
-  def postRoute(cache: Ref[Map[String, Json]]): HttpRoutes[Task] = {
+  def postRoute(cache: Ref[Map[String, Json]])(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ (POST -> "cache" /: theRest) =>
-        asJson(req).flatMap { json =>
+        val thunk = asJson(req).flatMap { json =>
           val key = theRest.segments.mkString("/")
           cache.modify { byPath =>
             val response = if (byPath.contains(key)) {
@@ -32,13 +34,14 @@ object CacheRoute {
             response -> byPath.updated(key, json)
           }
         }
+        thunk
     }
   }
 
-  private def asJson(req: Request[Task]) = {
+  private def asJson(req: Request[Task])(using env : RouteEnv) = {
     req.as[Json].either.flatMap {
       case Left(_) =>
-        req.bodyText.compile.string.map(Json.fromString)
+        req.bodyText.compile.string.map(Json.fromString).provide(env)
       case Right(json) => ZIO.succeed(json)
 
     }

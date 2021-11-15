@@ -25,7 +25,7 @@ object ToDart {
   case class Question(text: String, values: List[Choice], kind: String, required: Boolean, weight: Double)
   case class Choice(text: String, score: Int)
 
-  extension [A](value: A) {
+  extension[A](value: A) {
     def tap(f: A => Unit): A = {
       f(value)
       value

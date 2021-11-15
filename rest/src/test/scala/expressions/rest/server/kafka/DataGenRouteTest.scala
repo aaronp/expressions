@@ -1,7 +1,6 @@
 package expressions.rest.server.kafka
 
 import _root_.io.circe.Json
-import cats.effect.Blocker
 import eie.io
 import eie.io.*
 import expressions.client.TransformResponse
@@ -23,35 +22,34 @@ import scala.util.Success
 
 class DataGenRouteTest extends BaseRouteTest {
 
-  def blocker = Blocker.liftExecutionContext(ExecutionContext.global)
-
   "DataGen.parseContentAsJson" should {
     "be able to parse our test avro" in {
       val parsed = DataGenRoute.parseContentAsJson(exampleAvro, 123).value()
       parsed.hcursor.downField("day").as[String].toTry shouldBe Success("MONDAY")
     }
     "be able to parse some hocon" in {
-      val parsed = DataGenRoute.parseContentAsJson(
-        """bar : true
+      val parsed = DataGenRoute
+        .parseContentAsJson("""bar : true
           |num : ber
-          |a : [1,2,3]""".stripMargin, 123).value()
+          |a : [1,2,3]""".stripMargin,
+                            123)
+        .value()
       parsed.hcursor.downField("bar").as[Boolean].toTry shouldBe Success(true)
       parsed.hcursor.downField("num").as[String].toTry shouldBe Success("ber")
-      parsed.hcursor.downField("a").as[List[Int]].toTry shouldBe Success(List(1,2,3))
+      parsed.hcursor.downField("a").as[List[Int]].toTry shouldBe Success(List(1, 2, 3))
     }
   }
 
   "DataGen POST data/parse" should {
     "be able to parse multipart uploads of avro" in {
       withTmpDir { dir =>
-
         Given("A multipart request")
         val file = dir.resolve("someFile.txt")
         eie.io.asRichPath(file).text = exampleAvro
 
         val multipart: Multipart[Task] = Multipart[Task](
           Vector(
-            Part.fileData("file", file.toFile, blocker, headers.`Content-Type`(MediaType.text.`plain`))
+            Part.fileData("file", file.toFile, headers.`Content-Type`(MediaType.text.`plain`))
           ))
 
         And("Our DataGenRoute under test")
@@ -60,9 +58,9 @@ class DataGenRouteTest extends BaseRouteTest {
         val request = post("/data/parse?seed=456").withEntity(multipart).withHeaders(multipart.headers)
         val testCase = for {
           Some(response) <- underTest(request).value
-          _ = Then("we should get back some sample json")
-          _ = response.status.code shouldBe 200
-          body = response.bodyAs[Json]
+          _              = Then("we should get back some sample json")
+          _              = response.status.code shouldBe 200
+          body           = response.bodyAs[Json]
         } yield body
 
         val result = testCase.value()
@@ -77,9 +75,9 @@ class DataGenRouteTest extends BaseRouteTest {
       When("We squirt a some avro in ")
       val testCase = for {
         Some(response) <- underTest(post("/data/parse?seed=456", exampleAvro)).value
-        _ = Then("we should get back some sample json")
-        _ = response.status.code shouldBe 200
-        body = response.bodyAs[Json]
+        _              = Then("we should get back some sample json")
+        _              = response.status.code shouldBe 200
+        body           = response.bodyAs[Json]
       } yield body
 
       val result = testCase.value()
@@ -92,11 +90,12 @@ class DataGenRouteTest extends BaseRouteTest {
       val underTest = DataGenRoute()
       When("We squirt some hocon in ")
       val testCase = for {
-        Some(response) <- underTest(post("/data/parse?seed=456",
-          """ho : con
+        Some(response) <- underTest(
+          post("/data/parse?seed=456",
+               """ho : con
             |rocks : true""".stripMargin)).value
-        _ = Then("we should get back some sample json")
-        _ = response.status.code shouldBe 200
+        _    = Then("we should get back some sample json")
+        _    = response.status.code shouldBe 200
         body = response.bodyAs[Json]
       } yield body
 
@@ -110,11 +109,10 @@ class DataGenRouteTest extends BaseRouteTest {
       val underTest = DataGenRoute()
       When("We squirt some hocon in ")
       val testCase = for {
-        Some(response) <- underTest(post("/data/parse?seed=456",
-          """{ "jay" : "son" }""".stripMargin)).value
-        _ = Then("we should get back some sample json")
-        _ = response.status.code shouldBe 200
-        body = response.bodyAs[Json]
+        Some(response) <- underTest(post("/data/parse?seed=456", """{ "jay" : "son" }""".stripMargin)).value
+        _              = Then("we should get back some sample json")
+        _              = response.status.code shouldBe 200
+        body           = response.bodyAs[Json]
       } yield body
 
       val result = testCase.value()

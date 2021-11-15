@@ -44,7 +44,7 @@ class KafkaPublishRouteTest extends BaseRouteTest {
         //
         routeUnderTest <- KafkaPublishRoute()
 //        Some(_)        <- routeUnderTest(post("kafka/publish")).value
-        testRecord     = postRecordJson.as[PostRecord].toTry.get.copy(topicOverride = Some(topic))
+        testRecord = postRecordJson.as[PostRecord].toTry.get.copy(topicOverride = Some(topic))
         //
         // create a sink which will just keep track of our records
         //

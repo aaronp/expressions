@@ -14,7 +14,7 @@ object DataGen {
 
   import scala.jdk.CollectionConverters.{given, *}
 
-  def parseAvro(avro : String): Try[Schema] = {
+  def parseAvro(avro: String): Try[Schema] = {
     val parser = new org.apache.avro.Schema.Parser
     Try(parser.parse(avro))
   }
@@ -40,7 +40,7 @@ object DataGen {
     def map[A](f: Y => A): (X, A) = (pear._1, f(pear._2))
   }
 
-  def forSchema(schema: Schema, seed : Long = System.currentTimeMillis()): Json = recordForSchema(schema, Seed(seed))._2
+  def forSchema(schema: Schema, seed: Long = System.currentTimeMillis()): Json = recordForSchema(schema, Seed(seed))._2
 
   def recordForSchema(schema: Schema, seed: Seed = Seed(), gen: Seed => (Seed, Gen) = Gen.forSeed): (Seed, Json) = {
     schema.getType match {

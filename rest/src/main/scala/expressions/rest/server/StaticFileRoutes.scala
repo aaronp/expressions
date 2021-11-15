@@ -37,12 +37,12 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
     require(cssRootDir.exists(), s"cssRootDir '$cssRootDir' doesn't exist (${cssRootDir.toAbsolutePath})")
   }
 
-  def routes[F[_]: Sync: ContextShift](blocker: Blocker = StaticFileRoutes.staticBlocker): HttpRoutes[F] = {
-    val builder = new Builder[F](blocker)
+  def routes[F[_]: Async](): HttpRoutes[F] = {
+    val builder = new Builder[F]()
     builder.routes
   }
 
-  private class Builder[F[_]: Sync: ContextShift](blocker: Blocker) {
+  private class Builder[F[_]: Async]() {
     private val dsl = Http4sDsl[F]
 
     import dsl._
@@ -120,7 +120,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
     private def resolvePath(path: JPath, resource: String, request: Request[F]): OptionT[F, Response[F]] = {
       val resolved = path.resolve(resource)
       logger.trace(s"Fetching '$resolved'")
-      StaticFile.fromFile(resolved.toFile, blocker, Some(request))
+      StaticFile.fromFile(resolved.toFile, Some(request))
     }
   }
 
@@ -128,7 +128,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
 
 object StaticFileRoutes {
 
-  private lazy val staticBlocker: Blocker = Blocker.liftExecutionContext(ExecutionContext.Implicits.global)
+//  private lazy val staticBlocker: Blocker = Blocker.liftExecutionContext(ExecutionContext.Implicits.global)
 
   def localhost = java.net.InetAddress.getLocalHost.getHostName
 

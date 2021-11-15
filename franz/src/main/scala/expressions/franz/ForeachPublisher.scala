@@ -24,7 +24,7 @@ object ForeachPublisher {
 
     op.timed.map {
       case (time, result) =>
-        logger.info(s"TIMING: publishAll for ${records.size} records took $time: ${records.mkString("\n\t","\n\t","\n")}")
+        logger.info(s"TIMING: publishAll for ${records.size} records took $time: ${records.mkString("\n\t", "\n\t", "\n")}")
         result
     }
   }

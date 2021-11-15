@@ -15,7 +15,7 @@ import scala.util.Try
 
 object SchemaGen {
 
-  def parseSchema(schemaText : String): Try[Schema] = {
+  def parseSchema(schemaText: String): Try[Schema] = {
     val parser = new org.apache.avro.Schema.Parser
     scala.util.Try(parser.parse(schemaText))
   }

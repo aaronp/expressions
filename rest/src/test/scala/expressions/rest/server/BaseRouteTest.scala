@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import zio.duration.{Duration, durationInt}
-import zio.interop.catz._
+import zio.interop.catz.{given, *}
 import zio.{Task, ZEnv, ZIO}
 
 import java.nio.file.{Files, Path, Paths}
@@ -22,6 +22,7 @@ abstract class BaseRouteTest extends AnyWordSpec with Matchers with GivenWhenThe
 
   given rt: zio.Runtime[ZEnv] = zio.Runtime.default
 
+  given routeEnv : RouteEnv = zenv
   def zenv = rt.environment
 
   def testTimeout: Duration = 1000.seconds

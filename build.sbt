@@ -17,6 +17,7 @@ enablePlugins(GitVersioning)
 // see http://scalameta.org/scalafmt/
 ThisBuild / scalafmtOnCompile := true
 ThisBuild / scalafmtVersion := "1.4.0"
+//ThisBuild / scalacOptions += "-P:semanticdb:synthetics:on"
 
 // Define a `Configuration` for each project, as per http://www.scala-sbt.org/sbt-site/api-documentation.html
 val Expressions    = config("expressions")

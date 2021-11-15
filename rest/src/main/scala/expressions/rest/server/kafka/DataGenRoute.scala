@@ -31,29 +31,28 @@ import scala.util.Try
   */
 object DataGenRoute {
 
+  def apply()(using env : RouteEnv) = parseUpload()
 
-  def apply() = parseUpload()
-
-  def parseUpload(): HttpRoutes[Task] = {
+  def parseUpload()(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
-      case req@(POST -> Root / "data" / "parse" :? OptionalSeed(seedOpt)) =>
+      case req @ (POST -> Root / "data" / "parse" :? OptionalSeed(seedOpt)) =>
         val seed = seedOpt.getOrElse(System.currentTimeMillis())
         parseAsMultipartRequest(req, seed).sandbox.either.flatMap {
-          case Left(_) => parseAsRestRequest(req, seed)
+          case Left(_)                                    => parseAsRestRequest(req, seed)
           case Right(result) if result.status.code != 200 => parseAsRestRequest(req, seed)
-          case Right(result) => UIO(result)
+          case Right(result)                              => UIO(result)
         }
     }
   }
 
-  def parseAsRestRequest(req: Request[zio.Task], seed: Long) = {
-    val content = req.as[Json].map(_.noSpaces).orElse(req.bodyText.foldMonoid.compile.string)
+  def parseAsRestRequest(req: Request[zio.Task], seed: Long)(using env : RouteEnv) = {
+    val content = req.as[Json].map(_.noSpaces).orElse(req.bodyText.foldMonoid.compile.string).provide(env)
     content.flatMap(parseContentAsJson(_, seed)).map { parsed =>
       Response[Task](Status.Ok).withEntity(parsed)
     }
   }
 
-  def parseContentAsJson(content: String, seed: Long): Task[Json] = {
+  def parseContentAsJson(content: String, seed: Long)(using env : RouteEnv): Task[Json] = {
     val asAvroJson: Task[Json] = Task.fromTry(DataGen.parseAvro(content).flatMap { schema =>
       Try(DataGen.forSchema(schema, seed))
     })
@@ -70,8 +69,7 @@ object DataGenRoute {
         jsonFromHocon.either.flatMap {
           case Left(e2) =>
             justAsJson.orElse {
-              ZIO.fail(new IllegalArgumentException(
-                s"""Couldn't parse content as avro, hocon or json: >${content}<
+              ZIO.fail(new IllegalArgumentException(s"""Couldn't parse content as avro, hocon or json: >${content}<
                    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                    |avro error : $e1
                    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -84,25 +82,25 @@ object DataGenRoute {
     }
   }
 
-  def parseAsMultipartRequest(req: Request[zio.Task], seed: Long) = {
-    req.decode[Multipart[Task]] { m => {
-      val filePart = m.parts.find(_.name == Some("file"))
-      val msg = m.parts.flatMap(_.name).mkString("Multipart request did not contain 'file'. Parts included : [", ",", "]")
-      println(msg)
-      filePart match {
-        case None =>
-          BadRequest(msg)
-        case Some(part) =>
-          val catsIO = part.body.through(fs2.text.utf8Decode[Task]).foldMonoid.compile.string
-          catsIO.flatMap { c =>
-            LoggerFactory.getLogger(getClass).info(s"Parsing multipart content:>${c}<")
-            parseContentAsJson(c, seed).map { parsed =>
-              LoggerFactory.getLogger(getClass).info(s"Returning ${parsed}")
-              Response[Task](Status.Ok).withEntity(parsed)
+  def parseAsMultipartRequest(req: Request[zio.Task], seed: Long)(using env : RouteEnv) = {
+    req.decode[Multipart[Task]] { m =>
+      {
+        val filePart = m.parts.find(_.name == Some("file"))
+        val msg      = m.parts.flatMap(_.name).mkString("Multipart request did not contain 'file'. Parts included : [", ",", "]")
+        filePart match {
+          case None =>
+            BadRequest(msg)
+          case Some(part) =>
+            val catsIO = part.body.through(fs2.text.utf8.decode[Task]).foldMonoid.compile.string.provide(env)
+            catsIO.flatMap { c =>
+              LoggerFactory.getLogger(getClass).info(s"Parsing multipart content:>${c}<")
+              parseContentAsJson(c, seed).map { parsed =>
+                LoggerFactory.getLogger(getClass).info(s"Returning ${parsed}")
+                Response[Task](Status.Ok).withEntity(parsed)
+              }
             }
-          }
+        }
       }
-    }
     }
   }
 

@@ -10,8 +10,8 @@ class CodeTemplateTest extends BaseTest {
   type JsonMsg = Message[DynamicJson, DynamicJson]
   "CodeTemplate" should {
     "work" in {
-      val template                                   = CodeTemplate.newCache[JsonMsg, Json]()
-      val Success(script: Expression[JsonMsg, Json]) = template("""
+      val template       = CodeTemplate.newCache[JsonMsg, Json]()
+      val compiledResult = template("""
           |        import io.circe.syntax._
           |
           |        val requests = record.content.hello.world.flatMap  { json =>
@@ -26,6 +26,11 @@ class CodeTemplateTest extends BaseTest {
           |
           |        requests.asJson
           |""".stripMargin)
+
+      val script = compiledResult match {
+        case Success(script: Expression[JsonMsg, Json]) => script
+        case other                                      => fail(s"compiled result was: $other")
+      }
 
       val data = """{
         "hello" : {

@@ -15,17 +15,17 @@ object DiskRoute {
 
   import RestRoutes.taskDsl._
 
-  def apply(rootConfig: Config): ZIO[Any, Throwable, HttpRoutes[Task]] = {
+  def apply(rootConfig: Config)(using env : RouteEnv): ZIO[Any, Throwable, HttpRoutes[Task]] = {
     Disk(rootConfig).map(svc => apply(svc))
   }
 
-  def apply(service: Disk.Service): HttpRoutes[Task] = getRoute(service) <+> postRoute(service) <+> listRoute(service.list) <+> deleteRoute(service)
+  def apply(service: Disk.Service)(using env : RouteEnv): HttpRoutes[Task] = getRoute(service) <+> postRoute(service) <+> listRoute(service.list) <+> deleteRoute(service)
 
-  def postRoute(service: Disk.Service): HttpRoutes[Task] = {
+  def postRoute(service: Disk.Service)(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ (POST -> "store" /: theRest) =>
         for {
-          body: String <- req.bodyText.compile.string
+          body: String <- req.bodyText.compile.string.provide(env)
           created      <- service.write(theRest.segments.map(_.encoded), body)
         } yield {
           if (created) Response[Task](Status.Created) else Response[Task](Status.Ok)

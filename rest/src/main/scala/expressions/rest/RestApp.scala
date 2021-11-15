@@ -1,6 +1,6 @@
 package expressions.rest
 
-import cats.effect.ConcurrentEffect
+import cats.effect.kernel.Async
 import com.typesafe.config.{Config, ConfigFactory}
 import expressions.rest.RestApp.Settings
 import expressions.rest.server.record.LiveRecorder
@@ -10,9 +10,9 @@ import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.Router
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.middleware.{CORS, Logger}
-import zio._
-import zio.interop.catz._
-import zio.interop.catz.implicits._
+import zio.*
+import zio.interop.catz.*
+import zio.interop.catz.implicits.*
 
 import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
@@ -41,12 +41,11 @@ case class RestApp(settings: Settings) {
     } else httpApp
   }
 
-  @implicitNotFound("You need ConcurrentEffect, which (if you're calling w/ a ZIO runtime in scope), can be fixed by: import zio.interop.catz._")
-  def serve(rootConfig: Config)(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] =
+  def serve(rootConfig: Config): ZIO[zio.ZEnv, Nothing, ExitCode] =
     for {
       rawRoutes  <- RestRoutes(rootConfig).orDie
       httpRoutes = mkRouter(rawRoutes)
-      exitCode <- BlazeServerBuilder[Task](ExecutionContext.global)
+      exitCode <- BlazeServerBuilder[Task](Async[Task])
         .bindHttp(port, host)
         .withHttpApp(httpRoutes)
         .serve

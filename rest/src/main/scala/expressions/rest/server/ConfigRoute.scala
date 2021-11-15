@@ -32,7 +32,7 @@ object ConfigRoute {
     * @param rootConfig
     * @return
     */
-  def apply(disk: Disk.Service, rootConfig: Config = ConfigFactory.load()): HttpRoutes[Task] = {
+  def apply(disk: Disk.Service, rootConfig: Config = ConfigFactory.load())(using env : RouteEnv): HttpRoutes[Task] = {
     listMappingsRoute(rootConfig) <+>
       getConfig(rootConfig, disk) <+>
       listEntries(rootConfig) <+>
@@ -46,11 +46,11 @@ object ConfigRoute {
     *
     * @return json representing the mapping paths by their topics/regex
     */
-  def listMappingsRoute(rootConfig: Config): HttpRoutes[Task] = {
+  def listMappingsRoute(rootConfig: Config)(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "mappings" / "list" =>
         for {
-          body   <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string.provide(env)
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
         } yield {
           val mappings: Map[String, List[String]] = MappingConfig(config).mappings.toMap
@@ -65,11 +65,11 @@ object ConfigRoute {
     * @param rootConfig
     * @return the default config
     */
-  def listEntries(rootConfig: Config): HttpRoutes[Task] = {
+  def listEntries(rootConfig: Config)(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "entries" =>
         for {
-          body   <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string.provide(env)
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
           lines  = ConfigLine(config.withOnlyPath("app"))
         } yield Response[Task](Status.Ok).withEntity(lines)
@@ -81,11 +81,11 @@ object ConfigRoute {
     jsonString.linesIterator.toList
   }
 
-  def formatJson(rootConfig: Config): HttpRoutes[Task] = {
+  def formatJson(rootConfig: Config)(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "format" =>
         for {
-          body   <- req.bodyText.compile.string
+          body   <- req.bodyText.compile.string.provide(env)
           config <- Task(ConfigFactory.parseString(body).withFallback(rootConfig).resolve())
           lines  = formatConfigAsJson(config.withOnlyPath("app"))
         } yield Response[Task](Status.Ok).withEntity(lines)
@@ -98,7 +98,7 @@ object ConfigRoute {
     * @param rootConfig the root configuration
     * @return the default config
     */
-  def summary(rootConfig: Config): HttpRoutes[Task] = {
+  def summary(rootConfig: Config)(using env : RouteEnv): HttpRoutes[Task] = {
     HttpRoutes.of[Task] {
       case req @ POST -> Root / "config" / "parse" :? OptionalIncludeDefault(includeDefault) =>
         def parse(body: String) = {
@@ -111,7 +111,7 @@ object ConfigRoute {
         }
 
         for {
-          body    <- req.bodyText.compile.string
+          body    <- req.bodyText.compile.string.provide(env)
           config  <- Task(parse(body).resolve())
           summary = ConfigSummary.fromRootConfig(config)
         } yield Response[Task](Status.Ok).withEntity(summary)

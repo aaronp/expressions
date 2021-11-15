@@ -45,12 +45,12 @@ class BatchedStreamTest extends BaseFranzTest {
     }
   }
 
-  def avroRecord(k: Int): GenericRecord = ???
-//    http.HttpRequest
-//      .newBuilder()
-//      .setBody(ByteBuffer.wrap(Array(1, 2, 3)))
-//      .setMethod(http.Method.CONNECT)
-//      .setUrl(s"http://example/$k")
-//      .setHeaders(new util.HashMap[CharSequence, CharSequence]())
-//      .build()
+  def avroRecord(k: Int): GenericRecord =
+    http.HttpRequest
+      .newBuilder()
+      .setBody(ByteBuffer.wrap(Array(1, 2, 3)))
+      .setMethod(http.Method.CONNECT)
+      .setUrl(s"http://example/$k")
+      .setHeaders(new util.HashMap[CharSequence, CharSequence]())
+      .build()
 }

@@ -7,7 +7,8 @@ object Build {
   val zioVersion = "1.0.12"
 //  val zioVersion = "2.0.0-M3"
   val zio = List(
-    "dev.zio" %% "zio-interop-cats" % "2.5.1.0",
+//    "dev.zio" %% "zio-interop-cats" % "2.5.1.0",
+    "dev.zio" %% "zio-interop-cats" % "3.1.1.0",
     "dev.zio" %% "zio"              % zioVersion,
     "dev.zio" %% "zio-streams"      % zioVersion,
     "dev.zio" %% "zio-test"         % zioVersion % "test",
@@ -27,11 +28,11 @@ object Build {
   }
 
 //  val Http4sVersion = "0.23.4"
-  val Http4sVersion = "0.22.0-RC1"
+  val Http4sVersion = "1.0.0-M29"
 
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.4.1"
 
-  val logback      = "ch.qos.logback" % "logback-classic" % "1.2.6"
+  val logback      = "ch.qos.logback" % "logback-classic" % "1.2.7"
   val logging      = List(logback, "org.slf4j" % "slf4j-api" % "1.7.32")
 
   val scalaTest =  List ("org.scalactic" %% "scalactic" % "3.2.10" % Test,
@@ -73,9 +74,9 @@ object Build {
 
 
   val scalaJDBC = Seq(
-    "org.postgresql" % "postgresql" % "42.2.22" % "provided", // TODO - remove this puppy
-    "org.scalikejdbc" %% "scalikejdbc" % "4.0.0-RC1",
-    "org.scalikejdbc" %% "scalikejdbc-test" % "4.0.0-RC1" % Test
+    "org.postgresql" % "postgresql" % "42.3.1" % "provided", // TODO - remove this puppy
+    "org.scalikejdbc" %% "scalikejdbc" % "4.0.0",
+    "org.scalikejdbc" %% "scalikejdbc-test" % "4.0.0" % Test
   )
 
 

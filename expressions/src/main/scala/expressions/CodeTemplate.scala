@@ -3,6 +3,7 @@ package expressions
 import expressions.template.Context
 
 import javax.script.{ScriptEngine, ScriptEngineFactory}
+import scala.annotation.nowarn
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
@@ -96,8 +97,9 @@ object CodeTemplate {
     val thunk = try {
       val engine: ScriptEngine = scalaEngine()
       val result               = engine.eval(script)
+
       result match {
-        case expr: Thunk => Try(Compiled(script, inputType, expr))
+        case expr: Thunk @nowarn => Try(Compiled(script, inputType, expr))
         case other =>
           Failure(new Exception(s"Couldn't parse '$script' as an Expression[$className]: $other"))
       }

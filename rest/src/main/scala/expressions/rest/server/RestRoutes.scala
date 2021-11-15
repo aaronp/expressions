@@ -32,14 +32,25 @@ object RestRoutes {
       |
       |""".stripMargin
 
-  def apply(defaultConfig: Config = ConfigFactory.load()): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
+  def apply(defaultConfig: Config = ConfigFactory.load()) : ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
+
     for {
-      env               <- ZIO.environment[ZEnv]
-      cacheRoute        <- CacheRoute()
-      diskService       <- Disk(defaultConfig)
-      fsDir             = BatchContext.dataDir(defaultConfig)
-      httpCompiler      = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
-      batchSink         <- BatchSink.make
+      env <- ZIO.environment[ZEnv]
+      route <- forEnv(defaultConfig, env)
+    } yield route
+  }
+
+  def forEnv(defaultConfig: Config, env: ZEnv): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
+//    given env: RouteEnv = summon[RouteEnv]
+    given implicitEnv: ZEnv = env
+
+    for {
+//      env <- ZIO.environment[ZEnv]
+      cacheRoute <- CacheRoute()
+      diskService <- Disk(defaultConfig)
+      fsDir = BatchContext.dataDir(defaultConfig)
+      httpCompiler = CodeTemplate.newCache[JsonMsg, Seq[HttpRequest]](ScriptPrefix)
+      batchSink <- BatchSink.make
       franzConfig = FranzConfig(defaultConfig.getConfig("app.franz"))
       kafkaPublishRoute <- KafkaPublishRoute.fromFranzConfig(franzConfig)
       dataRoute = DataGenRoute()
@@ -47,14 +58,14 @@ object RestRoutes {
       val expressionForString: Cache[StringExpression[JsonMsg]] =
         StringTemplate.newCache[DynamicJson, DynamicJson]()
 
-      val diskRoute                                                = DiskRoute(diskService)
-      val loadCfg                                                  = LoadConfig(diskService, defaultConfig)
+      val diskRoute = DiskRoute(diskService)
+      val loadCfg = LoadConfig(diskService, defaultConfig)
       val jsonCache: Cache[CodeTemplate.Expression[JsonMsg, Json]] = httpCompiler.map(_.andThen(_.asJson))
-      val mappingRoutes                                            = MappingTestRoute(jsonCache, _.asContext(fsDir))
-      val configTestRotes                                          = ConfigTestRoute(expressionForString, _.asContext(fsDir))
-      val configRoute                                              = ConfigRoute(diskService, defaultConfig)
-      val batchRoute                                               = BatchRoute(loadCfg, batchSink, env)
-      val proxyRoute                                               = ProxyRoute()
+      val mappingRoutes = MappingTestRoute(jsonCache, _.asContext(fsDir))
+      val configTestRotes = ConfigTestRoute(expressionForString, _.asContext(fsDir))
+      val configRoute = ConfigRoute(diskService, defaultConfig)
+      val batchRoute = BatchRoute(loadCfg, batchSink, env)
+      val proxyRoute = ProxyRoute()
 
       batchRoute <+> kafkaPublishRoute <+> mappingRoutes <+> configTestRotes <+> dataRoute <+> configRoute <+> cacheRoute <+> diskRoute <+> proxyRoute
     }

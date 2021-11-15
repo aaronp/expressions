@@ -10,8 +10,9 @@ import scala.jdk.CollectionConverters._
 
 package object server {
 
-  type Disk  = Has[Disk.Service]
-  type Topic = String
+  type RouteEnv = zio.clock.Clock & zio.interop.CBlocking
+  type Disk     = Has[Disk.Service]
+  type Topic    = String
 
   type JsonMsg = Message[DynamicJson, DynamicJson]
 
@@ -19,7 +20,7 @@ package object server {
     * pimped out the schema client
     * @param client
     */
-  extension (client: SchemaRegistryClient) {
+  extension(client: SchemaRegistryClient) {
     def subjects: Iterable[String]             = client.getAllSubjects.asScala
     def versionsFor(subject: String): Set[Int] = client.getAllVersions(subject).asScala.map(_.intValue()).toSet
     def subjectVersions: Map[String, Set[Int]] =
@@ -57,7 +58,7 @@ package object server {
 
     def diffMetadata(subject: String): Option[(SchemaMetadata, SchemaMetadata)] = diffMetadata(subject, versionsFor(subject))
 
-    def diffMetadata(subject: String, versions: Set[Int]) : Option[(SchemaMetadata, SchemaMetadata)] = {
+    def diffMetadata(subject: String, versions: Set[Int]): Option[(SchemaMetadata, SchemaMetadata)] = {
       versions match {
         case set if set.size > 1 =>
           val latest       = set.max

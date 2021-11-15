@@ -11,14 +11,14 @@ class SchemaRegistryIntegrationTest extends BaseRouteTest {
 
   "SchemaRegistry" should {
     "be able to list all topics" in {
-      val cfg = FranzConfig.fromRootConfig(testConfig())
+      val cfg    = FranzConfig.fromRootConfig(testConfig())
       val client = cfg.schemaRegistryClient
-      val all =client.metadataById
+      val all    = client.metadataById
       all should not be (empty)
       val text = all.map {
         case (subject, md) =>
           val Success(schema) = SchemaGen.parseSchema(md.getSchema)
-          val testData = DataGen.forSchema(schema)
+          val testData        = DataGen.forSchema(schema)
 
           s"""= = = = = = = = = = = = = = = = = = = = = =
              |$subject (id : ${md.getId} version ${md.getVersion})
