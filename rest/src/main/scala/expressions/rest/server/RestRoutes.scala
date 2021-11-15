@@ -41,11 +41,9 @@ object RestRoutes {
   }
 
   def forEnv(defaultConfig: Config, env: ZEnv): ZIO[ZEnv, Throwable, HttpRoutes[Task]] = {
-//    given env: RouteEnv = summon[RouteEnv]
     given implicitEnv: ZEnv = env
 
     for {
-//      env <- ZIO.environment[ZEnv]
       cacheRoute <- CacheRoute()
       diskService <- Disk(defaultConfig)
       fsDir = BatchContext.dataDir(defaultConfig)
