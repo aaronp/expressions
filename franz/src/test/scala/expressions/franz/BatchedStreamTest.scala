@@ -45,6 +45,8 @@ class BatchedStreamTest extends BaseFranzTest {
     }
   }
 
+  // If `http.HttpRequest` is not found in IntelliJ, you will have to recompile with sbt (as that is what generates
+  // the example avro stubs)
   def avroRecord(k: Int): GenericRecord =
     http.HttpRequest
       .newBuilder()

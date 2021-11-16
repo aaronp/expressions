@@ -13,7 +13,7 @@ class MappingTestRouteTest extends BaseRouteTest {
 
       val request = {
         val jason = """{ "foo" : "bar" }""".jason
-        post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
+        post("/mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
       val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]().map(_.andThen(_.asJson)))
 
@@ -31,7 +31,7 @@ class MappingTestRouteTest extends BaseRouteTest {
 
       val request = {
         val jason = """{ "foo" : "bar" }""".jason
-        post("mapping/check", TransformRequest(script, jason).asJson.noSpaces)
+        post("/mapping/check", TransformRequest(script, jason).asJson.noSpaces)
       }
       val underTest = MappingTestRoute(CodeTemplate.newCache[JsonMsg, Json]())
 
