@@ -27,19 +27,17 @@ class BatchContextTest extends BaseRouteTest {
         val message = Message(key, value)
 
         import ctxtUnderTest._
+        val r = message.key.withValue("""{ "msg" : "one" }""".jason).asRecord(topic)
         for {
-          google  <- send(HttpRequest.get("http://www.google.com"))
           result1 <- message.key.withValue("""{ "msg" : "one" }""".jason).publishTo(topic)
           result2 <- message.key.withValue("""{ "msg" : "two" }""".jason).publishTo(topic)
           result3 <- message.key.withValue("""{ "msg" : "three" }""".jason).publishTo(topic2)
           result4 <- message.key.withValue("""{ "msg" : "four" }""".jason).publishTo(topic2)
-        } yield (google, List(result1, result2, result3, result4))
+        } yield List(result1, result2, result3, result4)
       }
 
-      val (google, results) = testCase.value()
+      val results = testCase.value()
 
-      google.statusCode shouldBe 200
-      google.body should not be (empty)
       val topicOffsets = results.map(r => r.topic() -> r.offset())
       topicOffsets should contain only ((topic, 0), (topic, 1), (topic2, 0), (topic2, 1))
     }
